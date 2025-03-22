@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # common config
 RUN apt-get update && apt-get -y install make cmake build-essential vim sudo git tcl8.6 tcl8.6-tdbc-sqlite3\
     clang ninja-build pkg-config clang-format \
-    libpq-dev libyaml-cpp-dev lld llvm python3-fire python3-pip && pip3 install openai colorama 
+    libpq-dev libyaml-cpp-dev lld llvm python3-fire python3-pip && pip3 install openai colorama scipy
 
 RUN mkdir -p /home && \
     groupadd dobigthing && \

@@ -8,7 +8,7 @@ RUN apt-get -y install make cmake build-essential vim sudo git \
     clang zlib1g-dev \
     libmysqlclient-dev ninja-build pkg-config clang-format \
     libpq-dev libyaml-cpp-dev lld llvm bison python3-fire \
-    libreadline8 libreadline-dev bison flex python3-fire python3-pip && pip3 install openai colorama
+    libreadline8 libreadline-dev bison flex python3-fire python3-pip && pip3 install openai colorama scipy
 
 RUN mkdir -p /home && \
     groupadd dobigthing && \

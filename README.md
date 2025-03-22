@@ -83,6 +83,8 @@ python3 clcc_run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
 3. sqlright
 ```SHELL
 #下面的语句请在主机上运行,如果您是windows，请在wsl或linux下运行！请确保您已经安装了docker
+cd CLCC_REPO/
+git submodule update --init
 cd docker/sqlright/SQLite/scripts/
 bash setup_sqlite.sh
 cd CLCC_REPO/
