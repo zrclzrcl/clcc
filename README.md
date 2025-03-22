@@ -73,11 +73,19 @@ docker run -it --name sqlite_clcc  --cpuset-cpus="29,28" sqlite_clcc
 #以下语句请在容器中运行,您需要两个shell窗口进行操作
 #下面请在shell1中运行
 cd /home/clcc
-python3 count_feedbackpoint.py -t -100 -db sqlite -o 1 -k 您的api-key -conf "" -ms 65536
+python3 count_feedbackpoint.py -t -100 -db sqlite -o 1 -k 您的api-key -conf "" -ms 65536  #这里的参数选择在后续会有详细解释
 
 #下面请在shell2中运行
-
-python3 run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
+python3 clcc_run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
 #这将启动fuzz!!
+```
+
+3. sqlright
+```SHELL
+#下面的语句请在主机上运行,如果您是windows，请在wsl或linux下运行！请确保您已经安装了docker
+cd docker/sqlright/SQLite/scripts/
+bash setup_sqlite.sh
+cd CLCC_REPO/
+docker build -f .docker/sqlright/SQLite/docker/Dockerfile -t sqlite_sqlright .
 ```
 4.  
