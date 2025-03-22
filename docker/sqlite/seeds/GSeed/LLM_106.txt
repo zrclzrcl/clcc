@@ -1,0 +1,28 @@
+create table t1 (id integer primary key, name text unique, score real);
+create table t2 (id integer primary key, t1_id integer references t1(id), data blob);
+create table t3 without rowid (a text, b text);
+
+insert into t1 values (null, 'Alice', 95.5);
+insert into t1 values (null, 'Bob', 87.2);
+insert into t1 values (null, 'Charlie', 90.0);
+insert into t1 values (null, null, 0.0);
+
+insert into t2 values (null, 1, x'416C696365');
+insert into t2 values (null, 2, x'426F62');
+insert into t2 values (null, 3, x'436861726C6965');
+
+create trigger trig_t1 after insert on t1 begin
+    insert into t3 values (new.name, 'added');
+end;
+
+with cte as (
+    select id, name, score from t1 where score > 90
+)
+select id, name, substr(name, 2) as substr_name,
+       count(*) over () as total_count,
+       row_number() over (order by score desc) as rn
+from cte;
+
+select a, udf_custom_function(b) from t3;
+select avg(score), min(score), max(score) from t1 group by name is null;
+select t1.name, t2.data from t1 join t2 on t1.id = t2.t1_id where t2.data like x'4%';

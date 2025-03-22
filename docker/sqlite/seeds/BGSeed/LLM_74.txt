@@ -1,0 +1,25 @@
+BEGIN;
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value >= 0),
+    status TEXT UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO test_table (name, value, status) 
+VALUES ('Test1', 100.5, 'active'), 
+       ('Test2', 200.3, 'inactive'),
+       (SELECT 'Test3' AS name, MAX(value) + 1 FROM test_table, 'pending' AS status);
+UPDATE test_table SET value = value * 2 WHERE id IN (
+    SELECT id FROM test_table WHERE status = 'active'
+);
+DELETE FROM test_table WHERE status = NULL LIMIT 1 OFFSET 0;
+SELECT DISTINCT name, 
+               ROW_NUMBER() OVER (ORDER BY created_at DESC) as row_num,
+               CASE WHEN value > 150 THEN 'high' ELSE 'low' END AS value_category
+FROM test_table
+WHERE created_at >= DATE('now', '-7 days')
+ORDER BY row_num ASC
+LIMIT 5;
+PRAGMA integrity_check;
+COMMIT;

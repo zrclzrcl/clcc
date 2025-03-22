@@ -1,0 +1,119 @@
+-- Create tables with various data types and constraints
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    budget REAL CHECK (budget >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    salary NUMERIC(10, 2) NOT NULL,
+    hire_date DATE NOT NULL,
+    department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+    photo BLOB
+);
+
+-- Create indexes for frequently queried columns
+CREATE INDEX idx_employee_last_name ON employees(last_name);
+CREATE INDEX idx_department_budget ON departments(budget);
+
+-- Create an audit table and triggers for tracking changes
+CREATE TABLE employees_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id INTEGER NOT NULL,
+    action TEXT NOT NULL,  -- 'INSERT', 'UPDATE', or 'DELETE'
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_employee_insert AFTER INSERT ON employees
+BEGIN
+    INSERT INTO employees_audit (employee_id, action) VALUES (NEW.id, 'INSERT');
+END;
+
+CREATE TRIGGER trg_employee_update AFTER UPDATE ON employees
+BEGIN
+    INSERT INTO employees_audit (employee_id, action) VALUES (OLD.id, 'UPDATE');
+END;
+
+CREATE TRIGGER trg_employee_delete AFTER DELETE ON employees
+BEGIN
+    INSERT INTO employees_audit (employee_id, action) VALUES (OLD.id, 'DELETE');
+END;
+
+-- Create a view combining employee and department information
+CREATE VIEW v_employee_details AS
+SELECT 
+    e.id,
+    e.first_name,
+    e.last_name,
+    d.name AS department_name,
+    e.salary,
+    e.hire_date
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id;
+
+-- Insert sample data into departments
+INSERT INTO departments (name, budget) VALUES
+('Engineering', 1000000),
+('Human Resources', 500000),
+('Finance', 750000);
+
+-- Insert sample data into employees
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id, photo) VALUES
+('John', 'Doe', 85000.00, '2023-01-15', 1, NULL),
+('Jane', 'Smith', 92000.00, '2023-02-20', 1, NULL),
+('Mike', 'Johnson', 78000.00, '2023-03-10', 2, NULL),
+('Sarah', 'Williams', 95000.00, '2023-04-01', 3, NULL);
+
+-- Complex query using CTE and window functions
+WITH dept_avg AS (
+    SELECT department_id, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department_id
+)
+SELECT 
+    e.id,
+    e.first_name,
+    e.last_name,
+    d.name AS department,
+    e.salary,
+    da.avg_salary,
+    COALESCE(ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC), 0) AS salary_rank
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id
+LEFT JOIN dept_avg da ON e.department_id = da.department_id;
+
+-- Test transactions and savepoints
+BEGIN;
+    INSERT INTO departments (name, budget) VALUES ('Marketing', 600000);
+    SAVEPOINT sp1;
+    INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) 
+    VALUES ('Alex', 'Brown', 80000.00, '2023-05-01', (SELECT id FROM departments WHERE name = 'Marketing'));
+    
+    -- Simulate a condition that may fail
+    INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) 
+    VALUES ('Sam', 'Taylor', 75000.00, '2023-05-01', NULL); -- This will trigger the foreign key constraint
+    
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Test edge cases
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) 
+VALUES ('Test', 'MaxInt', 9223372036854775807.00, '2023-01-01', NULL);
+
+-- Test unique constraint
+INSERT INTO departments (name, budget) VALUES ('Duplicate Dept', 1000); -- This will fail due to duplicate name if already exists
+
+-- Cleanup operations (optional)
+-- DROP TABLE employees_audit;
+-- DROP VIEW v_employee_details;
+-- DROP TRIGGER trg_employee_insert;
+-- DROP TRIGGER trg_employee_update;
+-- DROP TRIGGER trg_employee_delete;
+-- DROP INDEX idx_employee_last_name;
+-- DROP INDEX idx_department_budget;
+-- DROP TABLE departments;
+-- DROP TABLE employees;

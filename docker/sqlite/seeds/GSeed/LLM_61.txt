@@ -1,0 +1,29 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    data BLOB,
+    value REAL CHECK(value >= 0)
+);
+CREATE TABLE t2(
+    tid INTEGER REFERENCES t1(id),
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_t2_t1 FOREIGN KEY(tid) REFERENCES t1(id) ON DELETE CASCADE
+);
+CREATE TABLE t3(
+    a INT PRIMARY KEY,
+    b INT UNIQUE,
+    c INT CHECK(c != 0)
+);
+INSERT INTO t1(name, data, value) VALUES('test', X'ABCD', 123.45);
+INSERT INTO t1(name, data, value) VALUES('test2', NULL, -1); -- Testing negative value for real
+INSERT INTO t3(a, b, c) VALUES(100, 200, 300);
+INSERT INTO t3(a, b, c) VALUES(400, 500, NULL); -- Testing NULL in CHECK constraint
+CREATE TRIGGER trig_t1 AFTER INSERT ON t1 BEGIN
+    UPDATE t2 SET ts = CURRENT_TIMESTAMP WHERE tid = NEW.id;
+END;
+CREATE VIEW v1 AS SELECT name, value FROM t1 WHERE value > 100.0;
+CREATE INDEX idx_t1_name ON t1(name);
+SELECT * FROM t1 UNION ALL SELECT NULL, 'test3', X'1234', -99.99;
+SELECT a, b, c FROM t3 WHERE c IS NULL OR c = 0;
+DELETE FROM t1 WHERE name LIKE 'test%';

@@ -1,0 +1,89 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX unique_name (name)
+);
+
+INSERT INTO t1 (name, age) VALUES 
+('Alice', 30), ('Bob', 45), ('Charlie', NULL),
+('', 25), ('Eve', -1); -- Testing edge cases
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    content TEXT,
+    data BLOB
+);
+
+INSERT INTO t2 (id, content) VALUES 
+(1, REPEAT('a', 10000)), -- Long text
+(2, NULL), 
+(3, '测试'); -- Unicode support
+
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    status ENUM('active', 'inactive')
+);
+
+INSERT INTO t3 (id, amount, status) VALUES 
+(1, 100.50, 'active'),
+(2, -50.75, 'inactive'),
+(3, NULL, 'active');
+
+CREATE INDEX idx_t2_content ON t2(content(100)); -- Index on substring
+
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE x INT DEFAULT 0;
+    WHILE x < 10 DO
+        INSERT INTO t3 (id, amount) VALUES (x, RAND() * 1000);
+        SET x = x + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL sp_test();
+
+CREATE TRIGGER trg_after_insert AFTER INSERT ON t3 FOR EACH ROW
+BEGIN
+    IF NEW.status = 'active' THEN
+        INSERT INTO t2 (id, content) VALUES (NEW.id, CONCAT('New active entry: ', NEW.amount));
+    END IF;
+END;
+
+SET GLOBAL optimizer_switch='index_merge=on';
+
+CREATE VIEW vw_t1 AS 
+SELECT name, age, created_at 
+FROM t1 
+WHERE age > 30 
+UNION 
+SELECT 'Unknown', NULL, NOW() 
+LIMIT 5;
+
+ANALYZE TABLE t1, t2, t3;
+
+SET TIMESTAMP = UNIX_TIMESTAMP('2024-01-01');
+
+BEGIN;
+    INSERT INTO t1 (name, age) VALUES ('Test Transaction', 99);
+    SAVEPOINT sp1;
+    UPDATE t1 SET age = 100 WHERE name = 'Test Transaction';
+    ROLLBACK TO sp1;
+COMMIT;
+
+SELECT 
+    t1.name,
+    t3.amount,
+    COUNT(*) OVER (PARTITION BY t1.age) AS cnt
+FROM t1
+JOIN t3 ON t1.id = t3.id
+WHERE t1.age > 25
+GROUP BY t1.name, t3.amount
+HAVING cnt > 1
+ORDER BY t1.name DESC;
+
+ALTER TABLE t2 ADD COLUMN metadata JSON DEFAULT '{}';

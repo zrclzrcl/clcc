@@ -1,0 +1,98 @@
+-- Set optimizer switches to influence query execution paths
+SET optimizer_switch = 'index_merge=on,block_size=16';
+
+-- Create tables with diverse data types and constraints
+CREATE TABLE IF NOT EXISTS test_table (
+    id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL DEFAULT 'Default Name',
+    description TEXT,
+    value BIGINT SIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Create a table with unique and foreign key constraints for testing relationships
+CREATE TABLE IF NOT EXISTS related_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    test_id TINYINT UNSIGNED NOT NULL,
+    data_point DECIMAL(10, 4) DEFAULT 0.0000,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    FOREIGN KEY (test_id) REFERENCES test_table(id),
+    UNIQUE KEY unique_data_point (data_point)
+);
+
+-- Insert sample data with edge cases
+INSERT INTO test_table (name, description, value)
+VALUES ('Test1', 'First record', 1234567890),
+       ('Test2', NULL, -987654321),
+       ('Test3', 'Edge case description', 0);
+
+-- Insert into related_table with foreign key
+INSERT INTO related_table (test_id, data_point)
+VALUES (1, 100.5000),
+       (2, 0.0000),
+       (3, 999.9999);
+
+-- Create a stored procedure for testing
+DELIMITER $$
+
+CREATE PROCEDURE test_procedure()
+BEGIN
+    DECLARE var1 INT DEFAULT 0;
+    SET var1 = (SELECT COUNT(*) FROM test_table);
+    IF var1 > 0 THEN
+        INSERT INTO related_table (test_id, data_point)
+        VALUES (1, RAND() * 1000);
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- Create a trigger to handle insertions
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO related_table (test_id, data_point)
+    VALUES (NEW.id, RAND() * 1000);
+END;
+
+-- Create a view for testing metadata and query optimization
+CREATE VIEW test_view AS
+SELECT t.name, r.data_point, t.created_at
+FROM test_table t
+JOIN related_table r ON t.id = r.test_id;
+
+-- Run complex queries to test execution plans
+SELECT t.name, COUNT(r.id) as total_records,
+       AVG(r.data_point) as average_data,
+       MAX(t.value) as max_value,
+       MIN(t.value) as min_value,
+       SUM(t.value) as sum_values
+FROM test_table t
+JOIN related_table r ON t.id = r.test_id
+GROUP BY t.name
+HAVING COUNT(r.id) > 0;
+
+SELECT ts.name, ts.description,
+       (SELECT data_point FROM related_table WHERE test_id = ts.id LIMIT 1)
+FROM test_table ts;
+
+-- Test transactions and locking
+START TRANSACTION;
+    INSERT INTO test_table (name, description, value)
+    VALUES ('TransactionTest', 'Testing transaction', 987654321);
+    COMMIT;
+
+SELECT * FROM test_table FOR UPDATE;
+
+-- Query information schema for metadata testing
+SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME IN ('test_table', 'related_table');
+
+-- Clean up resources if necessary
+-- DROP TABLE related_table, test_table;
+-- DROP VIEW test_view;
+-- DROP PROCEDURE test_procedure;
+-- DROP TRIGGER after_insert_test;

@@ -1,0 +1,84 @@
+CREATE TABLE "test_users" (
+  id INTEGER PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT CHECK (email LIKE '%@%.%'),
+  age INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_users (username, email, age) 
+VALUES 
+('user1', 'user1@example.com', 25),
+('user2', 'user2@example.com', NULL),
+('admin', 'admin@admin.com', 30);
+
+CREATE TABLE "test_posts" (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER REFERENCES test_users(id),
+  title TEXT NOT NULL,
+  content TEXT,
+  likes INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_posts (user_id, title, content, likes)
+VALUES 
+(1, 'First Post', 'This is my first post!', 5),
+(2, 'Hello World', 'Welcome to my blog.', NULL),
+(3, 'Admin Post', 'Administrator posting here.', 100);
+
+CREATE TRIGGER "log_user_deletions" AFTER DELETE ON test_users
+BEGIN
+  INSERT INTO deletion_log (table_name, deleted_row_id)
+  VALUES ('test_users', old.id);
+END;
+
+CREATE VIEW "user_post_count" AS 
+SELECT u.username, COUNT(p.id) as post_count,
+       SUM(p.likes) as total_likes
+FROM test_users u
+LEFT JOIN test_posts p ON u.id = p.user_id
+GROUP BY u.id;
+
+SELECT id, username, age, created_at FROM test_users
+WHERE age > 18 AND email LIKE '%@example.com'
+ORDER BY created_at DESC
+LIMIT 2 OFFSET 1;
+
+WITH user_activity AS (
+  SELECT 
+    u.username,
+    COUNT(p.id) as posts,
+    SUM(p.likes) as likes,
+    (julianday('now') - julianday(u.created_at)) * 86400 as days_since_creation
+  FROM test_users u
+  LEFT JOIN test_posts p ON u.id = p.user_id
+  GROUP BY u.id
+)
+SELECT 
+  username,
+  posts,
+  likes,
+  CASE 
+    WHEN days_since_creation < 31536000 THEN 'Active'
+    ELSE 'Inactive'
+  END as status
+FROM user_activity;
+
+CREATE VIRTUAL TABLE "fts_search" USING FTS5(
+  content='test_posts',
+  tokenize = 'porter unicode61'
+);
+
+INSERT INTO fts_search (title, content)
+VALUES 
+('Test Post', 'This is a test post for full-text search.'),
+('Another Test', 'Testing full-text capabilities in SQLite.');
+
+SELECT id, title, content FROM test_posts
+WHERE likes > (SELECT AVG(likes) FROM test_posts)
+ORDER BY likes DESC;
+
+INSERT INTO test_posts (user_id, title, content, likes)
+SELECT 1, 'Test Insert', 'This is an inserted post.', 0
+RETURNING id, title;

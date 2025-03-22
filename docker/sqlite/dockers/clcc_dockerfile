@@ -1,0 +1,54 @@
+from ubuntu:22.04
+LABEL maintainer="zrcl"
+
+ENV DEBIAN_FRONTEND noninteractive
+
+# common config
+RUN apt-get update && apt-get -y install make cmake build-essential vim sudo git tcl8.6 tcl8.6-tdbc-sqlite3\
+    clang ninja-build pkg-config clang-format \
+    libpq-dev libyaml-cpp-dev lld llvm python3-fire python3-pip && pip3 install openai colorama 
+
+RUN mkdir -p /home && \
+    groupadd dobigthing && \
+    useradd -l -K UMASK=0000 -d /home -g dobigthing dobigthing && \
+    chown dobigthing:dobigthing /home
+
+RUN	echo "dobigthing:dobigthing" | chpasswd && usermod -a -G sudo dobigthing
+RUN chmod +w /etc/sudoers && \
+    echo "%dobigthing   ALL=(ALL:ALL)NOPASSWD:ALL" >> /etc/sudoers && \
+    chmod -w /etc/sudoers
+
+USER dobigthing
+WORKDIR /home
+
+ADD ./src/clcc_generator/count_feedbackpoint.py  /home/clcc/count_feedbackpoint.py
+RUN git clone https://github.com/s3team/Squirrel.git && \
+    cd Squirrel && git submodule update --init && rm -rf ./srcs/custom_mutator.cc
+ADD ./src/clcc_mutator/custom_mutator.cc /home/Squirrel/srcs/custom_mutator.cc
+RUN cd Squirrel && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSQLITE=ON && \
+    cmake --build build -j && \
+    cd AFLplusplus/ && LLVM_CONFIG=llvm-config-14 make -j20
+
+ARG CFLAGS="-DSQLITE_MAX_LENGTH=128000000 -DSQLITE_MAX_SQL_LENGTH=128000000 -DSQLITE_MAX_MEMORY=25000000 -DSQLITE_PRINTF_PRECISION_LIMIT=1048576 -DSQLITE_DEBUG=1 -DSQLITE_MAX_PAGE_COUNT=16384"
+
+RUN git clone https://github.com/sqlite/sqlite sqlite3/ && cd sqlite3 && git checkout version-3.30.0 && mkdir bld
+
+WORKDIR /home/sqlite3/bld
+
+ENV CC=/home/Squirrel/AFLplusplus/afl-cc
+ENV CXX=/home/Squirrel/AFLplusplus/afl-c++
+RUN ../configure && make -j && make sqlite3.c
+
+RUN $CC $CFLAGS -I. -c \
+    /home/sqlite3/test/ossfuzz.c -o /home/sqlite3/test/ossfuzz.o
+RUN $CC $CFLAGS -I. -c \
+    /home/sqlite3/test/ossshell.c -o /home/sqlite3/test/ossshell.o
+
+RUN $CXX $CXXFLAGS \
+    /home/sqlite3/test/ossfuzz.o /home/sqlite3/test/ossshell.o -o /home/ossfuzz \
+   ./sqlite3.o -ldl -pthread
+   
+ADD ./docker/set_seed/  /home/Squirrel/data/fuzz_root/set_seed/
+ADD ./src/start_fuzz_py/run_with_no_M.py /home/Squirrel/scripts/utils/clcc_run.py
+WORKDIR /home/Squirrel/scripts/utils
+#ENTRYPOINT python3 run.py sqlite ../../data/fuzz_root/input

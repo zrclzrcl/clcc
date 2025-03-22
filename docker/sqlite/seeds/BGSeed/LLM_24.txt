@@ -1,0 +1,41 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    score REAL CHECK (score >= 0),
+    data BLOB,
+    status NUMERIC DEFAULT 1 UNIQUE
+);
+
+-- Create indexes for testing query optimization and edge cases with indexed columns
+CREATE INDEX idx_name_score ON test_table(name, score);
+CREATE UNIQUE INDEX idx_status ON test_table(status);
+
+-- Insert sample data to ensure the table is populated for further operations
+INSERT INTO test_table (name, score, data) VALUES ('Test1', 95.5, zeroblob(100));
+INSERT INTO test_table (name, score, status, data) VALUES ('Test2', 87.3, 2, zeroblob(150));
+
+-- Create a view to test common table expressions and complex queries
+CREATE VIEW v_test AS WITH cte AS (
+    SELECT name, score, ROW_NUMBER() OVER (ORDER BY score DESC) as rank
+    FROM test_table
+)
+SELECT * FROM cte WHERE rank <= 3;
+
+-- Create a trigger for testing edge cases in triggers and constraints
+CREATE TRIGGER trg_status_check BEFORE INSERT ON test_table
+BEGIN
+    SELECT CASE
+        WHEN NEW.status > 5 THEN RAISE(ABORT, 'Status exceeds maximum allowed value.')
+    END;
+END;
+
+-- Test transactions and rollback scenarios
+BEGIN TRANSACTION;
+INSERT INTO test_table (name, score) VALUES ('Test3', 90.2);
+SAVEPOINT sp1;
+UPDATE test_table SET score = 85 WHERE name = 'Test3';
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Test vacuum command for database maintenance
+VACUUM;

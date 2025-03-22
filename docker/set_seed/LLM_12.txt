@@ -1,0 +1,17 @@
+CREATE TABLE t1(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, value REAL DEFAULT 0);
+INSERT INTO t1(name, value) VALUES('test1', NULL), ('test2', 42.5), (NULL, -1);
+PRAGMA foreign_keys = ON;
+CREATE TABLE t2(t1_id REFERENCES t1(id) ON UPDATE CASCADE ON DELETE SET NULL, data TEXT);
+CREATE VIRTUAL TABLE fts_table USING FTS5(content, tokenize='porter', content_rowid=0);
+INSERT INTO fts_table VALUES('This is a test document for full-text search.');
+CREATE INDEX idx_t1_name ON t1(name) WHERE value > 0;
+CREATE TRIGGER trig_insert AFTER INSERT ON t1 BEGIN
+    INSERT INTO log VALUES(NEW.id, 'Inserted row');
+END;
+CREATE VIEW v_summary AS WITH cte AS (SELECT name, COUNT(*) as cnt FROM t1 GROUP BY name)
+SELECT cte.name, cte.cnt, t2.data FROM cte LEFT JOIN t2 ON cte.name = t2.data;
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = 2;
+BEGIN;
+INSERT INTO t1(name) VALUES('transaction_test');
+COMMIT;

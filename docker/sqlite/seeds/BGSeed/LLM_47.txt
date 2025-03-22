@@ -1,0 +1,51 @@
+-- Create tables with various data types and constraints
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    score REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    blob_data BLOB
+);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    status TEXT CHECK(status IN ('active', 'inactive')),
+    t1_id INTEGER REFERENCES t1(id)
+);
+
+-- Insert data with edge cases and normal values
+INSERT INTO t1 VALUES(1, NULL, 100.5, '2023-01-01 12:00:00', NULL);
+INSERT INTO t1 VALUES(2, 'Alice', 95.7, CURRENT_TIMESTAMP, x'48656C6C6F');
+INSERT INTO t1 VALUES(3, 'Bob', 85.2, '2023-01-02 15:30:00', x'576F726C64');
+
+-- Insert data into t2
+INSERT INTO t2 VALUES(1, 'active', 1);
+INSERT INTO t2 VALUES(2, 'inactive', 2);
+
+-- Create a virtual table for full-text search (SQLite-specific)
+CREATE VIRTUAL TABLE t_fts USING fts5(name, content=t1);
+
+-- SELECT statements testing various functionalities
+SELECT id, name, score FROM t1 ORDER BY score DESC;
+SELECT status, COUNT(*) FROM t2 GROUP BY status;
+SELECT t1.name, t2.status FROM t1 JOIN t2 ON t1.id = t2.t1_id WHERE t2.status = 'active';
+SELECT CAST(score AS INTEGER) FROM t1 WHERE name IS NULL;
+SELECT * FROM t_fts WHERE name MATCH 'A*'; -- SQLite-specific FTS query
+SELECT id, RANK() OVER (ORDER BY score DESC) FROM t1; -- Window function
+
+-- Test edge cases with NULL and type casting
+SELECT COUNT(*) FROM t1 WHERE blob_data IS NOT NULL;
+SELECT name FROM t1 WHERE created_at >= DATE('2023-01-01');
+
+-- Common Table Expression example
+WITH running_total AS (
+    SELECT id, score, SUM(score) OVER (ORDER BY id) AS cumulative_score
+    FROM t1
+)
+SELECT * FROM running_total;
+
+-- Subquery example
+SELECT name FROM t1 WHERE id IN (SELECT t1_id FROM t2 WHERE status = 'active');
+
+-- Test LIMIT and OFFSET for pagination
+SELECT * FROM t1 ORDER BY created_at LIMIT 2 OFFSET 1;

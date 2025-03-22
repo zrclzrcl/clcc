@@ -1,0 +1,42 @@
+-- Create a table with various data types and constraints
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    data BLOB,
+    value REAL,
+    UNIQUE(name)
+);
+
+-- Insert sample data including NULLs and special characters
+BEGIN;
+INSERT INTO t1 VALUES(1, 'Alice', x'0123', 100.5);
+INSERT INTO t1 VALUES(2, 'Bob', x'4567', NULL);
+INSERT INTO t1 VALUES(3, 'Charlie', NULL, -200.3);
+COMMIT;
+
+-- Create indexes using functions and multiple columns
+CREATE INDEX idx1 ON t1(hex(data), value DESC);
+
+-- Select with subquery, aggregate functions, and set operations
+SELECT 
+    id, name, MIN(value) as min_val,
+    (SELECT COUNT(*) FROM t1 WHERE data IS NOT NULL) as cnt_data
+FROM t1
+WHERE id IN (1, 2)
+GROUP BY name
+HAVING min_val > -300
+ORDER BY min_val;
+
+-- Test UNION ALL and INTERSECT operations
+(SELECT id, value FROM t1 WHERE value > 0)
+UNION ALL
+(SELECT id, value FROM t1 WHERE value < 0);
+
+-- Delete statement with condition
+DELETE FROM t1 WHERE name = 'Charlie';
+
+-- Trigger to test event-driven functionality
+CREATE TRIGGER trg1 AFTER INSERT ON t1
+BEGIN
+    UPDATE t1 SET data = x'ABCD' WHERE id = new.id;
+END;

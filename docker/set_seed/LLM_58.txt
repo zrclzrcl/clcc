@@ -1,0 +1,46 @@
+CREATE TABLE t0 (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  value BLOB,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(name)
+);
+
+INSERT INTO t0 (name, value) VALUES 
+('test1', X'48656C6C6F'), -- Binary data
+('test2', NULL),
+('test3', 'Hello SQLite!');
+
+SELECT DISTINCT name FROM t0 WHERE created_at > datetime('now', '-7 days');
+SELECT id, name || ', ' || value AS combined FROM t0 WHERE id IN (1, 2, 3);
+SELECT * FROM t0 ORDER BY created_at DESC LIMIT 5 OFFSET 2;
+SELECT COUNT(*) OVER (), ROW_NUMBER() OVER (ORDER BY created_at) FROM t0;
+
+WITH recursive cte AS (
+  SELECT 1 AS n
+  UNION ALL
+  SELECT n + 1 FROM cte WHERE n < 10
+)
+SELECT * FROM cte;
+
+CREATE TABLE t1 (
+  id INTEGER PRIMARY KEY,
+  parent_id INTEGER REFERENCES t1(id),
+  data TEXT,
+  CHECK (data IS NOT NULL OR parent_id IS NOT NULL)
+);
+
+INSERT INTO t1 VALUES 
+(1, NULL, 'Root'),
+(2, 1, 'Child');
+
+SELECT * FROM t1 WHERE id IN (
+  SELECT parent_id FROM t1
+);
+
+PRAGMA foreign_keys = ON;
+PRAGMA auto_vacuum = FULL;
+
+CREATE VIRTUAL TABLE ft_t0 USING fts5(name, content='t0', tokenize=porter);
+INSERT INTO ft_t0 VALUES ('test1'), ('test2');
+SELECT * FROM ft_t0 WHERE name MATCH 'test*';

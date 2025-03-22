@@ -1,0 +1,42 @@
+CREATE TABLE test_main (
+    id INTEGER PRIMARY KEY,
+    text_col TEXT UNIQUE,
+    num_col INTEGER CHECK(num_col > 0),
+    blob_col BLOB
+);
+
+INSERT INTO test_main (text_col, num_col, blob_col) VALUES ('test1', 100, X'DEADBEEF');
+INSERT INTO test_main (text_col, num_col) VALUES ('test2', 200);
+
+CREATE INDEX idx_num ON test_main(num_col);
+CREATE INDEX idx_text ON test_main(text_col);
+
+CREATE TABLE test_ref (
+    id INTEGER PRIMARY KEY,
+    ref_id INTEGER REFERENCES test_main(id),
+    value TEXT
+);
+
+INSERT INTO test_ref (ref_id, value) VALUES (1, 'related1'), (2, 'related2');
+
+CREATE VIEW test_view AS 
+SELECT tm.id, tm.text_col, tm.num_col, tr.value 
+FROM test_main tm 
+LEFT JOIN test_ref tr ON tm.id = tr.ref_id;
+
+CREATE TABLE test_logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_after_insert AFTER INSERT ON test_main BEGIN
+    INSERT INTO test_logs(action) VALUES('INSERT');
+END;
+
+BEGIN TRANSACTION;
+    INSERT INTO test_main (text_col, num_col) VALUES ('test3', 300);
+    INSERT INTO test_ref (ref_id, value) VALUES (3, 'related3');
+COMMIT;
+
+INSERT OR REPLACE INTO test_main (id, text_col, num_col) VALUES (4, 'update_test', 400);

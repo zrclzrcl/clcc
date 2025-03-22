@@ -1,0 +1,36 @@
+CREATE TABLE t0(c0 PRIMARY KEY) WITHOUT ROWID;
+INSERT INTO t0 VALUES (1), (2), (3);
+CREATE INDEX idx_t0_c0 ON t0(c0 DESC);
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    c1 TEXT,
+    c2 DATE DEFAULT CURRENT_DATE
+);
+INSERT INTO t1(id, c1) SELECT rowid, c0 || 'a' FROM t0;
+SELECT 
+    *, 
+    ROW_NUMBER() OVER (ORDER BY c0 DESC),
+    RANK() OVER (),
+    DENSE_RANK(),
+    NTILE(2),
+    LAG(c0, 1, 0) OVER () AS lag_c0,
+    LEAD(c0, 1, 0) OVER ()
+FROM t0
+WHERE c0 > (
+    SELECT MIN(c0) FROM t0 WHERE c0 % 2 = 0
+)
+ORDER BY 
+    CASE WHEN c0 % 2 = 0 THEN 'even' ELSE 'odd' END,
+    c0;
+WITH cte AS (
+    SELECT id, c1 FROM t1
+    UNION ALL
+    SELECT -id, c1 || 'b' FROM t1 WHERE id < 3
+)
+SELECT * FROM cte ORDER BY id DESC LIMIT 5 OFFSET 2;
+CREATE VIRTUAL TABLE vtable1 USING fts5(
+    content=t0,
+    columns='c0',
+    tokenize=porter
+);
+ANALYZE sqlite_master;

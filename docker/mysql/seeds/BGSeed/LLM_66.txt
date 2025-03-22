@@ -1,0 +1,57 @@
+-- Set system variables for testing environment
+SET @OLD_DELIMITER = @@delimiter;
+DELIMITER $$
+
+-- Create table 'employees'
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10,2)
+);
+
+-- Insert sample data into 'employees'
+INSERT INTO employees VALUES (1, 'John Doe', 50000.00);
+INSERT INTO employees VALUES (2, 'Jane Smith', 65000.00);
+
+-- Create trigger to log salary changes
+CREATE TRIGGER log_salary_changes
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log (employee_id, old_salary, new_salary, change_date)
+    VALUES (OLD.id, OLD.salary, NEW.salary, NOW());
+END$$
+
+-- Create stored procedure to calculate total salary
+CREATE PROCEDURE calculate_total_salary(IN p_id INT, OUT total DECIMAL(10,2))
+BEGIN
+    SELECT SUM(salary) INTO total FROM employees WHERE id = p_id;
+END$$
+
+-- Create function to calculate annual salary
+CREATE FUNCTION get_annual_salary(p_id INT)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE monthly DECIMAL(10,2);
+    SELECT salary INTO monthly FROM employees WHERE id = p_id;
+    RETURN monthly * 12;
+END$$
+
+-- Create view for employee summary
+CREATE VIEW employee_summary AS
+SELECT 
+    name,
+    get_annual_salary(id) AS annual_salary,
+    hire_date
+FROM employees;
+
+-- Restore delimiter and clean up
+DELIMITER ;
+SET DELIMITER = @OLD_DELIMITER;
+
+-- Run complex query involving join and aggregation
+SELECT e.name, d.department_name, SUM(e.salary) as total_salary
+FROM employees e
+JOIN departments d ON e.id = d.manager_id
+GROUP BY e.name, d.department_name;

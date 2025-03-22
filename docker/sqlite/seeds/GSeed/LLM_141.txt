@@ -1,0 +1,47 @@
+-- Create table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    data BLOB,
+    status TEXT DEFAULT 'active',
+    UNIQUE(name, value)
+);
+
+-- Insert sample data with edge cases (NULL values, default values)
+INSERT INTO test_table (name, value) VALUES ('test1', 100.5);
+INSERT INTO test_table (name, value, data) VALUES ('test2', NULL, X'DEADBEEF');
+INSERT INTO test_table (name) VALUES ('test3'); -- uses default status 'active'
+
+-- Create a trigger for testing
+CREATE TRIGGER after_update_trigger
+AFTER UPDATE OF value ON test_table
+WHEN NEW.value < 0
+BEGIN
+    INSERT INTO log_table VALUES('Negative value detected', datetime('now'));
+END;
+
+-- Create another table with foreign key constraint
+CREATE TABLE related_table (
+    id INTEGER PRIMARY KEY,
+    fk_id INTEGER REFERENCES test_table(id) ON DELETE CASCADE,
+    description TEXT
+);
+
+-- Create index for testing query optimization
+CREATE INDEX idx_value ON test_table(value);
+
+-- Test transaction handling
+BEGIN TRANSACTION;
+    UPDATE test_table SET status = 'inactive' WHERE name = 'test1';
+    INSERT INTO related_table (fk_id, description) VALUES (last_insert_rowid(), 'Test record');
+COMMIT;
+
+-- Rollback test
+BEGIN TRANSACTION;
+    DELETE FROM test_table WHERE name = 'test2';
+ROLLBACK;
+
+-- Test vacuum and analyze for database maintenance
+VACUUM;
+ANALYZE;

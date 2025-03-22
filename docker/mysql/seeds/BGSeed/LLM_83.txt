@@ -1,0 +1,53 @@
+SET optimizer_switch='index_condition_pushdown=on,mrr=on';
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    price DECIMAL(10, 2) CHECK (price >= 0),
+    description TEXT,
+    FULLTEXT(description)
+);
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    quantity INT CHECK (quantity >= 0),
+    FOREIGN KEY (t1_id) REFERENCES t1(id) ON DELETE CASCADE
+);
+
+INSERT INTO t1 (name, created_at, price, description) VALUES 
+('Item1', '2023-01-01 00:00:00', 9.99, 'Sample item one'),
+('Item2', '2023-01-02 00:00:00', 19.99, 'Sample item two'),
+(NULL, '2023-01-03 00:00:00', 0, NULL);
+
+INSERT INTO t2 (t1_id, quantity) VALUES 
+(1, 10),
+(2, 5),
+(1, 15);
+
+ANALYZE TABLE t1, t2;
+CHECK TABLE t1, t2;
+REPAIR TABLE t1, t2;
+
+UPDATE t1 SET price = price * 1.1 WHERE id < 3;
+DELETE FROM t1 WHERE price > 10;
+
+DELIMITER $$
+CREATE TRIGGER after_insert_t1
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO log_table (action, timestamp) VALUES ('insert', NOW());
+END$$
+DELIMITER ;
+
+CREATE PROCEDURE sp_union_example()
+BEGIN
+    SELECT id AS item_id, name FROM t1
+    UNION
+    SELECT t2.id AS qty_id, quantity FROM t2;
+END;
+
+CALL sp_union_example();

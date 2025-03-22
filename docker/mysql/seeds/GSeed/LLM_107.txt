@@ -1,0 +1,76 @@
+SET SQL__warnINGS=1;
+set sql_mode = 'NO_ENGINE_SUBSTITUTION';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    datatype_id INT NOT NULL,
+    min_value TINYINT DEFAULT 0,
+    max_value SMALLINT UNSIGNED,
+    valuename VARCHAR(255),
+    forecolor CHAR(7) DEFAULT '#000000',
+    backcolor CHAR(7) DEFAULT '#FFFFFF'
+);
+set names latin1;
+INSERT INTO t1 (datatype_id, min_value, max_value, valuename, forecolor, backcolor)
+VALUES (1, -128, 32767, 'Default Value', '#000000', '#FFFFFF');
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    age TINYINT UNSIGNED,
+    salary DECIMAL(10, 2),
+    description TEXT,
+    data BLOB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_t2_t1 FOREIGN KEY (id) REFERENCES t1(id)
+);
+
+ALTER TABLE t1 ADD COLUMN new_col VARCHAR(255);
+INSERT INTO t2 (name, age, salary, description)
+VALUES ('Sample Entry', 30, 50000.00, 'This is a sample entry for testing purposes.');
+
+SELECT t1.valuename, t2.name, t1.min_value, t2.salary
+FROM t1
+JOIN t2 ON t1.id = t2.id
+WHERE t2.age > 25
+ORDER BY t1.valuename DESC
+LIMIT 5;
+
+START TRANSACTION;
+INSERT INTO t1 (datatype_id, min_value, max_value, valuename)
+VALUES (2, -128, 32767, 'Transaction Test');
+SAVEPOINT my_savepoint;
+UPDATE t1 SET new_col = 'Modified in Transaction' WHERE id = LAST_INSERT_ID();
+ROLLBACK TO SAVEPOINT my_savepoint;
+COMMIT;
+
+DELIMITER $$
+CREATE PROCEDURE example_proc()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    SELECT COUNT(*) INTO var FROM t1;
+    IF var > 0 THEN
+        INSERT INTO t2 (name, age) VALUES ('Procedure Test', 45);
+    END IF;
+END$$
+DELIMITER ;
+CALL example_proc();
+
+DELIMITER $$
+CREATE TRIGGER example_trigger AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (name, age) VALUES (NEW.valuename, 30);
+END$$
+DELIMITER ;
+
+SELECT t1.id, t2.name FROM t1
+LEFT JOIN t2 ON t1.id = t2.id
+WHERE t1.id IN (
+    SELECT id FROM t1 WHERE valuename LIKE 'T%'
+)
+UNION ALL
+SELECT t1.id, t2.name FROM t1
+RIGHT JOIN t2 ON t1.id = t2.id
+WHERE t2.age > 35;
+
+ANALYZE TABLE t1;

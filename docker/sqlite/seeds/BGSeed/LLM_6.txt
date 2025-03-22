@@ -1,0 +1,50 @@
+CREATE TABLE t1234 (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE,
+    value REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') -- Note: SQLite doesn't have an ENUM type natively; this is for demonstration.
+);
+
+INSERT INTO t1234 (id, name, value) VALUES
+    (1, 'test1', 100.5),
+    (2, 'test2', 200.7),
+    (3, NULL, 300.9); -- Testing with a NULL value
+
+ALTER TABLE t1234 ADD COLUMN new_col TEXT DEFAULT 'default_value';
+ALTER TABLE t1234 ADD UNIQUE (new_col); -- This will fail if there are duplicate entries or NULLs
+ALTER TABLE t1234 RENAME COLUMN status TO state;
+CREATE INDEX idx_t1234_name ON t1234 (name);
+RENAME TABLE t1234 TO t5678;
+
+-- Testing triggers
+CREATE TRIGGER trig_after_update AFTER UPDATE ON t5678 BEGIN
+    INSERT INTO audit VALUES(OLD.id, NEW.value, 'update', CURRENT_TIMESTAMP);
+END;
+CREATE TRIGGER trig_before_delete BEFORE DELETE ON t5678 BEGIN
+    INSERT INTO audit VALUES(OLD.id, NULL, 'delete', CURRENT_TIMESTAMP);
+END;
+
+-- Testing views
+CREATE VIEW v_t5678 AS SELECT id, name, value FROM t5678 WHERE status = 'active';
+
+-- Testing transactions
+BEGIN TRANSACTION;
+    UPDATE t5678 SET value = 1000.0 WHERE id = 1;
+    SAVEPOINT sp1;
+        UPDATE t5678 SET value = 2000.0 WHERE id = 1;
+        ROLLBACK TO sp1;
+COMMIT;
+
+-- Testing WITHOUT ROWID (SQLite specific)
+CREATE TABLE t91011 (
+    id INTEGER PRIMARY KEY,
+    data TEXT
+) WITHOUT ROWID;
+
+INSERT INTO t91011 VALUES(1, 'test_data');
+
+-- Testing virtual tables (FTS5 is a SQLite extension)
+CREATE VIRTUAL TABLE fts_table USING FTS5(content);
+INSERT INTO fts_table VALUES('This is a test document.');
+SELECT * FROM fts_table WHERE content MATCH 'test';

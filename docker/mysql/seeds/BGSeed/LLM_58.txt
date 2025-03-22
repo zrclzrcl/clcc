@@ -1,0 +1,57 @@
+SET optimizer_switch='index_merge=on,batch_key_access=off,mrr=on';
+
+CREATE TABLE t0 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT,
+    birth_date DATETIME,
+    score FLOAT,
+    description TEXT
+);
+
+INSERT INTO t0 (name, age, birth_date, score, description)
+VALUES
+    ('Alice', 30, '1993-05-25 14:30:00', 85.6, 'Software Engineer'),
+    ('Bob', 25, '1998-11-12 09:15:00', 78.3, 'Data Analyst'),
+    ('Charlie', 35, '1988-07-22 11:45:00', 92.1, 'Project Manager');
+
+ALTER TABLE t0 ADD INDEX idx_name (name);
+ALTER TABLE t0 ADD FULLTEXT INDEX ft_idx_description (description);
+
+SELECT 
+    t0.id, 
+    t0.name,
+    t0.age,
+    COUNT(*) AS total_records
+FROM t0
+JOIN (
+    SELECT id FROM t0 WHERE age > 30
+) AS subquery USING(id)
+WHERE description LIKE '%Engineer%'
+GROUP BY name
+HAVING COUNT(*) > 1;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE v_count INT;
+    SELECT COUNT(*) INTO v_count FROM t0;
+    IF v_count > 2 THEN
+        UPDATE t0 SET score = score + 5 WHERE age >= 30;
+    END IF;
+END$$
+
+DELIMITER ;
+
+CREATE TRIGGER trg_after_insert
+AFTER INSERT ON t0
+FOR EACH ROW
+BEGIN
+    INSERT INTO t1 (log_time, log_message)
+    VALUES (NOW(), CONCAT('New record inserted: ', NEW.name));
+END;
+
+ANALYZE TABLE t0;
+
+SET optimizer_switch='index_merge=off,batch_key_access=on,mrr=off';

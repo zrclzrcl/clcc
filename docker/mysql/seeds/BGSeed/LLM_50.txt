@@ -1,0 +1,63 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN,
+    description TEXT
+);
+
+INSERT INTO t1 (name, score, is_active) VALUES 
+('Alice', 98.5, TRUE),
+('Bob', 76.3, FALSE),
+('Charlie', NULL, TRUE);
+
+ALTER TABLE t1 ADD COLUMN last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+CREATE INDEX idx_name ON t1(name);
+CREATE INDEX idx_created_at ON t1(created_at);
+
+DELIMITER $$
+
+CREATE TRIGGER trg_after_insert
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t_log (action, timestamp) VALUES ('INSERT', NOW());
+END$$
+
+CREATE FUNCTION get_avg_score() RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE avg_s DECIMAL(10, 2);
+    SELECT AVG(score) INTO avg_s FROM t1 WHERE is_active = TRUE;
+    RETURN avg_s;
+END$$
+
+CREATE PROCEDURE proc_update_scores(IN min_score DECIMAL(10, 2))
+BEGIN
+    UPDATE t1 SET score = score + 5 WHERE score >= min_score AND is_active = TRUE;
+    CALL get_avg_score();
+END$$
+
+DELIMITER ;
+
+SET @min_score = 70.0;
+CALL proc_update_scores(@min_score);
+
+START TRANSACTION;
+INSERT INTO t1 (name, score, is_active) VALUES ('David', 85.0, TRUE);
+UPDATE t1 SET description = 'Top performer' WHERE name = 'Alice';
+COMMIT;
+
+DELETE FROM t1 WHERE score < @min_score LIMIT 2;
+
+SELECT * FROM t1 ORDER BY created_at DESC LIMIT 3;
+SELECT COUNT(*) AS total_active FROM t1 WHERE is_active = TRUE;
+
+CREATE VIEW v_t1 AS SELECT id, name, score FROM t1 WHERE is_active = TRUE;
+
+SELECT t1.id, t1.name, v_t1.score 
+FROM t1 
+JOIN v_t1 ON t1.id = v_t1.id 
+WHERE t1.is_active = TRUE;

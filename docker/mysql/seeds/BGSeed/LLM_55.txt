@@ -1,0 +1,39 @@
+SET optimizer_switch='block_nested_loop=on, index_merge=off';
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    data BLOB,
+    UNIQUE INDEX unique_name (name)
+);
+INSERT INTO test_table (name, description, status) VALUES
+    ('Test1', 'This is a test entry 1', 'active'),
+    ('Test2', 'Another test entry with special characters: !@#$%^&*()_+', 'active'),
+    ('Test3', NULL, 'inactive');
+ALTER TABLE test_table ADD COLUMN (metadata JSON);
+UPDATE test_table SET metadata = '{"key": "value"}' WHERE status = 'active';
+DELETE FROM test_table WHERE name IN (SELECT name FROM test_table WHERE status = 'inactive' LIMIT 1);
+SELECT t1.id, t2.name FROM test_table AS t1 JOIN test_table AS t2 ON t1.id = t2.id WHERE t1.status = 'active' UNION SELECT id, name FROM test_table WHERE description IS NULL;
+START TRANSACTION;
+INSERT INTO test_table (name, status) VALUES ('TransactionTest', 'active');
+SAVEPOINT my_savepoint;
+ROLLBACK TO my_savepoint;
+COMMIT;
+CREATE PROCEDURE example_procedure()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    WHILE var < 5 DO
+        INSERT INTO test_table (name, status) VALUES (CONCAT('ProcEntry', var), 'active');
+        SET var = var + 1;
+    END WHILE;
+END;
+DELIMITER ;;
+CREATE TRIGGER after_insert_trigger AFTER INSERT ON test_table FOR EACH ROW
+BEGIN
+    IF NEW.status = 'active' THEN
+        INSERT INTO audit_log (action, timestamp) VALUES ('insert', NOW());
+    END IF;
+END;;
+DELIMITER ;

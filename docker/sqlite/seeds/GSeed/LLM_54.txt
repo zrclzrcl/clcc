@@ -1,0 +1,27 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL DEFAULT 0.0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, value) VALUES ('item1', 100.5);
+INSERT INTO test_table (name, value) VALUES ('item2', 200.7);
+INSERT INTO test_table (name, value) VALUES ('item3', NULL);
+
+BEGIN;
+    UPDATE test_table SET value = value * 2 WHERE id < 3;
+    DELETE FROM test_table WHERE name LIKE 'item%';
+COMMIT;
+
+SELECT id, name, value, last_updated FROM test_table ORDER BY last_updated DESC;
+
+CREATE INDEX idx_name ON test_table(name);
+ANALYZE idx_name;
+
+ROLLBACK; -- This will be ignored since we are not in a transaction
+
+-- Test edge cases
+SELECT rowid, * FROM test_table WHERE value IS NULL;
+INSERT INTO test_table (name) VALUES ('item4'); -- Testing DEFAULT values
+UPDATE test_table SET name = 'item1' WHERE id = 4; -- Testing unique constraints

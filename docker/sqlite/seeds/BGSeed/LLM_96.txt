@@ -1,0 +1,59 @@
+-- Create a table with various data types to test type handling
+CREATE TABLE IF NOT EXISTS test_types (
+    id INTEGER PRIMARY KEY,
+    text_field TEXT,
+    blob_field BLOB,
+    null_field NULL
+);
+
+-- Create another table for testing relationships and constraints
+CREATE TABLE IF NOT EXISTS related_table (
+    id INTEGER PRIMARY KEY,
+    fk INTEGER REFERENCES test_types(id),
+    name TEXT NOT NULL
+);
+
+-- Create a trigger to test SQLite-specific features
+CREATE TRIGGER IF NOT EXISTS update_trigger
+INSTEAD OF UPDATE ON test_types
+FOR EACH ROW
+BEGIN
+    -- Trigger logic here
+END;
+
+-- Create a view for testing complex queries and subqueries
+CREATE VIEW IF NOT EXISTS type_view AS
+SELECT t.id, r.name AS related_name
+FROM test_types t
+LEFT JOIN related_table r ON t.id = r.fk;
+
+-- Create an index to test query optimization
+CREATE INDEX IF NOT EXISTS idx_text_field ON test_types(text_field);
+
+-- Insert sample data for testing different scenarios
+INSERT INTO test_types VALUES (1, 'test text', x'68747470', NULL);
+INSERT INTO test_types VALUES (2, 'another test', x'73716C697465', NULL);
+INSERT INTO related_table VALUES (1, 1, 'Test Name');
+INSERT INTO related_table VALUES (2, 2, 'Another Name');
+
+-- Test complex queries with CTEs and aggregate functions
+WITH cte AS (
+    SELECT id, text_field FROM test_types WHERE id <= 2
+)
+SELECT COUNT(*) as total, MAX(length(text_field)) as max_length
+FROM cte;
+
+-- Test rowid usage (SQLite-specific)
+SELECT rowid, * FROM test_types;
+
+-- Test transactions for proper commit/rollback handling
+BEGIN TRANSACTION;
+INSERT INTO test_types VALUES (3, 'transaction test', x'74657374', NULL);
+COMMIT;
+
+-- Test edge cases like empty strings and special characters
+INSERT INTO related_table VALUES (3, 3, '');
+INSERT INTO test_types VALUES (4, '''quotes'' and "double quotes", x'2771756F74696E6727', NULL);
+
+-- Test Unicode characters
+INSERT INTO test_types VALUES (5, '测试 SQLite', x'68747470', NULL);

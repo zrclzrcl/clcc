@@ -1,0 +1,35 @@
+-- Create tables with various data types and constraints
+CREATE TABLE t1 (id INTEGER PRIMARY KEY, name TEXT NOT NULL, value FLOAT UNIQUE);
+CREATE TABLE t2 (a BLOB, b BOOLEAN CHECK(b IN (0, 1)), c TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+-- Insert edge cases and test values
+INSERT INTO t1 VALUES (NULL, 'test', 3.14159); -- Auto-increment ID
+INSERT INTO t1 (name, value) VALUES ('max_int', 9223372036854775807);
+INSERT INTO t2 VALUES (X'ABCD', 1, '2024-01-01 12:34:56');
+
+-- Test updates and constraints
+UPDATE t1 SET name = 'updated', value = NULL WHERE id = 1;
+UPDATE t2 SET b = 0 WHERE a = X'ABCD';
+
+-- Complex SELECT with joins, subqueries, and window functions
+SELECT t1.name, t2.b, COUNT(*) OVER() AS total_rows 
+FROM t1 JOIN t2 ON t1.id = t2.c 
+WHERE t1.value > (SELECT AVG(value) FROM t1) 
+GROUP BY t1.name 
+HAVING COUNT(*) > 1 
+ORDER BY total_rows DESC;
+
+-- Test transactions and concurrency
+BEGIN;
+INSERT INTO t1 VALUES (NULL, 'transaction_test', 42.0);
+COMMIT;
+
+-- Create a trigger for testing procedural logic
+CREATE TRIGGER trg_update AFTER UPDATE ON t1 FOR EACH ROW WHEN NEW.value < OLD.value
+BEGIN
+    INSERT INTO t2(a, b) VALUES(X'1234', 1);
+END;
+
+-- Test ATTACH and DETACH for SQLite-specific functionality
+ATTACH DATABASE 'test.db' AS ext_db;
+DETACH DATABASE ext_db;

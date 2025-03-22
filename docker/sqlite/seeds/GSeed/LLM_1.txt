@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS t0;
+CREATE TABLE t0(
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE,
+    value REAL,
+    data BLOB,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO t0(name, value, data) VALUES ('test1', 123.45, X'010203');
+INSERT INTO t0(name, value, data) VALUES (NULL, NULL, NULL);
+SELECT COUNT(*) AS total FROM t0;
+SELECT name FROM t0 WHERE name IS NOT NULL ORDER BY name LIMIT 1;
+SELECT DISTINCT value FROM t0;
+UPDATE t0 SET value = 678.90 WHERE name = 'test1';
+DELETE FROM t0 WHERE data IS NULL;

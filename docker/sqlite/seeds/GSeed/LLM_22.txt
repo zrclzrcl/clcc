@@ -1,0 +1,30 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_name ON test_table(name);
+
+INSERT INTO test_table (name, value) VALUES ('test1', 123.45);
+INSERT INTO test_table (name, value) VALUES ('test2', -678.9); -- This should fail due to the CHECK constraint
+
+WITH recursive cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 10
+)
+SELECT * FROM cte;
+
+CREATE TRIGGER after_insert_test_table
+AFTER INSERT ON test_table
+BEGIN
+    UPDATE test_table SET created_at = CURRENT_TIMESTAMP WHERE id = new.id;
+END;
+
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value DESC) AS rank
+FROM test_table
+WHERE value > 0;
+
+VACUUM;

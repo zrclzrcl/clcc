@@ -1,0 +1,25 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    is_active BOOLEAN DEFAULT FALSE,
+    balance DECIMAL(10, 2) DEFAULT 0.00,
+    description TEXT,
+    UNIQUE (name)
+) ENGINE = InnoDB;
+
+INSERT INTO test_table (name, age, is_active, balance, description) 
+VALUES
+('Alice', 30, TRUE, 1000.50, 'Active user with high balance.'),
+('Bob', 25, FALSE, -50.75, 'Inactive user with negative balance.'),
+('Charlie', NULL, TRUE, 0.00, 'User with no age specified.');
+
+UPDATE test_table SET name = 'Alice Smith' WHERE id = 1;
+
+DELETE FROM test_table WHERE is_active = FALSE AND age < 30;
+
+SELECT * FROM test_table;
+SELECT DISTINCT name FROM test_table ORDER BY name DESC LIMIT 2;
+SELECT COUNT(*) AS total_users, SUM(balance) AS total_balance 
+FROM test_table 
+WHERE description IS NOT NULL;

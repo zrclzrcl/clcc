@@ -1,0 +1,87 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
+    age INTEGER CHECK(age >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    amount REAL,
+    status TEXT CHECK(status IN ('pending', 'shipped', 'delivered', 'cancelled')),
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email, age) VALUES
+('user1', 'user1@example.com', 25),
+('user2', 'user2@example.com', NULL), -- Testing NULL in age
+('user3', 'user3@example.com', 30);
+
+INSERT INTO orders (user_id, amount, status) VALUES
+(1, 100.00, 'pending'),
+(1, 75.50, 'shipped'),
+(2, NULL, 'cancelled'), -- Testing NULL in amount
+(3, 200.00, 'delivered');
+
+-- Basic SELECT with aggregate functions and WHERE clause
+SELECT username, COUNT(*) AS order_count, SUM(amount) AS total_spent
+FROM users u JOIN orders o ON u.id = o.user_id
+WHERE o.status != 'cancelled'
+GROUP BY username
+HAVING order_count >= 2
+ORDER BY total_spent DESC;
+
+-- Testing NULL handling and arithmetic operations
+SELECT user_id, status, amount,
+       CASE WHEN amount IS NULL THEN 'Amount not available' ELSE amount END AS formatted_amount
+FROM orders
+ORDER BY status, formatted_amount;
+
+-- Testing complex ORDER BY with aliases and expressions
+SELECT username, COUNT(*) AS order_count, AVG(amount) AS avg_order_value
+FROM users u LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY username
+ORDER BY (order_count + 0) DESC, avg_order_value ASC;
+
+-- Testing edge case: ordering by a column not in GROUP BY without aggregate function
+SELECT status, COUNT(*) AS count_status
+FROM orders
+GROUP BY status; -- This should avoid an error as all non-aggregated columns are in GROUP BY
+
+-- Testing subquery and LIMIT/OFFSET
+SELECT username, (SELECT SUM(amount) FROM orders WHERE user_id = u.id) AS total_spent
+FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)
+LIMIT 2 OFFSET 1;
+
+-- Testing CTE for complex joins or aggregations
+WITH user_order_stats AS (
+    SELECT u.username, COUNT(o.order_id) AS order_count, SUM(o.amount) AS total_amount
+    FROM users u LEFT JOIN orders o ON u.id = o.user_id
+    GROUP BY u.username
+)
+SELECT username, order_count,
+       CASE WHEN order_count = 0 THEN 'No orders' ELSE total_amount END AS purchase_summary
+FROM user_order_stats
+ORDER BY username;
+
+-- Testing transactions
+BEGIN TRANSACTION;
+INSERT INTO users (username, email, age) VALUES ('temp_user', 'temp@example.com', 28);
+SAVEPOINT sp1;
+DELETE FROM users WHERE username = 'temp_user';
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Testing triggers and constraints (commented out for safety)
+/*
+CREATE TRIGGER update_order_status
+AFTER UPDATE ON orders
+FOR EACH ROW
+WHEN old.status != new.status AND new.status = 'cancelled'
+BEGIN
+    INSERT INTO order_audit VALUES(old.order_id, old.status, datetime('now'));
+END;
+*/

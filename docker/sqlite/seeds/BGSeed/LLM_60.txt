@@ -1,0 +1,59 @@
+PRAGMA foreign_keys=ON;
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=NORMAL;
+
+CREATE TABLE IF NOT EXISTS t1 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    age INTEGER CHECK(age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) REFERENCES statuses(name)
+);
+
+CREATE TABLE IF NOT EXISTS t2 (
+    id INTEGER PRIMARY KEY,
+    value REAL,
+    fk_id INTEGER REFERENCES t1(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX idx_t2_value ON t2(value);
+CREATE INDEX idx_t1_name ON t1(name);
+
+CREATE TRIGGER trig_t1_after_insert AFTER INSERT ON t1 BEGIN
+    INSERT INTO log VALUES('Inserted into t1', datetime('now'));
+END;
+
+CREATE TRIGGER trig_t2_before_update BEFORE UPDATE ON t2 BEGIN
+    SELECT CASE WHEN NEW.value < 0 THEN RAISE(ABORT, 'Negative value not allowed') END;
+END;
+
+CREATE VIEW v_combined AS
+SELECT t1.name, t2.value 
+FROM t1 
+JOIN t2 ON t1.id = t2.fk_id;
+
+WITH cte AS (
+    SELECT name, age FROM t1 WHERE age > 30
+)
+SELECT *, ROW_NUMBER() OVER(ORDER BY age) AS rank FROM cte;
+
+INSERT INTO t1 (name, age) VALUES ('Alice', 30);
+INSERT INTO t1 (name, age) VALUES ('Bob', NULL);
+INSERT INTO t2 (id, value, fk_id) VALUES (1, 100.5, 1);
+
+BEGIN TRANSACTION;
+    INSERT INTO t1 (name, age) VALUES ('Charlie', 45);
+    INSERT INTO t2 (id, value, fk_id) VALUES (2, 200.75, 3);
+COMMIT;
+
+SAVEPOINT sp1;
+DELETE FROM t1 WHERE name = 'Bob';
+ROLLBACK TO sp1;
+
+SELECT t1.name, t2.value, t1.created_at 
+FROM t1 
+LEFT JOIN t2 ON t1.id = t2.fk_id 
+WHERE t1.age > 25 
+ORDER BY t1.name DESC;
+
+SELECT status, COUNT(*) as count FROM t1 GROUP BY status HAVING count >= 1;

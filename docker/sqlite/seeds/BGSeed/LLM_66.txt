@@ -1,0 +1,50 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value >= 0),
+    data BLOB,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX t1_id_idx ON t1(id);
+CREATE INDEX t1_value_idx ON t1(value) WHERE value > 100;
+CREATE INDEX t1_covering_idx ON t1(name, score);
+
+INSERT INTO t1(name, value, data)
+VALUES('Test1', NULL, x'00FF'),
+       ('Test2', 150.5, x'0102'),
+       ('Test3', -0.0, NULL),
+       ('Test4', 123.456, x'ABCD');
+
+SELECT * FROM t1;
+SELECT name, value, timestamp FROM t1 WHERE value IS NULL;
+SELECT id, name || ' test' AS full_name FROM t1 LIMIT 2 OFFSET 1;
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    score REAL
+);
+
+INSERT INTO t2(t1_id, score)
+VALUES(1, 99.9),
+       (2, 85.5),
+       (3, NULL);
+
+SELECT t1.name, t2.score FROM t1 JOIN t2 ON t1.id = t2.t1_id;
+SELECT COUNT(*) total_rows FROM t1;
+
+WITH cte AS (
+    SELECT name, value FROM t1 WHERE value > 100
+)
+SELECT * FROM cte;
+
+BEGIN TRANSACTION;
+INSERT INTO t1(name, value) VALUES('TransactionTest', 456);
+SAVEPOINT sp1;
+DELETE FROM t1 WHERE name = 'TransactionTest';
+ROLLBACK TO sp1;
+COMMIT;
+
+VACUUM;
+ANALYZE;

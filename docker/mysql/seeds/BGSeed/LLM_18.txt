@@ -1,0 +1,64 @@
+SET optimizer_switch='index_merge=on,loosescan=on,materialization=on';
+SET @save_storage_engine = @@session.default_storage_engine;
+SET session default_storage_engine = 'InnoDB';
+
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data BLOB
+);
+
+INSERT INTO t1 VALUES 
+(1, 'Test1', NOW(), HEX('testdata')),
+(2, 'Test2', '2024-01-01 00:00:00', HEX('moredata')),
+(3, NULL, NULL, NULL);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2),
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+INSERT INTO t2 VALUES 
+(1, 1, 100.50),
+(2, 2, 200.75),
+(3, NULL, NULL);
+
+SELECT t1.id, t1.name, t2.value 
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.t1_id 
+WHERE t2.value > 100 AND t1.name LIKE 'Test%';
+
+UPDATE t1 SET name = 'Updated' WHERE id IN (SELECT t1_id FROM t2 WHERE value > 150);
+
+DELETE FROM t2 WHERE t1_id NOT IN (SELECT id FROM t1);
+
+CREATE PROCEDURE proc_test()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    SELECT COUNT(*) INTO var FROM t1;
+    IF var > 0 THEN
+        INSERT INTO t2 VALUES (4, 3, 300.00);
+    END IF;
+END;
+
+CALL proc_test();
+
+DROP PROCEDURE proc_test;
+
+CREATE FUNCTION func_test(a INT) RETURNS VARCHAR(255)
+DETERMINISTIC
+RETURN CASE WHEN a > 10 THEN 'Greater' ELSE 'Less or equal' END;
+
+SELECT func_test(15), func_test(5);
+
+CREATE TRIGGER trig_test AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 VALUES (NEW.id, NEW.id, 100.00);
+END;
+
+INSERT INTO t1 VALUES (4, 'TriggerTest', NOW(), HEX('trigdata'));
+
+DROP TRIGGER trig_test;

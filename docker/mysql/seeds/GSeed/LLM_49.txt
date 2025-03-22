@@ -1,0 +1,10 @@
+create table t1 (id int primary key, name varchar(255), created_at datetime default now(), active boolean not null);
+insert into t1 values (null, 'test', null, true);
+create index idx_t1_name on t1(name);
+alter table t1 add column description text;
+alter table t1 modify column created_at datetime not null default current_timestamp;
+create unique index idx_unique_b_c on t2(b, c);
+create index idx_composite_d_e on t3(d, e);
+set @var = 42;
+select * from t4 where id = @var;
+set session sql_mode='STRICT_TRANS_TABLES';

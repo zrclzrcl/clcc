@@ -1,0 +1,40 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive')
+);
+
+INSERT INTO test_table (name, value, status)
+VALUES
+    ('Test Record 1', 100.50, 'active'),
+    ('Test Record 2', NULL, 'inactive'),
+    ('Test Record 3', 250.75, 'active');
+
+CREATE TABLE test_related (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    related_id INT,
+    description VARCHAR(200),
+    FOREIGN KEY (related_id) REFERENCES test_table(id)
+);
+
+INSERT INTO test_related (related_id, description)
+VALUES
+    (1, 'Related to Test Record 1'),
+    (2, 'Related to Test Record 2');
+
+SELECT 
+    t.id,
+    t.name,
+    t.value,
+    SUM(t.value) OVER w AS cumulative_sum,
+    AVG(t.value) OVER () AS average_value,
+    r.description
+FROM test_table t
+JOIN test_related r ON t.id = r.related_id
+WINDOW w AS (ORDER BY t.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)
+GROUP BY t.id, t.name, t.value, r.description
+HAVING SUM(t.value) > 50
+ORDER BY t.value DESC, t.name ASC
+LIMIT 5;

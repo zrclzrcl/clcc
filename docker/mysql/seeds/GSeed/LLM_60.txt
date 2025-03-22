@@ -1,0 +1,137 @@
+-- Set some optimizer switches for testing different execution paths
+SET optimizer_switch = 'index_merge=on,batched_issuer_access=off';
+SET @@global.sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION';
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    price DECIMAL(10, 2) CHECK (price >= 0),
+    data JSON
+);
+
+-- Create a table with indexes for testing query optimization
+CREATE TABLE indexed_table (
+    id INT PRIMARY KEY,
+    value INT,
+    text_field TEXT
+);
+CREATE INDEX idx_value ON indexed_table(value);
+CREATE FULLTEXT INDEX idx_text ON indexed_table(text_field);
+
+-- Insert some test data into the tables
+INSERT INTO test_table (name, description, status, price)
+VALUES 
+    ('Test Item 1', 'This is a test item.', 'active', 99.99),
+    ('Test Item 2', NULL, 'inactive', 199.99),
+    ('Test Item 3', 'Another test item with more details...', 'active', 49.99);
+
+-- Create a table for testing joins and relationships
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password_hash CHAR(64) NOT NULL,
+    last_login DATETIME,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    total_amount DECIMAL(10, 2),
+    order_date DATETIME,
+    status ENUM('pending', 'completed', 'cancelled') NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- Insert test data for the join tables
+INSERT INTO users (username, email, password_hash, last_login, is_active)
+VALUES 
+    ('john_doe', 'john@example.com', 'hashed_password_1', '2023-01-01 00:00:00', TRUE),
+    ('jane_smith', 'jane@example.com', 'hashed_password_2', NULL, FALSE);
+
+INSERT INTO orders (user_id, total_amount, order_date, status)
+VALUES 
+    (1, 99.99, '2023-01-01 00:00:00', 'completed'),
+    (1, 49.99, '2023-01-02 00:00:00', 'pending');
+
+-- Create a table for testing edge cases with NULL values
+CREATE TABLE null_test (
+    id INT,
+    name VARCHAR(50),
+    value DECIMAL(10, 2)
+);
+
+INSERT INTO null_test VALUES 
+    (1, NULL, NULL),
+    (2, 'Test Name', NULL),
+    (3, NULL, 99.99);
+
+-- Create a table for testing binary data and encodings
+CREATE TABLE binary_test (
+    id INT PRIMARY KEY,
+    data BLOB,
+    hex_data VARBINARY(255)
+);
+
+INSERT INTO binary_test VALUES 
+    (1, 'binary data', HEX('test')),
+    (2, NULL, HEX(''));
+
+-- Create a stored procedure for testing procedural logic
+DELIMITER $$
+CREATE PROCEDURE test_procedure(IN input INT, OUT output DECIMAL(10, 2))
+BEGIN
+    SELECT price INTO output FROM test_table WHERE id = input;
+END$$
+DELIMITER ;
+
+-- Create a trigger for testing database triggers
+DELIMITER $$
+CREATE TRIGGER after_insert_trigger
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO null_test VALUES (NEW.user_id, NEW.username, NULL);
+END$$
+DELIMITER ;
+
+-- Run some complex queries to test query execution paths
+SELECT 
+    t.name,
+    u.username,
+    o.total_amount
+FROM 
+    test_table t
+JOIN 
+    orders o ON t.id = o.order_id
+JOIN 
+    users u ON o.user_id = u.user_id;
+
+-- Test JSON data operations
+INSERT INTO test_table (name, description, status, price, data)
+VALUES 
+    ('JSON Test', NULL, 'active', 0.00, '{"key": "value", "array": [1,2,3]}');
+
+SELECT 
+    data->'$.key' AS extracted_key,
+    JSON_EXTRACT(data, '$.array') AS extracted_array
+FROM 
+    test_table;
+
+-- Clean up the database objects (commented out for testing purposes)
+/*
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS indexed_table;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS null_test;
+DROP TABLE IF EXISTS binary_test;
+DROP PROCEDURE IF EXISTS test_procedure;
+DROP TRIGGER IF EXISTS after_insert_trigger;
+*/

@@ -1,0 +1,51 @@
+-- Set up database environment
+PRAGMA temp_store = MEMORY;
+PRAGMA journal_mode = WAL;
+
+-- Create main table with constraints
+CREATE TABLE t0 (
+    id INTEGER PRIMARY KEY,
+    c0 TEXT UNIQUE,
+    c1 CHECK(c1 > 0),
+    c2 BLOB
+);
+
+-- Create supporting table for trigger
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    count INTEGER DEFAULT 0
+);
+
+-- Define trigger after insert on t0 to update t1
+CREATE TRIGGER trg_after_insert AFTER INSERT ON t0 BEGIN
+    UPDATE t1 SET count = count + 1 WHERE id = new.id;
+END;
+
+-- Create index on t0 with a condition
+CREATE UNIQUE INDEX idx_t0_c0 ON t0(c0) WHERE c1 IS NOT NULL;
+
+-- Create view using CTE and window function
+CREATE VIEW v0 AS
+WITH cte AS (
+    SELECT id, ROW_NUMBER() OVER(ORDER BY id) as rn FROM t0
+)
+SELECT * FROM cte WHERE rn % 2 == 0;
+
+-- Insert data into t0
+INSERT INTO t0 VALUES (1, 'test', 5, x'ab'), (2, 'example', 10, NULL);
+
+-- Replace operation with conflict handling
+REPLACE INTO t0(id, c0, c1, c2) 
+VALUES(3, 'replace_test', 15, x'cd') 
+ON CONFLICT(c0) DO UPDATE SET c1 = excluded.c1;
+
+-- Update based on view and CTE
+UPDATE t0 SET c1 = c1 * 2 WHERE id IN (SELECT id FROM v0);
+
+-- Delete with join condition
+DELETE t0 FROM t0 JOIN t1 ON t0.id = t1.id WHERE t1.count > 5;
+
+-- Transaction example
+BEGIN TRANSACTION;
+    INSERT INTO t0 VALUES (4, 'trans_test', 20, x'ef');
+COMMIT;

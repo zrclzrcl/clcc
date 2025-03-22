@@ -1,0 +1,36 @@
+CREATE TABLE t0(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    active BOOLEAN DEFAULT FALSE,
+    data BLOB,
+    value REAL CHECK(value >= 0)
+);
+
+CREATE TABLE t1(
+    tid INTEGER,
+    FOREIGN KEY(tid) REFERENCES t0(id)
+);
+
+INSERT INTO t0(name, active, data, value) VALUES
+('test', TRUE, X'ABCD', 3.14159),
+('', FALSE, NULL, 0),
+('edge', TRUE, X'FFFF', 9223372036854775807);
+
+INSERT INTO t1(tid) VALUES
+(1), (2), (NULL);
+
+UPDATE t0 SET name = 'updated', active = FALSE WHERE id = 1;
+
+DELETE FROM t0 WHERE id > 5;
+
+SELECT t0.id, t0.name, t1.tid FROM t0 LEFT JOIN t1 ON t0.id = t1.tid
+WHERE t0.active = TRUE AND t0.value > 3.14
+ORDER BY t0.id DESC LIMIT 2 OFFSET 1;
+
+SELECT MAX(t0.value) AS max_value FROM t0 WHERE t0.name LIKE 't%';
+
+BEGIN;
+    UPDATE t0 SET value = 1.5 WHERE id = 2;
+COMMIT;
+
+CREATE INDEX idx_t0_name ON t0(name);

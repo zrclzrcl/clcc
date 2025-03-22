@@ -1,0 +1,62 @@
+PRAGMA page_size=32768;
+PRAGMA journal_mode=WAL;
+
+CREATE TABLE IF NOT EXISTS t1 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE,
+    data BLOB,
+    value REAL CHECK(value >= 0)
+);
+
+WITH RECURSIVE numbers(i) AS (
+    SELECT 1 UNION ALL
+    SELECT i + 1 FROM numbers WHERE i < 50
+)
+INSERT INTO t1(name, data, value)
+SELECT 
+    'Test' || i,
+    zeroblob(1024),
+    randomblob(8)
+FROM numbers;
+
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id) ON DELETE CASCADE,
+    log TEXT
+);
+
+INSERT INTO t2(t1_id, log)
+SELECT 
+    t1.id,
+    'Log entry for ' || t1.name
+FROM t1;
+
+CREATE VIEW v1 AS
+SELECT 
+    t1.name,
+    t2.log
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id;
+
+CREATE TRIGGER trig_t1_update AFTER UPDATE ON t1
+BEGIN
+    INSERT INTO t2(t1_id, log)
+    VALUES (new.id, 'Updated at ' || datetime('now'));
+END;
+
+BEGIN TRANSACTION;
+    UPDATE t1 SET value = value + 100 WHERE id < 10;
+    DELETE FROM t2 WHERE t1_id NOT IN (SELECT id FROM t1);
+COMMIT;
+
+SELECT 
+    name,
+    value,
+    rank() OVER (ORDER BY value DESC) as ranking
+FROM t1
+WHERE value > 50
+GROUP BY name
+HAVING COUNT(*) > 1;
+
+PRAGMA integrity_check;

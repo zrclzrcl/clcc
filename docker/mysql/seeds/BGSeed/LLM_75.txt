@@ -1,0 +1,69 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    email BINARY(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_name (name)
+);
+
+INSERT INTO test_table (name, age, email) VALUES
+('Alice', 30, 'alice@example.com'),
+('Bob', 45, 'bob@example.com'),
+('Charlie', 67, NULL);
+
+CREATE TABLE related_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    test_id INT,
+    value TEXT,
+    FOREIGN KEY (test_id) REFERENCES test_table(id)
+    ON DELETE CASCADE
+    ON UPDATE NO ACTION
+);
+
+INSERT INTO related_table (test_id, value) VALUES
+(1, 'Sample value for Alice'),
+(2, NULL),
+(3, 'Another sample');
+
+ALTER TABLE test_table ADD COLUMN active BOOLEAN DEFAULT TRUE;
+
+UPDATE test_table SET active = FALSE WHERE age > 60;
+
+DELETE FROM test_table WHERE name LIKE 'Charlie';
+
+TRUNCATE related_table;
+
+SET @user_variable = (SELECT COUNT(*) FROM test_table);
+SELECT @user_variable AS total_records;
+
+SET SESSION sql_mode = 'ANSI_QUOTES,STRICT_TRANS_TABLES';
+
+CREATE PROCEDURE example_procedure()
+BEGIN
+    DECLARE counter INT DEFAULT 0;
+    WHILE counter < 5 DO
+        INSERT INTO test_table (name, age, email) VALUES
+        (CONCAT('User', counter), FLOOR(RAND() * 100), CONCAT('user', counter, '@example.com'));
+        SET counter = counter + 1;
+    END WHILE;
+END;
+
+DELIMITER //
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO related_table (test_id, value) VALUES
+    (NEW.id, CONCAT('New record inserted: ', NEW.name));
+END//
+DELIMITER ;
+
+CALL example_procedure();
+
+SELECT t1.name, t2.value
+FROM test_table t1
+JOIN related_table t2 ON t1.id = t2.test_id
+WHERE BINARY t1.email IS NOT NULL;
+
+DROP PROCEDURE IF EXISTS example_procedure;

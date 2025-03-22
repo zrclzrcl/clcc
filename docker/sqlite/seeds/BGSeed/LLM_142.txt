@@ -1,0 +1,55 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK (age >= 0),
+    email TEXT UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable foreign key constraints
+PRAGMA foreign_keys = ON;
+
+-- Insert multiple rows with edge cases
+INSERT INTO test_table VALUES 
+(1, 'Alice', 30, 'alice@example.com', '2024-01-01'),
+(2, 'Bob', NULL, 'bob@example.com', '2024-01-02'),
+(3, '', 25, NULL, '2024-01-03');
+
+-- Update statement to modify existing records
+UPDATE test_table SET age = 35 WHERE name = 'Alice';
+
+-- Delete specific records
+DELETE FROM test_table WHERE name = 'Bob';
+
+-- Complex SELECT with various clauses
+SELECT 
+    id,
+    name,
+    age,
+    CASE WHEN age > 30 THEN 'Adult' ELSE 'Young' END AS category
+FROM test_table
+WHERE email IS NOT NULL
+ORDER BY created_at DESC
+LIMIT 2 OFFSET 1;
+
+-- UNION ALL combining two SELECT statements
+(SELECT id, name FROM test_table WHERE age >= 30)
+UNION ALL
+(SELECT id, name FROM test_table WHERE age < 30);
+
+-- Transaction to test BEGIN, COMMIT, ROLLBACK
+BEGIN TRANSACTION;
+    INSERT INTO test_table VALUES (4, 'Charlie', 28, 'charlie@example.com', CURRENT_TIMESTAMP);
+COMMIT;
+
+-- Test window functions
+SELECT 
+    id,
+    name,
+    ROW_NUMBER() OVER (ORDER BY age) AS row_num,
+    NTILE(2) OVER (ORDER BY created_at) AS ntile_group
+FROM test_table;
+
+-- Drop the table to clean up
+DROP TABLE test_table;

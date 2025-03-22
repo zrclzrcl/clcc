@@ -1,0 +1,35 @@
+CREATE TABLE t0 (
+    c0 INTEGER PRIMARY KEY AUTOINCREMENT,
+    c1 TEXT CHECK(c1 LIKE 'A%'),
+    c2 REAL,
+    c3 BLOB,
+    UNIQUE(c0)
+);
+
+INSERT INTO t0 (c1, c2, c3) VALUES ('Apple', 4.5, zeroblob(10));
+INSERT INTO t0 (c1, c2, c3) VALUES ('Banana', NULL, NULL);
+INSERT INTO t0 (c1, c2, c3) VALUES ('Cherry', 7.89, x'ABCD');
+
+CREATE TRIGGER t0_after_insert AFTER INSERT ON t0
+BEGIN
+    INSERT INTO t1 (id, name) VALUES (new.c0, new.c1 || ' inserted');
+END;
+
+CREATE TABLE t1 (
+    id INTEGER,
+    name TEXT,
+    FOREIGN KEY(id) REFERENCES t0(c0) ON DELETE CASCADE
+);
+
+UPDATE t0 SET c2 = 10.5 WHERE c0 = 1;
+DELETE FROM t0 WHERE c0 = 2;
+
+SELECT t0.c0, t0.c1, t1.name 
+FROM t0 
+JOIN t1 ON t0.c0 = t1.id 
+WHERE t0.c2 > 5 
+GROUP BY t0.c0 
+HAVING COUNT(*) > 1 
+ORDER BY t0.c1 DESC;
+
+SELECT c0 AS id, c1 AS name FROM t0 UNION SELECT id AS id, name AS name FROM t1;

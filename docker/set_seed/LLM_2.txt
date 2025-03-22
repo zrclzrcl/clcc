@@ -1,0 +1,60 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    salary REAL CHECK (salary > 0),
+    hire_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name TEXT UNIQUE,
+    manager_id INTEGER REFERENCES employees(id)
+);
+
+CREATE INDEX idx_employee_salary ON employees(salary);
+CREATE INDEX idx_department_manager ON departments(manager_id);
+
+INSERT INTO employees VALUES (1, 'John Doe', 50000.00, '2023-01-01');
+INSERT INTO employees VALUES (2, 'Jane Smith', 60000.00, '2023-01-02');
+INSERT INTO departments VALUES (1, 'Engineering', 1);
+INSERT INTO departments VALUES (2, 'Marketing', 2);
+
+CREATE VIEW v_employee_departments AS
+SELECT e.name AS employee_name, d.dept_name 
+FROM employees e 
+LEFT JOIN departments d ON e.id = d.manager_id;
+
+CREATE TRIGGER trg_audit_hire AFTER INSERT ON employees
+BEGIN
+    INSERT INTO audit_log VALUES (NEW.id, 'Employee hired', datetime('now'));
+END;
+
+PRAGMA foreign_keys = ON;
+PRAGMA auto_vacuum = 1;
+
+SELECT 
+    e.name,
+    d.dept_name,
+    CASE 
+        WHEN salary >= 50000 THEN 'High'
+        ELSE 'Low'
+    END AS salary_category
+FROM employees e
+JOIN departments d ON e.id = d.manager_id
+WHERE hire_date > date('now', '-1 year')
+GROUP BY e.name, d.dept_name
+HAVING COUNT(*) > 0;
+
+DELETE FROM departments WHERE dept_id = 3;
+UPDATE departments SET manager_id = 2 WHERE dept_id = 1;
+
+BEGIN TRANSACTION;
+    INSERT INTO employees VALUES (3, 'Mike Johnson', 55000.00, '2023-03-15');
+    INSERT INTO departments VALUES (3, 'Sales', 3);
+COMMIT;
+
+SELECT 
+    e.name,
+    (SELECT AVG(salary) FROM employees WHERE salary > e.salary) AS avg_higher_salary
+FROM employees e
+ORDER BY e.salary DESC;

@@ -1,0 +1,16 @@
+CREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT NOT NULL, c BLOB, d NUMERIC);
+INSERT INTO t1 VALUES(1, 'test', x'616263', 123.45);
+INSERT INTO t1 SELECT a+10, b || '-copy', c, d * 2 FROM t1;
+INSERT INTO t1 VALUES(NULL, '', NULL, -999.99);
+SELECT a AS id, b AS name, c AS data, d AS value FROM t1 WHERE a > 5 ORDER BY b DESC LIMIT 3;
+SELECT COUNT(a) AS total, MAX(d) AS max_value FROM t1 GROUP BY b HAVING COUNT(*) > 1;
+CREATE INDEX idx_t1_b ON t1(b);
+INSERT INTO t1 SELECT * FROM t2; -- This will fail if t2 doesn't exist
+ATTACH DATABASE 'test.db' AS aux;
+DETACH DATABASE aux;
+SELECT DISTINCT a, b || c AS combined FROM t1 UNION ALL SELECT a*2, b FROM t1 WHERE d < 0;
+BEGIN TRANSACTION;
+INSERT INTO t1 VALUES(999, 'final-test', x'646566', 0.0);
+COMMIT;
+SELECT * FROM t1 WHERE a = (SELECT COUNT(*) FROM t1);
+SELECT julianday('now'), strftime('%Y-%m-%d', 'now') AS today;

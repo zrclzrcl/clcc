@@ -1,0 +1,72 @@
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category CHAR(50),
+    stock INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE customers (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone CHAR(20),
+    address TEXT,
+    registration_date DATE
+) ENGINE=InnoDB;
+
+INSERT INTO products (name, description, price, category, stock)
+VALUES 
+('Laptop', 'High-performance notebook with 16GB RAM and 512GB SSD', 999.99, 'electronics', 10),
+('Smartphone', 'Latest model with 128GB storage and 6-inch display', 699.99, 'electronics', 20),
+('Wireless Headphones', 'Noise-canceling Bluetooth headphones', 299.99, 'electronics', 50);
+
+INSERT INTO customers (first_name, last_name, email, phone, address, registration_date)
+VALUES 
+('John', 'Doe', 'john.doe@example.com', '+1234567890', '123 Main St, City A', '2023-01-15'),
+('Jane', 'Smith', 'jane.smith@example.com', '+0987654321', '456 Oak Ave, City B', '2023-02-20');
+
+CREATE INDEX idx_product_name ON products(name);
+CREATE FULLTEXT INDEX ft_idx_description ON products(description);
+
+DELIMITER $$
+CREATE FUNCTION get_total_stock() RETURNS INT
+BEGIN
+    DECLARE total INT;
+    SELECT SUM(stock) INTO total FROM products;
+    RETURN total;
+END$$
+DELIMITER ;
+
+ALTER TABLE customers ADD INDEX idx_customer_last_name (last_name);
+SET optimizer_switch='index_merge=on';
+
+EXPLAIN SELECT * FROM products WHERE description LIKE '%Bluetooth%';
+SELECT p.name, p.price, c.first_name, c.last_name 
+FROM products p 
+JOIN customers c 
+ON p.stock > 0 
+WHERE p.category = 'electronics' 
+GROUP BY c.customer_id 
+HAVING COUNT(*) > 1 
+ORDER BY p.price DESC;
+
+CREATE TRIGGER after_product_insert
+AFTER INSERT ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.stock < 1 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Stock must be at least 1.';
+    END IF;
+END$$
+
+DELIMITER ;
+OPTIMIZE TABLE products, customers;
+
+ANALYZE TABLE products, customers;
+SHOW INDEX FROM products;
+SHOW TRIGGERS;

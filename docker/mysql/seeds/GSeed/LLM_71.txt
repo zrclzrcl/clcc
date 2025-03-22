@@ -1,0 +1,37 @@
+SET optimizer_switch='semijoin=on,materialization=on,firstmatch=on,loosescan=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=off';
+SET sql_mode = 'NO_ENGINE__SUBSTITUTION';
+
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL UNIQUE,
+    hire_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    salary DECIMAL(10, 2) CHECK (salary >= 0),
+    department_id INT,
+    INDEX idx_last_name (last_name)
+);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) 
+VALUES 
+('John', 'Doe', NOW(), 75000.00, 1),
+('Jane', 'Smith', '2023-01-15 09:00:00', 85000.00, 2),
+('Michael', 'Johnson', NULL, 65000.00, 3);
+
+UPDATE employees SET salary = 78000.00 WHERE first_name = 'John';
+
+ALTER TABLE employees 
+MODIFY COLUMN salary DECIMAL(10, 2) NOT NULL,
+ADD INDEX idx_department (department_id);
+
+DROP TABLE IF EXISTS test_table;
+
+CREATE TABLE test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    created_at DATETIME DEFAULT NOW()
+);
+
+INSERT INTO test_table (id, name)
+VALUES 
+(1, 'Test Record 1'),
+(2, CONCAT('Record ', 2));

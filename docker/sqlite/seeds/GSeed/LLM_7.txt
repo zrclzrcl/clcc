@@ -1,0 +1,58 @@
+-- Create a table without rowid for efficiency testing
+CREATE TABLE t1(a TEXT PRIMARY KEY, b INT UNIQUE) WITHOUT ROWID;
+-- Create a table with an autoincrement primary key and foreign key constraint
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    FOREIGN KEY(name) REFERENCES t1(a)
+);
+-- Create another table for testing joins and constraints
+CREATE TABLE t3(c BLOB, d DATE, e BOOLEAN DEFAULT TRUE);
+
+-- Insert data with various types including nulls and binary data
+INSERT INTO t1 VALUES('test_a', 42), (NULL, NULL); -- Testing null values in primary key
+INSERT INTO t2(name, value) VALUES('test_a', 3.14), ('test_b', -2.718); -- Testing foreign key references and negative numbers
+INSERT INTO t3 VALUES(X'010203', '2025-12-31', FALSE), (X'ff', '2024-01-01', NULL); -- Binary data and null boolean
+
+-- Alter tables to add columns or modify constraints
+ALTER TABLE t1 ADD COLUMN f TEXT DEFAULT 'default_value'; -- Adding a new column with default value
+ALTER TABLE t3 ADD CONSTRAINT unique_blob UNIQUE(c); -- Testing unique constraint on BLOB type
+
+-- Update statements testing different conditions
+UPDATE t2 SET name = 'test_b' WHERE id = 1; -- Updating foreign key reference
+UPDATE t3 SET d = '2024-07-15' WHERE e IS FALSE LIMIT 1 OFFSET 1; -- Testing LIMIT and OFFSET in UPDATE
+
+-- Delete statements with conditions and limits
+DELETE FROM t1 WHERE a IS NULL LIMIT 1; -- Deleting specific rows
+DELETE FROM t2 WHERE value < 0; -- Deleting based on CHECK constraint condition
+
+-- Trigger creation to test event-driven functionality
+CREATE TRIGGER trig AFTER INSERT ON t2 BEGIN
+    INSERT INTO t3(c, d) VALUES(X'abcd', date('now'));
+END;
+
+-- Indexes for testing query performance and optimization
+CREATE INDEX idx_t1_b ON t1(b); -- Testing index on a unique column
+CREATE UNIQUE INDEX idx_t3_c ON t3(c); -- Testing unique index
+
+-- View creation to test virtual tables and complex queries
+CREATE VIEW v1 AS SELECT name, value FROM t2 WHERE id > 0 ORDER BY name DESC;
+
+-- Transaction testing for data consistency
+BEGIN TRANSACTION;
+    INSERT INTO t1 VALUES('test_c', 100);
+    UPDATE t3 SET e = TRUE WHERE d >= '2024-01-01';
+COMMIT;
+
+-- Complex SELECT statements to test query execution and features
+SELECT a, b, f FROM t1 ORDER BY length(f) DESC LIMIT 5; -- Testing string functions in ORDER BY
+SELECT id, name, value, COUNT(*) OVER () AS total_rows FROM t2; -- Testing window function with COUNT
+SELECT c, hex(c), length(c) FROM t3 WHERE e IS NOT NULL AND d > date('now', '-1 month'); -- Testing BLOB operations and date functions
+
+-- Cleanup statements (commented out for testing purposes)
+-- DROP TABLE t1;
+-- DROP TABLE t2;
+-- DROP TABLE t3;
+-- DROP VIEW v1;
+-- DROP TRIGGER trig;
