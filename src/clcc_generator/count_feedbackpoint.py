@@ -3,7 +3,6 @@ import curses
 import glob
 import math
 import os
-import queue
 import re
 import subprocess
 import threading
@@ -18,6 +17,80 @@ import threading
 import csv
 import time
 from collections import defaultdict
+import numpy as np
+from scipy.optimize import fsolve
+
+class Normalizationer:
+    def __init__(self):
+        self._score_record = np.array([]) #记录所有的得分
+        self._max_score = -10000.0     #得分最大值
+        self._min_score = 10000.0     #得分最小值
+        self._count = 0         #总分数计数
+        self._avg = 0.0           #分数平均值
+        self.median = 0.0         #分数中位数
+        self._up4_score = 0.0     #上四分位点
+        self._down4_score = 0.0   #下四分位点
+        self._up1_score = 0.0     #上一分位点
+        self._down1_score = 0.0   #下一分位点
+        
+    
+    def __add_one_score(self,point_now):
+        self._score_record = np.append(self._score_record,point_now)
+        if point_now < self._min_score:
+            self._min_score = point_now
+        if point_now > self._max_score:
+            self._max_score = point_now
+        self._count += 1
+        self._avg = np.mean(self._score_record)
+        self.median = np.median(self._score_record)
+        self._down4_score = np.percentile(self._score_record, 25)
+        self._up4_score = np.percentile(self._score_record, 75)
+        self._down1_score = np.percentile(self._score_record, 10)
+        self._up1_score = np.percentile(self._score_record, 90)
+    
+    def get_down_k_tanh(target_point , middle, check_point, k): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的斜率为指定值k 以此确定参数alpha
+        def equation(target):
+            return (target * np.cosh(target * (check_point - middle))^(-2)) - k
+        alpha = fsolve(equation,middle)
+        alpha_set = alpha[0]
+        normal_point = (np.tanh(alpha_set * (target_point - middle)) + 1)/2
+        return normal_point
+
+
+    def get_down_y_tanh(target_point , middle, check_point, y): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的值为指定值y
+        def equation(target):
+            return ((np.tanh(target * (check_point - middle)) + 1) / 2) - y
+        alpha = fsolve(equation,middle)
+        alpha_set = alpha[0]
+        normal_point = (np.tanh(alpha_set * (target_point - middle)) + 1)/2
+        return normal_point
+
+    
+    def get_normalization_point(self,point):
+        self.__add_one_score(point)
+        if self._count == 1 or self._max_score == self._min_score:
+            min_max_normal_point = 1
+        else:
+            min_max_normal_point = (point - self._min_score)/(self._max_score - self._min_score)
+        if self._count < 4:
+            down4_k_avg_middle = 1
+            down4_k_median_middle = 1
+            down1_k_avg_middle = 1
+            down1_k_median_middle = 1
+            down1_y_avg_middle = 1
+            down1_y_median_middle = 1
+        else:
+            
+            down4_k_avg_middle = self.get_down_k_tanh(point, self._avg, self._down4_score, 0.1 )#以下4分位作为平缓点的得分
+            down4_k_median_middle = self.get_down_k_tanh(point, self.median, self._down4_score, 0.1 )
+            #以下一分为作为平缓点的得分
+            down1_k_avg_middle = self.get_down_k_tanh(point, self._avg, self._down1_score, 0.1 )#以下4分位作为平缓点的得分
+            down1_k_median_middle = self.get_down_k_tanh(point, self.median, self._down1_score, 0.1 )
+            #以下一分为作为低分点的低分
+            down1_y_avg_middle = self.get_down_y_tanh(point, self._avg, self._down1_score, 0.1 )#以下4分位作为平缓点的得分
+            down1_y_median_middle = self.get_down_y_tanh(point, self.median, self._down1_score, 0.1 )
+        return min_max_normal_point,down4_k_avg_middle,down4_k_median_middle,down1_k_avg_middle,down1_k_median_middle,down1_y_avg_middle,down1_y_median_middle
+        #返回值依次是 最大最小值,下4平缓中平均值,下4平缓中中位，下1平缓中平均值,下1平缓中中位，下1低中平均值,下4低中中位
 
 class DynamicIDAllocator:
     def __init__(self):
@@ -48,7 +121,7 @@ class DynamicIDAllocator:
             if id_num in self._active_ids:
                 self._active_ids.remove(id_num)
                 heapq.heappush(self._recycled_ids, id_num)
-    
+
     def total_allocated(self):
         with self._lock:
             return self._total_allocated
@@ -64,7 +137,7 @@ def get_showmap_cmd(showmap_path, showmap_out_path, testcase_id, showmap_testcas
     if target_db == 'sqlite':
         cmd = f'{showmap_path} -o {showmap_out_path}{testcase_id} -- /home/ossfuzz {showmap_testcase}'
     elif target_db == 'mysql':
-        cmd = f'AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=(cat /tmp/mapsize) SQUIRREL_CONFIG="{config_path}" {showmap_path} -o {showmap_out_path}{testcase_id} -- /home/zrcl_db_fuzz/Squirrel/build/db_driver {showmap_testcase}'
+        cmd = f'AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=(cat /tmp/mapsize) SQUIRREL_CONFIG="{config_path}" {showmap_path} -o {showmap_out_path}{testcase_id} -- /home/Squirrel/build/db_driver {showmap_testcase}'
     return cmd
 
 #读取showmap对应id的内容
@@ -384,7 +457,7 @@ def main():
     process_count = 0   #处理数记录
     llm_count = 0   #记录发送LLM请求的数量，以及保存生成的测试用例的后缀
     process_now = None  #保存当前记录的测试用例用于处理
-    
+    #实例化一个showmap
     select_testcase = ZrclSelectionQueue()  #实例化一个选择保存队列
     max_llm_workers = 5 #定义LLM线程池最大数量
     number_of_generate_testcase = 3 #定义每次调用生成多少个测试用例
@@ -411,6 +484,7 @@ def main():
     parser.add_argument('-mo', help='LLM-model',default='deepseek-reasoner')
     parser.add_argument('-conf', help='用于showmap的config文件，sqlite与duckdb不需要',required=True)
     parser.add_argument('-ms', help='mapsize大小，不知道请设为默认值65536',required=True,type=int)
+    parser.add_argument('-norm', help='归一化方法选择 1：最大最小 2：下4分位平缓中平均值 3：下4分位中中位数 4：下1分位平缓中平均值 5：下1分位平缓中中位数 6：下1分位低中平均值 7：下1分位低中中位数',required=True,type=int,choices=[1, 2, 3, 4, 5, 6, 7],metavar='{1,2,3,4,5,6,7}')
     # 解析命令行参数
     args = parser.parse_args()
     
@@ -422,8 +496,8 @@ def main():
     base_url = args.bu  #有默认值的基本url
     model = args.mo     #有默认值的模型
     showmap_config = args.conf #showmap的config文件
-    map_size = int(args.ms)  #mapsize大小
-
+    map_size = args.ms  #mapsize大小
+    norm_chose = args.norm  #归一化方法选择
     showmap = ZrclMap(map_size) #实例化一个showmap
     #===================主过程区===================
 
@@ -446,7 +520,7 @@ def main():
 
     with open(log_save_path+"point.csv", 'w', newline='', encoding='utf-8') as point_file:
         writer = csv.writer(point_file)
-        writer.writerow(['time', 'id', 'point'])
+        writer.writerow(['time', 'id', 'ori_point','minmax_point','down4_k_avg_middle','down4_k_median_middle','down1_k_avg_middle','down1_k_median_middle','down1_y_avg_middle','down1_y_median_middle'])
 
     #初始化，输出区域
 
@@ -467,7 +541,7 @@ def main():
     pa_llm_thread.start()  #被动llm生成线程启动
 
 
-
+    my_normalization = Normalizationer()
     while True:
         #1.不断的取出队列中的测试用例进行处理
         process_now = testcase_queue.get()
@@ -475,18 +549,38 @@ def main():
         showmap.from_zrclTestcase_get_vectorNow(process_now)
         #2.对新的覆盖向量计算覆盖率得分,并尝试加入选择队列
         now_point = showmap.calculate_now_cov_get_point()
-        print(f"主程序:第 {main_count} 个的得分为{now_point}")
+        min_max_normal_point,down4_k_avg_middle,down4_k_median_middle,down1_k_avg_middle,down1_k_median_middle,down1_y_avg_middle,down1_y_median_middle = my_normalization.get_normalization_point(now_point)
+        #返回值依次是 最大最小值,下4平缓中平均值,下4平缓中中位，下1平缓中平均值,下1平缓中中位，下1低中平均值,下4低中中位
+        
+        if norm_chose == 1:
+            norm_point = min_max_normal_point
+        elif norm_chose == 2:
+            norm_point = down4_k_avg_middle
+        elif norm_chose == 3:
+            norm_point = down4_k_median_middle
+        elif norm_chose == 4:
+            norm_point = down1_k_avg_middle
+        elif norm_chose == 5:
+            norm_point = down1_k_median_middle
+        elif norm_chose == 6:
+            norm_point = down1_y_avg_middle
+        elif norm_chose == 7:
+            norm_point = down1_y_median_middle
+
+        print(f"主程序:第 {main_count} 个的得分为{now_point},归一化结果为{norm_point}")
+ 
+        
         select_testcase.append_in(process_now, now_point)
         #3.更新覆盖率向量
         showmap.recalculate_each_edgeCovPoint()
 
         with open(log_save_path+"point.csv", 'a', newline='', encoding='utf-8') as point_file:
             writer = csv.writer(point_file)
-            writer.writerow([time.time(), process_now.id , now_point])
+            writer.writerow([time.time(), process_now.id , now_point,min_max_normal_point,down4_k_avg_middle,down4_k_median_middle,down1_k_avg_middle,down1_k_median_middle,down1_y_avg_middle,down1_y_median_middle])
 
         #当选择了一个队列长度的测试用例后，开始选择前3个测试用例，并发送给子线程
         #逻辑修改为，当得分超过阈值后，直接启动子线程
-        if now_point >= threshold:
+        if norm_point >= threshold:
             #这里就应该直接获取到指定id的测试用例
             now_content_list = [process_now.content]
             llm_thread = threading.Thread(target=llm_worker, args=(now_content_list, api_key, base_url, model ,save_queue,target_db,number_of_generate_testcase), daemon=True)
@@ -502,7 +596,6 @@ def main():
                     writer = csv.writer(csvfile)
                     writer.writerow([time.time(), passively_llm_generate, allocator.total_allocated()*number_of_generate_testcase, allocator.active_count(), allocator.total_allocated(), saved_count, process_count, llm_count])
                     last_save_time = time.time()
-                    
         
 
     #===================主过程区===================
