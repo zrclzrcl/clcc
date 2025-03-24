@@ -96,4 +96,13 @@ cd CLCC_REPO/
 cd docker/sqlright/SQLite/scripts
 bash run_sqlite_fuzzing.sh SQLRight --start-core 28 --num-concurrent 1 --oracle NOREC
 ```
-4.  
+### mariadb
+1. squirrel
+```SHELL
+#下面语句请在主机运行！
+docker run -it --name mariadb_squirrel_bgseed_1  --cpuset-cpus="26,27" mariadb_squirrel_bgseed
+
+#下面语句请在容器中运行！
+python3 run.py mariadb /home/Squirrel/data/fuzz_root/set_seed/
+```
+2.  
