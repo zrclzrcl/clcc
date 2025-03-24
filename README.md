@@ -29,8 +29,15 @@ docker build -f ./docker/sqlite/dockers/clcc_dockerfile -t sqlite_clcc .
 3. SQLRight
 win环境需要在linux环境下运行!
 ```SHELL
-cd ./docker/sqlite/dockers/SQLite/scripts/
-./setup_sqlite.sh
+#下面的语句请在主机上运行,如果您是windows，请在wsl或linux下运行！请确保您已经安装了docker
+cd CLCC_REPO/
+apt install unzip
+git submodule update --init
+cd docker/sqlright/SQLite/scripts/
+bash setup_sqlite.sh
+cd CLCC_REPO/
+cp -r docker/sqlite/seeds/[select seed]/* /docker/set_seed/
+docker build -f ./docker/sqlright/SQLite/docker/Dockerfile -t sqlite_sqlright .
 ```
 ### PostgreSQL
 1. Squirrel
@@ -41,7 +48,9 @@ cd ./docker/sqlite/dockers/SQLite/scripts/
 
 ### MariaDB
 1. Squirrel
-
+```shell
+docker build -f ./docker/mariadb/dockers/squirrel_dockerfile -t mariadb_squirrel .
+```
 2. CLCC
 
 3. SQLRight
@@ -73,7 +82,7 @@ docker run -it --name sqlite_clcc  --cpuset-cpus="29,28" sqlite_clcc
 #以下语句请在容器中运行,您需要两个shell窗口进行操作
 #下面请在shell1中运行
 cd /home/clcc
-python3 count_feedbackpoint.py -t -100 -db sqlite -o 1 -k 您的api-key -conf "" -ms 65536  #这里的参数选择在后续会有详细解释
+python3 count_feedbackpoint.py -t 0.5 -db sqlite -o 1 -k 你的LLMkey -conf "" -ms 65536 -norm 6  #这里的参数选择在后续会有详细解释
 
 #下面请在shell2中运行
 python3 clcc_run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
@@ -82,12 +91,9 @@ python3 clcc_run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
 
 3. sqlright
 ```SHELL
-#下面的语句请在主机上运行,如果您是windows，请在wsl或linux下运行！请确保您已经安装了docker
+#下面语句请在主机运行，请注意使用linux环境，同docke构建部分
 cd CLCC_REPO/
-git submodule update --init
-cd docker/sqlright/SQLite/scripts/
-bash setup_sqlite.sh
-cd CLCC_REPO/
-docker build -f .docker/sqlright/SQLite/docker/Dockerfile -t sqlite_sqlright .
+cd docker/sqlright/SQLite/scripts
+bash run_sqlite_fuzzing.sh SQLRight --start-core 28 --num-concurrent 1 --oracle NOREC
 ```
 4.  
