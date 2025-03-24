@@ -1,0 +1,64 @@
+-- Initial seed for MariaDB fuzz testing, covering various functionalities and edge cases.
+
+-- Create a table with diverse data types to test different column handling
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive'),
+    description TEXT,
+    content BLOB,
+    last_updated TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    location GEOMETRY,
+    flags SET('flag1', 'flag2', 'flag3')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert test data with edge cases and special characters
+INSERT INTO t1 (name, status, description, content, location)
+VALUES 
+    ('Test1', 'active', 'A normal description.', _binary 'some binary content', ST_GeomFromText('POINT(1 2)')),
+    ('Test2', 'inactive', '', _binary '', ST_GeomFromText('LINESTRING(3 4,5 6)')),
+    (NULL, NULL, 'Empty name and status.', NULL, NULL);
+
+-- Create a table without a primary key using Aria engine for specific testing
+CREATE TABLE t2 (
+    id INT,
+    value VARCHAR(100)
+) ENGINE=Aria;
+
+-- Insert into t2 with simple data
+INSERT INTO t2 VALUES (1, 'Value1'), (2, 'Value2');
+
+-- Alter table to add indexes and triggers
+ALTER TABLE t1 ADD INDEX idx_status (status);
+ALTER TABLE t1 ADD TRIGGER tr_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW 
+BEGIN
+    INSERT INTO t2 VALUES (NEW.id, NEW.name);
+END;
+
+-- Analyze the table for query optimization testing
+ANALYZE TABLE t1;
+
+-- Create a stored function to test MariaDB-specific features
+DELIMITER //
+CREATE FUNCTION get_string_length(s VARCHAR(255)) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN CHAR_LENGTH(s);
+END//
+DELIMITER ;
+
+-- Schedule an event to test event scheduler functionality
+CREATE EVENT e_cleanup
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t1 WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 DAY);
+
+-- Test system variables and optimizer settings
+SET @optimizer_switch = 'index_merge=on';
+SET GLOBAL read_rnd_buffer_size = 262144;
+
+-- Perform complex delete operations
+DELETE FROM t1 WHERE id IN (SELECT id FROM t1 WHERE status = 'inactive' LIMIT 5);
+
+-- Update records with edge cases and function usage
+UPDATE t1 SET description = get_string_length(description) WHERE id = 1;

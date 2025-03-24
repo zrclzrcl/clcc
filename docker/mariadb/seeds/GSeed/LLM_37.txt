@@ -1,0 +1,87 @@
+-- Set optimizer switches to enable specific behaviors
+SET optimizer_switch='index_condition_pushdown=on,mrr=on';
+
+-- Create sample table with various data types
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN,
+    value FLOAT(10,2),
+    UNIQUE KEY unique_name (name)
+) ENGINE=InnoDB CHARSET=utf8mb4;
+
+-- Display table structure
+SHOW CREATE TABLE t1;
+
+-- Insert sample data into t1
+INSERT INTO t1 (name, created_at, status, value)
+VALUES
+('Test1', '2023-01-01 00:00:00', TRUE, 100.50),
+('Test2', '2023-01-02 00:00:00', FALSE, NULL),
+('Test3', '2023-01-03 00:00:00', TRUE, -50.75);
+
+-- Create a table with constraints for edge case testing
+CREATE TABLE t2 (
+    id INT NOT NULL AUTO_INCREMENT,
+    data VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_t2 PRIMARY KEY (id),
+    CONSTRAINT uc_data UNIQUE (data)
+) ENGINE=InnoDB;
+
+-- Insert into constrained table
+INSERT INTO t2 (data)
+VALUES ('unique1'), ('unique2');
+
+-- Test edge case with MAX value for TINYINT
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tiny_value TINYINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+-- Insert maximum allowed value for TINYINT
+INSERT INTO t3 (tiny_value)
+VALUES (127);
+
+-- Test ALTER TABLE to add constraint
+ALTER TABLE t2 ADD CONSTRAINT chk_data CHECK (length(data) <= 50);
+
+-- Analyze table structure and statistics
+ANALYZE TABLE t1;
+
+-- Create stored function for testing
+DELIMITER $$
+CREATE FUNCTION get_greeting(name VARCHAR(50)) RETURNS VARCHAR(100)
+DETERMINISTIC
+BEGIN
+    RETURN CONCAT('Hello, ', name, '!');
+END$$
+DELIMITER ;
+
+-- Create stored procedure with joins and parameters
+DELIMITER $$
+CREATE PROCEDURE sp_test_proc(IN param INT, OUT result INT)
+BEGIN
+    SELECT COUNT(*) INTO result FROM t1 WHERE id = param;
+    IF result > 0 THEN
+        UPDATE t2 SET data = 'updated' WHERE id = param;
+    END IF;
+END$$
+DELIMITER ;
+
+-- Create trigger for testing
+CREATE TRIGGER trg_t1_insert AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t3 (tiny_value) VALUES (1);
+END;
+
+-- Test complex UPDATE statement
+UPDATE t2 SET data = 'modified' WHERE id IN (SELECT id FROM t1 WHERE status = TRUE);
+
+-- Test DELETE with subquery
+DELETE FROM t2 WHERE id NOT IN (SELECT id FROM t1);
+
+-- Reset optimizer settings
+SET optimizer_switch='default';

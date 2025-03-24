@@ -1,0 +1,86 @@
+-- Create tables with various data types and constraints
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive', 'pending') NOT NULL,
+    flags SET('draft', 'published', 'deleted') NOT NULL,
+    data JSON,
+    geom GEOMETRY,
+    UNIQUE KEY unique_name (name),
+    FULLTEXT INDEX ft_description (description)
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED;
+
+-- Create indexes for testing different index types
+ALTER TABLE t1 ADD INDEX idx_price (price);
+ALTER TABLE t1 ADD INDEX idx_status_flags (status, flags);
+
+-- Create a table with BLOB and TEXT data types
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    blob_data MEDIUMBLOB,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, description, price, status, flags, data, geom)
+VALUES ('Test Item 1', 'This is a test item.', 9.99, 'active', 'published', '{"key": "value"}', ST_GeomFromText('POINT(1 1)'));
+
+-- Create a stored procedure with variables and conditional logic
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    DECLARE total DECIMAL(10, 2);
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET @error = TRUE;
+
+    SET total = 0.00;
+
+    WHILE i < 5 DO
+        INSERT INTO t1 (name, price) VALUES (CONCAT('Item ', i), RAND() * 100);
+        SET i = i + 1;
+    END WHILE;
+
+    SELECT SUM(price) INTO total FROM t1;
+    IF total > 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Total exceeds limit!';
+    END IF;
+END$$
+DELIMITER ;
+
+-- Insert data into the second table with BLOB and TEXT content
+INSERT INTO t3 (content, blob_data)
+VALUES ('Sample text content', HEX('Binary data'));
+
+-- Perform complex queries to test various functionalities
+SELECT 
+    t1.name,
+    COUNT(*) AS total_items,
+    SUM(t1.price) AS total_price,
+    RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM t1
+JOIN t3 ON t1.id = t3.id
+WHERE status = 'active' AND flags LIKE '%published%'
+GROUP BY t1.name
+HAVING COUNT(*) > 1
+LIMIT 10;
+
+-- Recursive Common Table Expression example
+WITH RECURSIVE cte AS (
+    SELECT id, name FROM t1 WHERE id = 1
+    UNION ALL
+    SELECT t.id, t.name FROM t1 t JOIN cte ON t.parent_id = cte.id
+)
+SELECT * FROM cte;
+
+-- Alter table to add new columns and modify existing ones
+ALTER TABLE t1 ADD COLUMN version INT DEFAULT 0;
+ALTER TABLE t1 MODIFY COLUMN description MEDIUMTEXT;
+
+-- Drop tables and stored procedures for cleanup
+DROP PROCEDURE IF EXISTS sp_test;
+DROP TABLE IF EXISTS t1, t2, t3;

@@ -1,0 +1,90 @@
+-- Set optimizer parameters for testing various query executions
+SET optimizer_switch='semijoin=on,materialization=on,mrr=on';
+SET @@global.max_heap_table_size = 1024 * 1024;
+
+-- Create a table with InnoDB engine and full-text index
+CREATE TABLE IF NOT EXISTS t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FULLTEXT INDEX idx_content (content)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+-- Create a table with MyISAM engine and spatial index
+CREATE TABLE IF NOT EXISTS t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    point GEOMETRY,
+    name VARCHAR(100),
+    SPATIAL INDEX idx_point (point)
+) ENGINE=MyISAM;
+
+-- Insert sample data into tables
+INSERT INTO t1 VALUES 
+(NULL, 'Test Article 1', 'This is a test content for article one.', NOW()),
+(NULL, 'Test Article 2', 'Another test content for article two.', NOW());
+
+-- Create a table with virtual columns and partitions
+CREATE TABLE IF NOT EXISTS t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    col1 INT,
+    col2 INT,
+    vc_col VARCHAR(255) GENERATED ALWAYS AS (CONCAT(col1, '-', col2)) VIRTUAL,
+    UNIQUE INDEX idx_vc_col(vc_col)
+) ENGINE=InnoDB
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Insert data into t3 with virtual column
+INSERT INTO t3 (col1, col2) VALUES 
+(10, 20), (30, 40);
+
+-- Create a stored procedure
+DELIMITER $$
+CREATE PROCEDURE test_proc()
+BEGIN
+    DECLARE x INT DEFAULT 0;
+    WHILE x < 5 DO
+        INSERT INTO t3 (col1, col2) VALUES (x, x*2);
+        SET x = x + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+-- Execute the stored procedure
+CALL test_proc();
+
+-- Create a trigger for table t1
+CREATE TRIGGER before_insert_t1
+BEFORE INSERT ON t1
+FOR EACH ROW
+SET NEW.created_at = CURRENT_TIMESTAMP;
+
+-- Insert data that triggers the trigger
+INSERT INTO t1 (title, content) VALUES 
+('Trigger Test', 'This was inserted via trigger.');
+
+-- Create an event for periodic tasks
+DELIMITER $$
+CREATE EVENT test_event
+ON SCHEDULE EVERY 5 SECOND
+STARTS CURRENT_TIMESTAMP + INTERVAL 10 SECOND
+ENDS CURRENT_TIMESTAMP + INTERVAL 1 HOUR
+DO
+BEGIN
+    INSERT INTO t2 (point, name) VALUES 
+    (ST_GeomFromText('POINT(1 1)'), 'Event Point');
+END$$
+DELIMITER ;
+
+-- Analyze and optimize tables
+ANALYZE TABLE t1, t2, t3;
+OPTIMIZE TABLE t1, t2, t3;
+
+-- Clean up the database
+DROP EVENT IF EXISTS test_event;
+DROP PROCEDURE IF EXISTS test_proc;
+DROP TRIGGER IF EXISTS before_insert_t1;

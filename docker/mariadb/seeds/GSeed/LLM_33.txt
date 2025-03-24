@@ -1,0 +1,118 @@
+-- Set optimizer_switch to enable specific optimizations
+SET optimizer_switch = 'index_merge=on,loose_index_scan=on';
+
+-- Create a table with various data types and indexes
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    description TEXT,
+    INDEX idx_name (name),
+    INDEX idx_price_status (price, status)
+);
+
+-- Create a table with partitions for MariaDB-specific testing
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region VARCHAR(50) NOT NULL,
+    amount DECIMAL(10, 2)
+) PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN (300)
+);
+
+-- Create a table with foreign key constraints
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    post_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES t1(id),
+    FOREIGN KEY (post_id) REFERENCES t2(id)
+);
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, price, status) VALUES 
+('Laptop', 999.99, 'active'),
+('Phone', 499.99, 'inactive'),
+('Tablet', 299.99, 'active');
+
+-- Insert partitioned data into t2
+INSERT INTO t2 (region, amount) VALUES 
+('North America', 1000.50),
+('Europe', 750.30),
+('Asia', 1500.20);
+
+-- Insert related data into t3
+INSERT INTO t3 (user_id, post_id) VALUES 
+(1, 1),
+(2, 2),
+(3, 3);
+
+-- Create a trigger for MariaDB-specific functionality
+DELIMITER //
+CREATE TRIGGER trg_t1_insert AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (region, amount) VALUES ('New Region', 0.00);
+END//
+DELIMITER ;
+
+-- Create a stored procedure for testing
+DELIMITER //
+CREATE PROCEDURE sp_update_status(IN p_id INT)
+BEGIN
+    UPDATE t1 SET status = 'inactive' WHERE id = p_id;
+END//
+DELIMITER ;
+
+-- Create a function using SQL SECURITY DEFINER
+DELIMITER //
+CREATE FUNCTION fn_total_amount() RETURNS DECIMAL(10, 2)
+SQL SECURITY DEFINER
+DETERMINISTIC
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    SELECT SUM(amount) INTO total FROM t2;
+    RETURN total;
+END//
+DELIMITER ;
+
+-- Set up an event for periodic deletion of old records
+DELIMITER //
+CREATE EVENT evt_delete_old_records
+ON SCHEDULE EVERY 1 MONTH
+STARTS '2023-01-01 00:00:00'
+DO
+BEGIN
+    DELETE FROM t1 WHERE created_at < DATE_SUB(NOW(), INTERVAL 6 MONTH);
+END//
+DELIMITER ;
+
+-- Analyze tables for query optimization
+ANALYZE TABLE t1, t2, t3;
+
+-- Complex queries to test various functionalities
+SELECT 
+    t1.name, 
+    t1.price,
+    COUNT(t3.post_id) AS total_posts
+FROM 
+    t1
+JOIN 
+    t3 ON t1.id = t3.user_id
+GROUP BY 
+    t1.id
+HAVING 
+    total_posts > 0;
+
+-- Test UNION and subqueries
+(SELECT id, name FROM t1 WHERE status = 'active')
+UNION
+(SELECT id, region AS name FROM t2 WHERE amount > 500.00);
+
+-- Use optimizer hints for query execution plan testing
+SELECT /*+ USE INDEX(idx_name) */ * FROM t1 WHERE name LIKE 'L%';

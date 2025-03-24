@@ -1,0 +1,75 @@
+CREATE DATABASE test_fuzz;
+USE test_fuzz;
+
+-- Create tables with different data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data BLOB,
+    UNIQUE INDEX idx_name (name)
+);
+
+-- Create a table for testing joins and relationships
+CREATE TABLE related_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    test_id INT,
+    value DECIMAL(10, 2),
+    FOREIGN KEY (test_id) REFERENCES test_table(id)
+);
+
+-- Create an index on a column with high cardinality
+CREATE INDEX idx_value ON related_table(value);
+
+-- Insert sample data to test different types of queries
+INSERT INTO test_table (name, description, status)
+VALUES ('Test1', 'This is a test record', 'active'),
+       ('Test2', NULL, 'inactive');
+
+-- Stored procedure for testing stored code execution
+DELIMITER $$
+CREATE PROCEDURE insert_test_record(IN p_name VARCHAR(100))
+BEGIN
+    INSERT INTO test_table (name) VALUES (p_name);
+END$$
+DELIMITER ;
+
+-- Trigger for testing event-driven functionality
+CREATE TRIGGER after_insert_test AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    UPDATE related_table SET value = value + 1 WHERE id = NEW.id;
+END;
+
+-- Test MariaDB-specific features like UUID and JSON functions
+SELECT UUID(), JSON_OBJECT('key', 'value');
+
+-- Partition table for testing partitioned tables
+ALTER TABLE test_table PARTITION BY HASH(id) PARTITIONS 4;
+
+-- Test transaction isolation levels
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+START TRANSACTION;
+    INSERT INTO test_table (name) VALUES ('Test3');
+COMMIT;
+
+-- Clean up old data
+DELETE FROM related_table WHERE value > 100;
+TRUNCATE TABLE test_table;
+
+-- Verify data consistency with complex queries
+SELECT t.name, r.value 
+FROM test_table t
+JOIN related_table r ON t.id = r.test_id
+WHERE t.status = 'active'
+GROUP BY t.name
+HAVING COUNT(r.id) > 0
+ORDER BY t.created_at DESC
+LIMIT 10;
+
+-- Reset foreign key checks for testing
+SET FOREIGN_KEY_CHECKS = 0;
+ALTER TABLE related_table DISABLE KEYS;
+SET FOREIGN_KEY_CHECKS = 1;

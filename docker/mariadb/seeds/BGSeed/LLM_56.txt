@@ -1,0 +1,65 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    content TEXT,
+    UNIQUE INDEX name_unique (name)
+);
+
+INSERT INTO test_table (name, score, created_at, status, content) 
+VALUES 
+    ('Test User 1', 99.99, '2023-10-01 00:00:00', 'active', 'Sample content'),
+    ('Test User 2', NULL, '2023-10-02 00:00:00', 'inactive', ''),
+    (NULL, -99.99, '2023-10-03 00:00:00', 'active', 'Another sample');
+
+CREATE TABLE partitioned_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    transaction_date DATE
+) PARTITION BY RANGE (YEAR(transaction_date)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p_max VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO partitioned_table (amount, transaction_date)
+VALUES 
+    (100.00, '2023-09-30'),
+    (-50.00, '2024-01-15');
+
+CREATE INDEX idx_score ON test_table (score);
+ALTER TABLE test_table ADD COLUMN last_updated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+DELIMITER $$
+
+CREATE PROCEDURE update_last_updated()
+BEGIN
+    UPDATE test_table SET last_updated = CURRENT_TIMESTAMP WHERE id = 1;
+END$$
+
+DELIMITER ;
+
+CALL update_last_updated();
+
+CREATE TRIGGER after_insert_test_table 
+AFTER INSERT ON test_table 
+FOR EACH ROW 
+BEGIN
+    INSERT INTO partitioned_table (amount, transaction_date)
+    VALUES (NEW.score, NEW.created_at);
+END;
+
+DROP TABLE IF EXISTS non_existent_table;
+SELECT * FROM information_schema.tables WHERE table_name = 'test_table';
+
+START TRANSACTION;
+INSERT INTO test_table (name) VALUES ('Transaction Test');
+ROLLBACK;
+
+CREATE VIEW test_view AS SELECT id, name, status FROM test_table WHERE status = 'active';
+ALTER VIEW test_view AS SELECT id, name, status, score FROM test_table WHERE status = 'active' AND score > 50;
+
+SET @json_data = '{"key": "value"}';
+SELECT JSON_EXTRACT(@json_data, '$.key') AS extracted_value;

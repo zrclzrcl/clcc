@@ -1,0 +1,95 @@
+SET max_join_size = 10000;
+CREATE DATABASE test_fuzz;
+USE test_fuzz;
+
+-- Create table with various data types
+CREATE TABLE table_a (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_date DATE,
+    modified_datetime DATETIME,
+    price FLOAT(10, 2),
+    is_active BOOLEAN DEFAULT FALSE,
+    metadata JSON
+);
+
+-- Create another table with foreign key reference
+CREATE TABLE table_b (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    a_id INT,
+    value DECIMAL(10, 3) NOT NULL,
+    status ENUM('active', 'inactive', 'pending'),
+    UNIQUE INDEX unique_a_id (a_id),
+    FOREIGN KEY (a_id) REFERENCES table_a(id)
+);
+
+-- Create an index on frequently queried columns
+CREATE INDEX idx_table_a_name ON table_a(name);
+CREATE INDEX idx_table_b_status ON table_b(status);
+
+-- Insert sample data with edge cases and NULL values
+INSERT INTO table_a VALUES 
+(1, 'Test Item 1', 'This is a test description.', '2023-01-01', '2023-01-01 12:00:00', 19.99, TRUE, '{"key": "value"}'),
+(2, 'Test Item 2', NULL, '2023-01-02', NULL, NULL, FALSE, NULL),
+(3, 'Test Item 3', 'Another test description.', '2023-01-03', '2023-01-03 15:30:00', 29.99, TRUE, '{"test": "data"}');
+
+-- Insert data into table_b with foreign key references
+INSERT INTO table_b VALUES 
+(1, 1, 100.00, 'active'),
+(2, NULL, 200.50, 'inactive'),
+(3, 2, 300.75, 'pending');
+
+-- Create a stored procedure to handle conditional inserts
+DELIMITER //
+CREATE PROCEDURE insert_item(IN name VARCHAR(255), IN price FLOAT)
+BEGIN
+    IF (SELECT COUNT(*) FROM table_a WHERE name = insert_item.name) = 0 THEN
+        INSERT INTO table_a(name, price) VALUES (name, price);
+    END IF;
+END//
+DELIMITER ;
+
+-- Create a trigger to log updates on table_a
+CREATE TABLE table_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    modified_datetime DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user_id INT,
+    action VARCHAR(255)
+);
+
+DELIMITER //
+CREATE TRIGGER after_update_table_a AFTER UPDATE ON table_a FOR EACH ROW
+BEGIN
+    INSERT INTO table_log(modified_datetime, user_id, action) 
+    VALUES (NOW(), 1, 'Updated item: ' . OLD.name);
+END//
+DELIMITER ;
+
+-- Create a view combining data from both tables
+CREATE VIEW combined_view AS
+SELECT a.id AS a_id, a.name, b.status, b.value 
+FROM table_a a 
+LEFT JOIN table_b b ON a.id = b.a_id;
+
+-- Update records with complex operations
+UPDATE table_a SET description = 'Updated description', modified_datetime = NOW()
+WHERE id IN (1, 3);
+
+-- Transaction example to test rollback and commit
+START TRANSACTION;
+    UPDATE table_a SET price = price * 1.05 WHERE is_active = TRUE;
+    -- Simulate a condition that might fail
+    IF (SELECT COUNT(*) FROM table_b WHERE status = 'pending') > 2 THEN 
+        ROLLBACK;
+    ELSE 
+        COMMIT;
+    END IF;
+
+-- Test locking with FOR UPDATE clause
+SELECT * FROM table_a WHERE id = 1 FOR UPDATE;
+
+-- Clean up test data after testing
+DELETE FROM table_a;
+DELETE FROM table_b;
+DELETE FROM table_log;

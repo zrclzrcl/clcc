@@ -1,0 +1,93 @@
+-- Set session variables for reproducibility and optimization
+SET @@session.sql_mode = 'ANSI_QUOTES,STRICT_TRANS_TABLES';
+SET @@session.optimizer_switch='index_merge=on';
+
+-- Create a variety of tables with different data types and constraints
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10,2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_name (name)
+) ENGINE=InnoDB;
+
+-- Create a table with specific MariaDB features
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    data MEDIUMBLOB,
+    FULLTEXT INDEX idx_data (data)
+) ENGINE=Aria;
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, value) VALUES 
+('Test1', 100.5),
+('Test2', 200.7),
+('Test3', NULL);
+
+-- Create a table with partitions
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    amount DECIMAL(10,2)
+) PARTITION BY RANGE (id)(
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Insert into partitioned table with subquery
+INSERT INTO t3 SELECT id, value FROM t1 WHERE name LIKE 'Test%';
+
+-- Create a trigger for testing DML operations
+DELIMITER //
+CREATE TRIGGER trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t3 (id, amount) VALUES (NEW.id, NEW.value);
+END//
+DELIMITER ;
+
+-- Create an event for testing scheduled tasks
+CREATE EVENT evt_cleanup
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t3 WHERE id < 50;
+
+-- Test JSON functions specific to MariaDB
+SET @json = '{"name": "John", "age": 30}';
+SELECT JSON_EXTRACT(@json, '$.name') AS name, JSON_EXTRACT(@json, '$.age') AS age;
+
+-- Use REGEXP for testing pattern matching
+SELECT 'test@example.com' REGEXP '^.*@.*\\..*$';
+
+-- Analyze and optimize tables
+ANALYZE TABLE t1, t2;
+OPTIMIZE TABLE t3;
+
+-- Test stored procedures with different logic
+DELIMITER //
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE cur CURSOR FOR SELECT name FROM t1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+    
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO @name;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        INSERT INTO t2 (id, data) VALUES (RAND()*100, CONCAT('Data for ', @name));
+    END LOOP;
+    CLOSE cur;
+END//
+DELIMITER ;
+
+-- Test window functions and CTEs
+WITH cte AS (
+    SELECT id, name, ROW_NUMBER() OVER (ORDER BY value DESC) as rn 
+    FROM t1
+)
+SELECT * FROM cte WHERE rn <= 2;
+
+-- Flush status to reset counters for testing
+FLUSH STATUS;

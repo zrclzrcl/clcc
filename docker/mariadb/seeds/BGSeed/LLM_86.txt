@@ -1,0 +1,66 @@
+-- Set optimizer switches to test different query execution paths
+SET optimizer_switch = 'semijoin=off';
+
+-- Create table t1 with various data types and indexes
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50),
+    price DECIMAL(10, 2) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL
+);
+
+-- Create indexes for testing query optimization
+ALTER TABLE t1 ADD INDEX idx_name (name);
+ALTER TABLE t1 ADD INDEX idx_price (price);
+
+-- Insert sample data into t1, including edge cases
+INSERT INTO t1(name, price, created_at, status)
+VALUES 
+    ('Item 1', 100.50, '2023-01-01 00:00:00', 'active'),
+    ('Item 2', NULL, '2023-01-02 00:00:00', 'inactive'),
+    (NULL, 99.99, '2023-01-03 00:00:00', 'active'),
+    ('Item 4', 1000.00, NULL, 'inactive');
+
+-- Create table t2 with foreign key constraint
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    quantity INT NOT NULL,
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+-- Insert data into t2 linking to t1 records
+INSERT INTO t2(t1_id, quantity)
+VALUES 
+    (1, 5),
+    (3, 10),
+    (4, 2);
+
+-- Create a stored function to calculate discounted price
+DELIMITER $$
+CREATE FUNCTION calculate_discount(original_price DECIMAL(10,2), discount_rate DECIMAL(5,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    RETURN original_price * (1 - discount_rate);
+END$$
+DELIMITER ;
+
+-- Insert new records using the stored function
+INSERT INTO t1(name, price, status)
+VALUES 
+    ('Discounted Item 5', calculate_discount(200.00, 0.10), 'active'),
+    ('Discounted Item 6', calculate_discount(300.00, 0.20), 'active');
+
+-- Update records in t1 where price exceeds a threshold
+UPDATE t1 
+SET price = calculate_discount(price, 0.05)
+WHERE price > 200;
+
+-- Analyze and check tables for maintenance
+ANALYZE TABLE t1;
+CHECK TABLE t1;
+
+ANALYZE TABLE t2;
+CHECK TABLE t2;

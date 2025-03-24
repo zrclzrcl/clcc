@@ -1,0 +1,76 @@
+-- Set optimizer switches to influence query execution paths
+SET optimizer_switch='index_merge=on,join_cache_level=2';
+
+-- Create tables with various data types including JSON
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    bio JSON
+);
+
+CREATE TABLE departments (
+    dept_id INT AUTO_INCREMENT PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE,
+    location VARCHAR(100)
+) ENGINE=InnoDB;
+
+-- Insert sample data with NULL values for edge cases
+INSERT INTO employees (name, salary, hire_date, bio) VALUES 
+('Alice Johnson', 75000.00, '2023-01-15', '{"position": "Engineer", "experience": 5}'),
+('Bob Smith', 85000.00, '2023-03-20', '{"position": "Manager", "experience": 10}'),
+('Charlie Brown', NULL, '2023-04-01', '{"position": "Intern"}');
+
+-- Create a stored procedure to calculate average salary
+DELIMITER //
+CREATE PROCEDURE avg_salary()
+BEGIN
+    SELECT AVG(salary) AS average_salary FROM employees;
+END//
+DELIMITER ;
+
+-- Create a trigger that logs department changes
+DELIMITER //
+CREATE TRIGGER log_dept_changes
+AFTER INSERT ON departments
+FOR EACH ROW
+BEGIN
+    INSERT INTO dept_logs VALUES (NULL, NEW.dept_name, NOW());
+END//
+DELIMITER ;
+
+-- Set up an event to run the stored procedure daily
+SET GLOBAL event_scheduler = ON;
+CREATE EVENT daily_avg_salary
+ON SCHEDULE EVERY 1 DAY
+DO CALL avg_salary();
+
+-- Perform updates and deletes with conditions
+UPDATE employees SET salary = salary * 1.05 WHERE hire_date >= '2023-01-01';
+DELETE FROM departments WHERE dept_id NOT IN (SELECT dept_id FROM employees);
+
+-- Alter table structure
+ALTER TABLE employees ADD COLUMN phone VARCHAR(15), CHANGE COLUMN bio bio_data JSON;
+
+-- Analyze tables for query optimization
+ANALYZE TABLE employees, departments;
+
+-- Complex SELECT queries with joins and window functions
+SELECT e.name, d.dept_name, RANK() OVER (ORDER BY salary DESC) AS salary_rank 
+FROM employees e LEFT JOIN departments d ON e.id = d.dept_id;
+
+-- Test JSON functions
+SELECT name, JSON_EXTRACT(bio_data, '$.position') AS position FROM employees;
+
+-- Transaction testing
+START TRANSACTION;
+INSERT INTO departments (dept_name, location) VALUES ('Engineering', 'Building A');
+COMMIT;
+
+START TRANSACTION;
+DELETE FROM departments WHERE dept_name = 'Engineering';
+ROLLBACK;
+
+-- Cleanup
+DROP TABLE IF EXISTS employees, departments, dept_logs;

@@ -1,0 +1,101 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    value DECIMAL(10, 2) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+INSERT INTO test_table (name, value) VALUES 
+('Test1', 100.5), ('Test2', -50.75), ('Test3', NULL);
+
+CREATE TABLE partitioned_table (
+    id INT,
+    data VARCHAR(100),
+    category INT
+) ENGINE=InnoDB PARTITION BY RANGE (category) (
+    PARTITION p0 VALUES LESS THAN (1),
+    PARTITION p1 VALUES LESS THAN (2),
+    PARTITION p2 VALUES LESS THAN (3)
+);
+
+INSERT INTO partitioned_table VALUES 
+(1, 'Data1', 0), (2, 'Data2', 1), (3, 'Data3', 2);
+
+CREATE TABLE engine_specific (
+    id INT PRIMARY KEY,
+    data MEDIUMBLOB
+) ENGINE=Aria;
+
+INSERT INTO engine_specific VALUES (1, 'Some binary data');
+
+CREATE FUNCTION get_sum(a INT, b INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE result INT;
+    SET result = a + b;
+    RETURN result;
+END;
+
+DELIMITER //
+
+CREATE TRIGGER after_insert_trigger 
+AFTER INSERT ON test_table 
+FOR EACH ROW
+BEGIN
+    INSERT INTO partitioned_table (id, data, category) 
+    VALUES (NEW.id, CONCAT('New entry: ', NEW.name), 0);
+END//
+
+DELIMITER ;
+
+SET GLOBAL max_connections = 100;
+SET SESSION sql_mode = 'ANSI_QUOTES';
+
+CREATE VIEW summary_view AS 
+SELECT 
+    COUNT(*) as total_entries,
+    SUM(value) as total_value
+FROM test_table;
+
+FLUSH TABLES WITH READ LOCK;
+UNLOCK TABLES;
+
+SHOW ENGINE INNODB STATUS;
+SHOW CREATE TABLE test_table;
+
+ANALYZE TABLE partitioned_table;
+OPTIMIZE TABLE engine_specific;
+
+CREATE PROCEDURE example_procedure(IN input_param INT)
+DETERMINISTIC
+BEGIN
+    DECLARE local_var INT DEFAULT 0;
+    
+    IF input_param > 10 THEN
+        SET local_var = input_param * 2;
+    ELSE
+        SET local_var = input_param + 5;
+    END IF;
+    
+    SELECT local_var AS result;
+END//
+
+DELIMITER ;
+
+START TRANSACTION;
+INSERT INTO test_table (name, value) VALUES ('TransactionTest', 100);
+COMMIT;
+
+CREATE TABLE IF NOT EXISTS unique_table (
+    id INT PRIMARY KEY,
+    unique_value VARCHAR(50) UNIQUE
+);
+
+LOCK TABLES test_table READ, partitioned_table WRITE;
+UNLOCK TABLES;
+
+SET @saved_engine = @@default_storage_engine;
+SET @@default_storage_engine = 'Aria';
+SET @@default_storage_engine = @saved_engine;
+
+DELIMITER ;

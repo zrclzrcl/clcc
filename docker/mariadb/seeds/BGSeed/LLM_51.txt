@@ -1,0 +1,48 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score FLOAT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_name (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value TEXT,
+    FOREIGN KEY (t1_id) REFERENCES t1(id) ON DELETE CASCADE
+);
+
+INSERT INTO t1 VALUES (1, 'Alice', 95.5, NOW()), (2, 'Bob', NULL, '2023-01-01 00:00:00');
+INSERT INTO t2 (t1_id, value) VALUES (1, 'Sample text'), (2, 'Another sample');
+
+CREATE FUNCTION get_score(id INT) RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    DECLARE s FLOAT;
+    SELECT score INTO s FROM t1 WHERE id = id LIMIT 1;
+    RETURN s;
+END;
+
+DELIMITER $$
+
+CREATE TRIGGER trig_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, value) VALUES (NEW.id, 'New entry');
+END$$
+
+CREATE TRIGGER trig_before_update BEFORE UPDATE ON t1 FOR EACH ROW
+BEGIN
+    SET NEW.created_at = CURRENT_TIMESTAMP;
+END$$
+
+DELIMITER ;
+
+SET GLOBAL sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';
+
+CREATE EVENT IF NOT EXISTS cleanup_event
+ON SCHEDULE EVERY 1 HOUR
+DO
+    DELETE FROM t2 WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY);
+
+-- Placeholder for mutations: Replace [value] with different values during testing

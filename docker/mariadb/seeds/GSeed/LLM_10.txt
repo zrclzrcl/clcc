@@ -1,0 +1,44 @@
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data JSON
+);
+
+INSERT INTO test_table (name, description, price) VALUES
+    ('Product 1', 'Description for Product 1', 10.99),
+    ('Product 2', 'Description for Product 2', 19.99),
+    ('Product 3', 'Description for Product 3', NULL);
+
+CREATE INDEX idx_name ON test_table (name);
+CREATE TRIGGER trg_after_insert AFTER INSERT ON test_table FOR EACH ROW
+    INSERT INTO audit_table VALUES (NEW.id, 'insert', NOW());
+CREATE TRIGGER trg_before_update BEFORE UPDATE ON test_table FOR EACH ROW
+    SET NEW.updated_at = NOW();
+CREATE TRIGGER trg_after_delete AFTER DELETE ON test_table FOR EACH ROW
+    INSERT INTO audit_table VALUES (OLD.id, 'delete', NOW());
+
+DELIMITER $$
+CREATE PROCEDURE sp_test_procedure(IN p_id INT)
+BEGIN
+    IF EXISTS(SELECT 1 FROM test_table WHERE id = p_id) THEN
+        UPDATE test_table SET status = 'inactive' WHERE id = p_id;
+    END IF;
+END$$
+DELIMITER ;
+
+ALTER TABLE test_table ADD CONSTRAINT fk_test FOREIGN KEY (id) REFERENCES parent_table(id);
+
+SELECT t.*, JSON_EXTRACT(data, '$.metadata') AS metadata FROM test_table t
+JOIN parent_table p ON t.id = p.id
+WHERE status = 'active' AND price > 10;
+
+UPDATE test_table SET description = 'Updated Description' WHERE id = 1;
+DELETE FROM test_table WHERE status = 'inactive';
+
+START SLAVE;
+CHANGE MASTER TO MASTER_HOST='master.example.com';

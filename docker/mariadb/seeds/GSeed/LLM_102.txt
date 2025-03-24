@@ -1,0 +1,62 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age TINYINT UNSIGNED,
+    balance DECIMAL(10, 2),
+    last_login DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    metadata JSON
+) PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO test_table (name, age, balance, last_login, status, metadata)
+VALUES
+('Alice', 30, 1000.50, '2024-01-01 00:00:00', 'active', '{"country": "USA", "city": "New York"}'),
+('Bob', NULL, -500.75, '2023-12-31 23:59:59', 'inactive', '{"country": "Canada", "city": "Toronto"}'),
+('Charlie', 25, 0.00, '2024-01-02 12:00:00', 'active', '{"country": "UK", "city": "London"}');
+
+CREATE INDEX idx_name ON test_table(name);
+CREATE FULLTEXT INDEX ft_idx_metadata ON test_table(metadata);
+
+DELIMITER ;;
+CREATE PROCEDURE get_active_users()
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE user_name VARCHAR(100);
+    DECLARE cur CURSOR FOR SELECT name FROM test_table WHERE status = 'active';
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO user_name;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        SELECT CONCAT('Active user:', user_name);
+    END LOOP;
+    CLOSE cur;
+END;;
+DELIMITER ;
+
+CREATE TRIGGER after_insert_test_table AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'active' THEN
+        UPDATE test_table SET last_login = NOW() WHERE id = NEW.id;
+    END IF;
+END;
+
+SET optimizer_switch='index_merge=on,join_cache_level=2,block_size=8192';
+SET @@global.sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
+
+ANALYZE TABLE test_table;
+
+SELECT name, balance, JSON_EXTRACT(metadata, '$.country') AS country
+FROM test_table
+WHERE age > 25 AND status = 'active'
+ORDER BY last_login DESC;
+
+RENAME TABLE test_table TO backup_test_table;

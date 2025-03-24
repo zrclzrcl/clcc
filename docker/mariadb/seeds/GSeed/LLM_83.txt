@@ -1,0 +1,22 @@
+SET optimizer_switch='index_merge=on,materialization=on,semijoin=on';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    birth_date DATE DEFAULT '0000-00-00',
+    salary DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO t1 (name, birth_date, salary) VALUES 
+('John Doe', '1980-05-15', 50000.00),
+('Jane Smith', '1975-12-25', 60000.00),
+(NULL, '0000-00-00', NULL);
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data JSON,
+    created_at DATETIME
+);
+INSERT INTO t2 (data) VALUES 
+('{"key1": "value1", "key2": 123}'),
+('{"name": "test", "active": true}');
+UPDATE t1 SET salary = salary * 1.1 WHERE id < 3;
+ANALYZE TABLE t1, t2;

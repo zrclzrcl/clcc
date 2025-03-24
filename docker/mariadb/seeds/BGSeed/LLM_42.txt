@@ -1,0 +1,68 @@
+SET NAMES utf8mb4;
+SET CHARACTER_SET_DATABASE = utf8mb4;
+
+CREATE DATABASE IF NOT EXISTS test_fuzz;
+USE test_fuzz;
+
+CREATE TABLE edge_cases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) DEFAULT 'default_name',
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    data JSON
+);
+
+INSERT INTO edge_cases (name, description, data)
+VALUES 
+    ('Test Name 1', 'This is a test description.', '{"key": "value", "array": [1,2,3]}'),
+    ('Test Name 2', NULL, '{"number": 123.45, "boolean": true}'),
+    ('Test Name 3', 'Edge case with special characters: !@#$%^&*()_+', '{"escaped": "quotes \"inside\""}');
+
+ALTER TABLE edge_cases ADD COLUMN binary_data BLOB AFTER data;
+
+UPDATE edge_cases SET 
+    name = CONCAT('Updated - ', name),
+    description = 'Last updated: ', NOW(),
+    status = CASE WHEN id % 2 = 0 THEN 'active' ELSE 'inactive' END
+WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
+
+CREATE PROCEDURE test_procedure()
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 5 DO
+        INSERT INTO edge_cases (name, description) VALUES (CONCAT('Procedure ', i), 'Inserted by stored procedure');
+        SET i = i + 1;
+    END WHILE;
+END;
+
+DELIMITER ;;
+CREATE TRIGGER after_update_trigger AFTER UPDATE ON edge_cases FOR EACH ROW
+BEGIN
+    INSERT INTO update_log (id, action_time, status) VALUES (OLD.id, NOW(), OLD.status);
+END;;
+DELIMITER ;
+
+ALTER TABLE edge_cases ADD COLUMN uuid_col UUID DEFAULT UUID();
+
+CREATE INDEX idx_name_status ON edge_cases(name, status);
+
+SET GLOBAL innodb_flush_log_at_trx_commit = 2;
+
+CALL test_procedure();
+
+SELECT 
+    id, name, data->>'$.key' AS json_key,
+    LENGTH(description) AS description_length,
+    status,
+    HEX(binary_data) AS hex_data
+FROM edge_cases
+WHERE status = 'active'
+ORDER BY created_at DESC
+LIMIT 10 OFFSET 5;
+
+TRUNCATE TABLE update_log;
+DROP PROCEDURE test_procedure;
+DROP TRIGGER after_update_trigger;
+DROP INDEX idx_name_status ON edge_cases;

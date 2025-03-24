@@ -1,0 +1,53 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+SET GLOBAL innodb_default_row_format=compact;
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    metadata JSON
+) ENGINE=InnoDB ROW_FORMAT=COMPACT;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2),
+    UNIQUE KEY idx_t1_id (t1_id)
+) ENGINE=Aria;
+
+ALTER TABLE t2 ADD CONSTRAINT fk_t1 FOREIGN KEY (t1_id) REFERENCES t1(id);
+
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content MEDIUMTEXT,
+    FULLTEXT INDEX idx_content (content)
+) ENGINE=InnoDB;
+
+CREATE TRIGGER trg_after_insert
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, value) VALUES (NEW.id, 0);
+END;
+
+DELIMITER $$
+
+CREATE FUNCTION fn_get_status(s ENUM('active', 'inactive')) RETURNS VARCHAR(25)
+DETERMINISTIC
+BEGIN
+    RETURN CASE s WHEN 'active' THEN 'Active Status' ELSE 'Inactive Status';
+END$$
+
+DELIMITER ;
+
+INSERT INTO t1 (name, description, metadata) VALUES 
+('Test 1', 'First test entry', '{"key": "value"}'),
+('Test 2', NULL, '{"array": [1,2,3]}');
+
+SHOW CREATE TABLE t1;
+SHOW CREATE TRIGGER trg_after_insert;
+
+EXPLAIN SELECT * FROM t1 WHERE name LIKE 'Test%';

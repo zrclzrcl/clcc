@@ -1,0 +1,70 @@
+-- Set optimizer parameters specific to MariaDB for testing different execution paths
+SET optimizer_switch='index_merge=on,loose_index_scan=on';
+SET global max_connections = 100;
+
+-- Create a database and use it
+CREATE DATABASE IF NOT EXISTS testdb;
+USE testdb;
+
+-- Create tables with various data types including spatial and JSON columns
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100),
+    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP,
+    profile JSON,
+    location POINT,
+    INDEX loc_idx (location)
+);
+
+-- Create a table with spatial data
+CREATE TABLE IF NOT EXISTS locations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50),
+    geom GEOMETRY,
+    SPATIAL INDEX sp_index (geom)
+);
+
+-- Insert sample data into the users table, including NULL values for testing edge cases
+INSERT INTO users (username, email, profile) VALUES 
+('user1', 'user1@example.com', '{"age": 30, "city": "New York"}'),
+('user2', 'user2@example.com', '{"age": NULL, "city": "London"}');
+
+-- Insert sample spatial data
+INSERT INTO locations (name, geom) VALUES 
+('Central Park', ST_GeomFromText('POINT(40.7829 -73.9654)', 4326)),
+('Hyde Park', ST_GeomFromText('POINT(51.5136 -0.1898)', 4326));
+
+-- Alter table to add a new column and modify constraints
+ALTER TABLE users ADD COLUMN active BOOLEAN DEFAULT TRUE;
+ALTER TABLE users MODIFY registration_date DATETIME NOT NULL;
+
+-- Update records in the table with JSON operations
+UPDATE users SET profile = JSON_SET(profile, '$.status', 'active') WHERE id = 1;
+
+-- Transaction example to test commit and rollback scenarios
+START TRANSACTION;
+INSERT INTO users (username, email) VALUES ('temp_user', 'temp@example.com');
+SAVEPOINT my_savepoint;
+INSERT INTO locations (name, geom) VALUES ('Test Location', ST_GeomFromText('POINT(0 0)', 4326));
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+-- Stored procedure example using MariaDB-specific functions
+DELIMITER $$
+CREATE PROCEDURE get_users_by_distance(IN lat FLOAT, IN lon FLOAT)
+BEGIN
+    DECLARE point GEOMETRY DEFAULT ST_GeomFromText(CONCAT('POINT(', lon, ' ', lat, ')'), 4326);
+    
+    SELECT username, 
+           email,
+           ST_Distance(location, point) AS distance
+    FROM users
+    WHERE ST_IsValid(location) = 1;
+END$$
+DELIMITER ;
+
+-- Analyze the tables to optimize performance and check variables
+ANALYZE TABLE users, locations;
+SHOW VARIABLES LIKE 'max_connections';

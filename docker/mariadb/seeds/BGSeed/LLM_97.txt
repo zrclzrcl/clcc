@@ -1,0 +1,68 @@
+SHOW GLOBAL STATUS WHERE Variable_name > '0';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    tags SET('tag1', 'tag2', 'tag3'),
+    UNIQUE KEY unique_name (name)
+);
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value DECIMAL(10, 2) NOT NULL
+);
+
+DELIMITER $$
+CREATE TRIGGER trg_after_insert_t1
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (value) VALUES (RAND() * 100);
+END$$
+DELIMITER ;
+
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data TEXT,
+    INDEX idx_data USING HASH (data(512))
+)
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+DELIMITER $$
+CREATE PROCEDURE sp_test_proc(IN param1 INT, OUT param2 VARCHAR(255))
+BEGIN
+    DECLARE var1 INT DEFAULT 0;
+    
+    SELECT COUNT(*) INTO var1 FROM t1 WHERE status = 'active';
+    
+    IF var1 > 5 THEN
+        SET param2 = 'More than five active entries.';
+    ELSE
+        SET param2 = 'Five or fewer active entries.';
+    END IF;
+END$$
+DELIMITER ;
+
+CREATE FUNCTION fn_test_func(input VARCHAR(255)) RETURNS VARCHAR(255)
+DETERMINISTIC
+BEGIN
+    RETURN AES_ENCRYPT(SHA2(input, 256), '密钥');
+END;
+
+CREATE VIEW v1 AS
+SELECT name, status FROM t1
+UNION
+SELECT 'Default', 'none' FROM dual;
+
+INSERT INTO t1 (name, created_at, status, tags) VALUES
+('Test1', NOW(), 'active', 'tag1, tag2'),
+('Test2', NOW(), 'inactive', NULL),
+('Test3', NOW(), 'active', 'tag3');
+
+ALTER TABLE t1 ADD FOREIGN KEY (id) REFERENCES t2(id);

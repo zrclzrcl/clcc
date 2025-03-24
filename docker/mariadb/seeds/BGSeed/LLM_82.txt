@@ -1,0 +1,112 @@
+-- Set optimizer switch to enable index condition pushdown
+SET optimizer_switch='index_condition_pushdown=on';
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    data JSON,
+    UNIQUE KEY unique_name (name)
+);
+
+-- Create a partitioned table
+CREATE TABLE sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(10, 2) NOT NULL,
+    sale_date DATE NOT NULL
+)
+PARTITION BY RANGE (YEAR(sale_date)) (
+    PARTITION p0 VALUES LESS THAN (2010),
+    PARTITION p1 VALUES LESS THAN (2015),
+    PARTITION p2 VALUES LESS THAN (2020),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+
+-- Create a table with full-text search capabilities
+CREATE TABLE articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    FULLTEXT INDEX ft_content (content)
+);
+
+-- Insert sample data into the tables
+INSERT INTO test_table (name, description, price, status, data)
+VALUES 
+('Product 1', 'This is a sample product.', 99.99, 'active', '{"category": "electronics"}'),
+('Product 2', 'Another sample product.', 149.99, 'inactive', '{"category": "clothing"}');
+
+-- Insert into partitioned table
+INSERT INTO sales (amount, sale_date)
+VALUES 
+(100.50, '2018-01-15'),
+(200.75, '2022-03-20');
+
+-- Insert into articles for full-text search
+INSERT INTO articles (title, content)
+VALUES 
+('Sample Article 1', 'This is a sample article about MariaDB and database testing.'),
+('Sample Article 2', 'Another article discussing SQL optimization techniques.');
+
+-- Create an index on the name column
+CREATE INDEX idx_name ON test_table(name);
+
+-- Analyze table for query optimization
+ANALYZE TABLE test_table;
+
+-- Check table integrity
+CHECK TABLE test_table;
+
+-- Repair table if necessary
+REPAIR TABLE test_table;
+
+-- Update data in the table
+UPDATE test_table SET price = 199.99 WHERE name = 'Product 1';
+
+-- Delete data from the table
+DELETE FROM sales WHERE sale_date < '2015-01-01';
+
+-- Create a complex query with CTE and window functions
+WITH ranked_sales AS (
+    SELECT 
+        id, amount, sale_date,
+        RANK() OVER (ORDER BY amount DESC) as rank
+    FROM 
+        sales
+)
+SELECT * FROM ranked_sales WHERE rank <= 5;
+
+-- Create a trigger for data validation
+DELIMITER $$
+CREATE TRIGGER before_update_test_table
+BEFORE UPDATE ON test_table
+FOR EACH ROW
+BEGIN
+    IF NEW.price < 0 THEN
+        SET NEW.price = 0;
+    END IF;
+END$$
+DELIMITER ;
+
+-- Create a stored procedure for batch updates
+DELIMITER $$
+CREATE PROCEDURE update_product_status(IN product_id INT, IN new_status ENUM('active', 'inactive'))
+BEGIN
+    UPDATE test_table 
+    SET status = new_status
+    WHERE id = product_id;
+END$$
+DELIMITER ;
+
+-- Enable binary logging for replication (commented out for safety)
+-- SET GLOBAL binlog_format = 'ROW';
+-- FLUSH TABLES WITH READ LOCK;
+
+-- MariaDB-specific features - Multi-source replication example (commented out)
+-- CHANGE MASTER TO MASTER_HOST='master1.example.com', MASTER_USER='repl_user', MASTER_PASSWORD='securepass' FOR CHANNEL 'channel1';
+-- CHANGE MASTER TO MASTER_HOST='master2.example.com', MASTER_USER='repl_user', MASTER_PASSWORD='securepass' FOR CHANNEL 'channel2';

@@ -1,0 +1,63 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT CHECK (age >= 0),
+    score DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    metadata JSON
+);
+
+INSERT INTO test_table (name, age, score, metadata)
+VALUES
+    ('Alice', 30, 98.7, '{"job": "Engineer", "department": "Tech"}'),
+    ('Bob', NULL, NULL, '{"job": "Manager", "department": "Sales"}'),
+    ('Charlie', 45, 85.2, '{"job": "Designer", "department": "Creative"}');
+
+CREATE VIEW test_view AS
+SELECT 
+    id,
+    name,
+    age,
+    score,
+    created_at,
+    status,
+    metadata->>'$.job' AS job,
+    metadata->>'$.department' AS department
+FROM test_table;
+
+DELIMITER $$
+CREATE PROCEDURE update_score(IN p_id INT, IN p_increment DECIMAL(5,2))
+BEGIN
+    UPDATE test_table SET score = score + p_increment WHERE id = p_id;
+END$$
+DELIMITER ;
+
+ALTER TABLE test_table ADD INDEX idx_name_status (name, status);
+
+SELECT 
+    name,
+    age,
+    score,
+    created_at,
+    status,
+    job,
+    department,
+    ROW_NUMBER() OVER (ORDER BY created_at DESC) AS row_num
+FROM test_view
+WHERE status = 'active'
+LIMIT 5;
+
+UPDATE test_table SET status = 'inactive' WHERE id IN (1, 3);
+
+DELETE FROM test_table WHERE age IS NULL;
+
+COMMIT;
+
+SELECT JSON_EXTRACT(metadata, '$.department') AS department_count
+FROM test_table
+GROUP BY department_count
+HAVING COUNT(*) > 1;
+
+GRANT SELECT ON test_table TO 'test_user'@'localhost';
+REVOKE INSERT ON test_table FROM 'test_user'@'localhost';

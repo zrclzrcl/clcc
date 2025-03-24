@@ -1,0 +1,43 @@
+-- Set optimizer settings to enable specific behaviors for testing
+SET optimizer_switch='index_condition_pushdown=on,mrr=on,block_size=16';
+
+-- Create a table with various data types including edge cases
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    num1 INT NOT NULL,
+    num2 DECIMAL(10, 2) DEFAULT 0.00,
+    str1 VARCHAR(50) NOT NULL DEFAULT '',
+    dt1 DATETIME NOT NULL,
+    ts1 TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Create a table with constraints and indexes for testing edge cases
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    num Nullable INT,
+    str Nullable VARCHAR(100),
+    UNIQUE INDEX idx_str (str)
+) ENGINE=InnoDB;
+
+-- Insert sample data into tables to test different scenarios
+INSERT INTO t1 VALUES (1, -2147483648, 99999.99, 'test_string', '2024-01-01 00:00:00', CURRENT_TIMESTAMP);
+INSERT INTO t1 (num1, num2, str1, dt1) VALUES (2147483647, -99999.99, '', '2999-12-31 23:59:59');
+INSERT INTO t2 (num, str) VALUES (0, NULL), (NULL, 'unique_string'), (123, 'another_unique');
+
+-- Create a stored procedure for testing
+DELIMITER ;;
+CREATE PROCEDURE sp_test(IN param INT)
+BEGIN
+    INSERT INTO t2 (num) VALUES(param);
+END;;
+DELIMITER ;
+
+-- Create triggers to test trigger functionality
+CREATE TRIGGER trg_after_insert_t2 AFTER INSERT ON t2 FOR EACH ROW
+BEGIN
+    INSERT INTO t1 (num1, str1, dt1) VALUES(NEW.num, NEW.str, NOW());
+END;;
+
+-- Create a view for testing complex queries
+CREATE VIEW v_test AS
+SELECT t1.id, t2.str, t1.dt1 FROM t1 JOIN t2 ON t1.num1 = t2.num;

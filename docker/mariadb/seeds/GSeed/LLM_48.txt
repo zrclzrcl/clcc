@@ -1,0 +1,81 @@
+-- Create a table with various data types to test different scenarios
+CREATE TABLE test_fuzz (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tinyint_col TINYINT,
+    smallint_col SMALLINT,
+    mediumint_col MEDIUMINT,
+    int_col INT,
+    bigint_col BIGINT,
+    decimal_col DECIMAL(10, 2),
+    float_col FLOAT,
+    double_col DOUBLE,
+    char_col CHAR(50),
+    varchar_col VARCHAR(100),
+    text_col TEXT,
+    blob_col BLOB,
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP,
+    time_col TIME,
+    bool_col BOOLEAN,
+    enum_col ENUM('option1', 'option2', 'option3'),
+    set_col SET('value1', 'value2', 'value3'),
+    json_col JSON,
+    spatial_point_col POINT
+);
+
+-- Insert test data with various edge cases
+INSERT INTO test_fuzz (
+    tinyint_col, smallint_col, mediumint_col, int_col, bigint_col,
+    decimal_col, float_col, double_col, char_col, varchar_col,
+    text_col, blob_col, date_col, datetime_col, timestamp_col,
+    time_col, bool_col, enum_col, set_col, json_col, spatial_point_col
+) VALUES (
+    -128, -32768, -8388608, -2147483648, -9223372036854775808,
+    9999.99, 1.234567e-38, 1.2345678901234567e+308,
+    'char_edge_case', 'varchar_edge_case',
+    'This is a text edge case.', 
+    BINARY('binary_edge_case'),
+    '2024-01-01', '2024-01-01 00:00:00', CURRENT_TIMESTAMP,
+    '23:59:59', TRUE, 'option2', 'value1,value3',
+    '{"key": "value", "array": [1,2,3]}',
+    ST_GeomFromText('POINT(1.23456789 123.456789)')
+);
+
+-- MariaDB specific functionality: Create a table with spatial index
+CREATE TABLE test_spatial (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    geom POINT SRID 0
+) ENGINE=MyISAM;
+ALTER TABLE test_spatial ADD SPATIAL INDEX (geom);
+
+-- Prepare statements for testing different query paths
+SET @tinyint_var = -128;
+SET @smallint_var = -32768;
+SET @mediumint_var = -8388608;
+SET @int_var = -2147483648;
+SET @bigint_var = -9223372036854775808;
+SET @decimal_var = 9999.99;
+SET @float_var = 1.234567e-38;
+SET @double_var = 1.2345678901234567e+308;
+
+PREPARE stmt FROM "
+    SELECT 
+        tinyint_col = ? AS tinyint_check,
+        smallint_col = ? AS smallint_check,
+        mediumint_col = ? AS mediumint_check,
+        int_col = ? AS int_check,
+        bigint_col = ? AS bigint_check,
+        decimal_col = ? AS decimal_check,
+        float_col = ? AS float_check,
+        double_col = ? AS double_check
+    FROM test_fuzz";
+BIND @tinyint_var, @smallint_var, @mediumint_var, @int_var, 
+     @bigint_var, @decimal_var, @float_var, @double_var;
+EXECUTE stmt;
+
+-- Test JSON functionality in MariaDB
+SELECT json_col->'$.key', json_col->>'$.array[0]' FROM test_fuzz;
+
+-- Clean up temporary objects if necessary
+DROP TABLE IF EXISTS test_spatial;

@@ -1,0 +1,58 @@
+CREATE TABLE my_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score FLOAT DEFAULT 0.0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+    metadata JSON
+);
+
+INSERT INTO my_table (name, score, description)
+VALUES 
+    ('Test1', 100.0, 'Sample description'),
+    ('Test2', 50.5, NULL),
+    ('Test3', 0.0, '');
+
+CREATE INDEX idx_name ON my_table(name);
+CREATE FULLTEXT INDEX idx_description ON my_table(description);
+
+DELIMITER $$
+CREATE PROCEDURE insert_test_data(IN p_name VARCHAR(255), IN p_score FLOAT)
+BEGIN
+    INSERT INTO my_table (name, score) VALUES (p_name, p_score);
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER before_insert_my_table
+BEFORE INSERT ON my_table
+FOR EACH ROW
+BEGIN
+    IF NEW.score > 100 THEN
+        SET NEW.score = 100;
+    END IF;
+END$$
+DELIMITER ;
+
+INSERT INTO my_table (name, score) VALUES ('TriggerTest', 150);
+CALL insert_test_data('ProcedureTest', 75.5);
+
+SELECT * FROM my_table WHERE name LIKE 'Test%';
+SELECT JSON_EXTRACT(metadata, '$.key') AS key_value FROM my_table;
+SELECT id, name, score FROM my_table ORDER BY score DESC LIMIT 5;
+
+CREATE TABLE another_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    my_table_id INT,
+    value VARCHAR(255),
+    FOREIGN KEY (my_table_id) REFERENCES my_table(id)
+);
+
+INSERT INTO another_table (my_table_id, value) VALUES
+    (1, 'Value1'),
+    (2, 'Value2');
+
+SELECT m.id, m.name, a.value 
+FROM my_table m 
+LEFT JOIN another_table a ON m.id = a.my_table_id
+ORDER BY m.id;

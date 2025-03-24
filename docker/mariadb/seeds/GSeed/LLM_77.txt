@@ -1,0 +1,72 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    salary DECIMAL(10, 2),
+    last_login DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    profile JSON,
+    UNIQUE KEY unique_name (name),
+    FULLTEXT KEY ft_search (name)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE test_table_2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value INT
+) PARTITION BY RANGE(id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO test_table VALUES 
+(1, 'John Doe', 30, 5000.00, NOW(), 'active', '{"email": "john@example.com", "phone": "123-456-7890"}'),
+(2, 'Jane Smith', NULL, NULL, NULL, 'inactive', '{"email": null}');
+
+INSERT INTO test_table_2 VALUES 
+(1, 1),
+(2, 2);
+
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE test_table ADD CONSTRAINT fk_test FOREIGN KEY (id) REFERENCES test_table_2(id);
+
+SET @@global.sql_mode = 'NO_ZERO_DATE,STRICT_ALL_TABLES';
+SHOW VARIABLES LIKE 'sql_mode';
+
+ANALYZE TABLE test_table;
+
+SELECT 
+    id,
+    name,
+    JSON_EXTRACT(profile, '$.email') AS email
+FROM test_table
+WHERE status = 'active' AND age > 25
+ORDER BY name DESC
+LIMIT 10;
+
+CREATE VIEW test_view AS 
+SELECT 
+    t1.id,
+    t1.name,
+    t2.value
+FROM test_table t1
+JOIN test_table_2 t2 ON t1.id = t2.id;
+
+SET NAMES 'utf8mb4';
+
+SHOW CREATE TABLE test_table;
+SHOW CREATE VIEW test_view;
+
+CREATE EVENT test_event
+ON SCHEDULE AT CURRENT_TIMESTAMP + INTERVAL 1 HOUR
+DO 
+    INSERT INTO test_table (name, age) VALUES ('Event Trigger', 30);
+
+CREATE TRIGGER test_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+SET NEW.last_login = CURRENT_TIMESTAMP;
+
+SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'test_table';
+
+FLUSH TABLES test_table;

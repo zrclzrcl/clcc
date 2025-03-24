@@ -1,0 +1,73 @@
+SET NAMES utf8;
+SET SESSION sql_mode = 'ANSI';
+
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    value DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    t1_id INT,
+    data TEXT,
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+INSERT INTO t1 VALUES 
+(1, 'Item 1', 100.50, '2023-01-01 00:00:00', 'active'),
+(2, 'Item 2', NULL, '2023-01-02 00:00:00', 'inactive'),
+(3, 'Item 3', 75.25, NULL, 'active');
+
+INSERT INTO t2 VALUES 
+(1, 1, 'Sample data for Item 1'),
+(2, 2, 'More data for Item 2'),
+(3, NULL, 'Orphaned record');
+
+CREATE INDEX idx_t1_name ON t1(name);
+
+DELIMITER //
+CREATE FUNCTION get_full_info(t1_id INT) RETURNS TEXT
+SQL SECURITY INVOKER
+DETERMINISTIC
+BEGIN
+    DECLARE name VARCHAR(255);
+    DECLARE value DECIMAL(10, 2);
+    SELECT name, value INTO name, value FROM t1 WHERE id = t1_id;
+    RETURN CONCAT('Name: ', name, '; Value: ', IFNULL(value, 'N/A'));
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER after_insert_t2 AFTER INSERT ON t2
+FOR EACH ROW
+BEGIN
+    INSERT INTO t1 (name, value, status) 
+    VALUES ('New from trigger', 0.00, 'active');
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER before_update_t1 BEFORE UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = CURRENT_TIMESTAMP;
+END//
+DELIMITER ;
+
+CREATE VIEW v AS SELECT id, name, value FROM t1 WHERE status = 'active';
+
+ANALYZE TABLE t1;
+
+SELECT t1.id, t1.name, t2.data 
+FROM t1 
+LEFT JOIN t2 ON t1.id = t2.t1_id 
+WHERE t2.data IS NOT NULL 
+ORDER BY t1.value DESC 
+LIMIT 5;
+
+TRUNCATE TABLE t2;
+
+SELECT * FROM information_schema.tables WHERE table_name = 't1';

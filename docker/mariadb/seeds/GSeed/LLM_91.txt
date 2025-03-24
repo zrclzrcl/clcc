@@ -1,0 +1,57 @@
+SET optimizer_switch='index_merge=on,block_size=4096';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    data JSON DEFAULT '{"key": "value"}',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO t1 (name, data) VALUES 
+('Test 1', '{"test": true, "nested": {"a": 1}}'),
+('Test 2', '{"test": false}');
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2),
+    UNIQUE KEY unique_value (value)
+);
+
+INSERT INTO t2 (t1_id, value) VALUES 
+(1, 100.50),
+(2, 200.75);
+
+SELECT 
+    t1.id AS t1_id,
+    t1.name,
+    JSON_EXTRACT(t1.data, '$.nested.a') AS nested_value,
+    t2.value
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id
+WHERE t2.value > 100
+ORDER BY t1.id DESC;
+
+CREATE TRIGGER tr_t1_after_insert AFTER INSERT ON t1 
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, value) VALUES (NEW.id, 0.0);
+END;
+
+DELIMITER $$
+
+CREATE PROCEDURE proc_test(IN p_id INT)
+BEGIN
+    DECLARE v_name VARCHAR(100);
+    
+    SELECT name INTO v_name FROM t1 WHERE id = p_id;
+    
+    IF v_name IS NOT NULL THEN
+        UPDATE t2 SET value = value + 100.50 WHERE t1_id = p_id;
+    END IF;
+END$$
+
+DELIMITER ;
+
+ALTER TABLE t2 ADD CONSTRAINT fk_t2_t1 FOREIGN KEY (t1_id) REFERENCES t1(id);

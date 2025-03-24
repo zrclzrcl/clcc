@@ -1,0 +1,41 @@
+SET SESSION storage_engine = 'INNODB';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_name (name)
+);
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    value DECIMAL(10, 2) NOT NULL,
+    description TEXT
+) ENGINE = Aria;
+INSERT INTO t1 VALUES 
+    (NULL, 'Alice', 30, NOW()),
+    (NULL, 'Bob', 25, NOW());
+INSERT INTO t2 VALUES 
+    (1, 100.5, 'First entry'),
+    (2, 200.75, 'Second entry');
+SET @var1 = 'test';
+PREPARE stmt FROM 'SELECT name FROM t1 WHERE id = ?';
+EXECUTE stmt USING @var1;
+DEALLOCATE PREPARE stmt;
+DELIMITER $$
+CREATE TRIGGER trg_after_insert 
+AFTER INSERT ON t1 
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (id, value) VALUES (NEW.id, 100.0);
+END$$
+DELIMITER ;
+ANALYZE TABLE t1, t2;
+ALTER TABLE t1 ADD COLUMN gender CHAR(1), DROP INDEX idx_name;
+UPDATE t1 SET gender = 'F' WHERE name = 'Alice';
+DELETE FROM t2 WHERE id NOT IN (SELECT id FROM t1);
+SET GLOBAL max_connections = 500;
+CREATE EVENT ev_monthly 
+ON SCHEDULE EVERY 1 MONTH
+DO
+    DELETE FROM t2 WHERE created_at < DATE_SUB(NOW(), INTERVAL 3 MONTH);
+SET GLOBAL event_scheduler = ON;

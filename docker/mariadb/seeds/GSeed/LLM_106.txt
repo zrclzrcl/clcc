@@ -1,0 +1,98 @@
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    metadata JSON,
+    price DECIMAL(10, 2),
+    description TEXT,
+    UNIQUE KEY unique_name (name)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    post_id INT NOT NULL,
+    content MEDIUMTEXT,
+    likes INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES t1(id),
+    FOREIGN KEY (post_id) REFERENCES t3(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content LONGTEXT,
+    views BIGINT DEFAULT 0,
+    created_at DATETIME,
+    updated_at TIMESTAMP NULL DEFAULT NULL
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED;
+
+INSERT INTO t1 VALUES 
+(1, 'Test User', '2024-01-01 00:00:00', '2024-01-01 00:00:00', 'active', '{"role": "admin"}', 100.5, 'This is a test user.'),
+(2, 'Another User', '2024-01-02 00:00:00', NULL, 'inactive', '{"role": "user"}', NULL, 'Another test user.');
+
+INSERT INTO t3 VALUES 
+(1, 'Test Post', 'This is a test post content.', 100, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
+(2, 'Another Post', 'Another test post content.', 50, '2024-01-02 00:00:00', NULL);
+
+INSERT INTO t2 VALUES 
+(1, 1, 1, 'Test comment', 5, '2024-01-01 00:00:01'),
+(2, 2, 1, 'Another comment', 3, '2024-01-01 00:00:02');
+
+PREPARE my_stmt FROM 
+"SELECT t1.name, t3.title, COUNT(t2.id) AS total_comments
+FROM t1
+JOIN t2 ON t1.id = t2.user_id
+JOIN t3 ON t2.post_id = t3.id
+WHERE t1.status = ? AND t3.views > ?
+GROUP BY t1.id, t3.id
+HAVING COUNT(t2.id) > ?
+ORDER BY total_comments DESC";
+
+EXECUTE my_stmt USING 'active', 50, 2;
+
+CREATE PROCEDURE get_active_users()
+BEGIN
+    SELECT * FROM t1 WHERE status = 'active';
+END;
+
+DELIMITER //
+CREATE FUNCTION calculate_total_likes(post_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE total INT;
+    SELECT SUM(likes) INTO total FROM t2 WHERE post_id = post_id;
+    RETURN total;
+END//
+DELIMITER ;
+
+CREATE TRIGGER after_post_update
+AFTER UPDATE ON t3
+FOR EACH ROW
+BEGIN
+    IF NEW.updated_at IS NULL THEN
+        SET NEW.updated_at = CURRENT_TIMESTAMP();
+    END IF;
+END;
+
+CREATE VIEW v1 AS
+SELECT t1.name, t3.title, t2.content
+FROM t1
+JOIN t2 ON t1.id = t2.user_id
+JOIN t3 ON t2.post_id = t3.id
+WHERE t1.status = 'active';
+
+ALTER TABLE t3 ADD COLUMN full_text_search TEXT,
+ADD FULLTEXT INDEX idx_full_text (full_text_search);
+
+ALTER TABLE t2 ADD CONSTRAINT chk_likes CHECK (likes >= 0);
+
+ANALYZE TABLE t1, t2, t3;
+
+CHECKSUM TABLE t1, t2, t3;

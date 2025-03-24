@@ -1,0 +1,67 @@
+-- Create a test table with various data types
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    age TINYINT UNSIGNED,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN,
+    notes TEXT,
+    metadata JSON,
+    UNIQUE INDEX name_unique (name),
+    ROW_FORMAT=DYNAMIC
+);
+
+-- Insert sample data
+INSERT INTO test_table (name, age, salary, hire_date, is_active, notes)
+VALUES 
+('Alice', 30, 50000.00, '2024-01-01', TRUE, 'Senior Developer'),
+('Bob', 25, 45000.00, '2024-01-15', FALSE, 'Junior Engineer'),
+('Charlie', 35, 60000.00, '2024-02-01', TRUE, 'Team Lead');
+
+-- Create a stored procedure with conditional logic
+DELIMITER //
+CREATE PROCEDURE test_procedure(IN p_id INT)
+BEGIN
+    DECLARE v_name VARCHAR(100);
+    
+    SELECT name INTO v_name FROM test_table WHERE id = p_id;
+    
+    IF NOT FOUND THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Record not found';
+    END IF;
+    
+    SELECT CONCAT('Employee: ', v_name) AS result;
+END//
+DELIMITER ;
+
+-- Create a view for complex queries
+CREATE VIEW test_view AS
+SELECT 
+    id,
+    name,
+    salary * 1.1 AS salary_with_bonus,
+    hire_date,
+    CASE 
+        WHEN age < 30 THEN 'Young'
+        ELSE 'Senior'
+    END AS age_group
+FROM test_table;
+
+-- Create a trigger for AFTER INSERT events
+DELIMITER //
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (action, timestamp, user)
+    VALUES ('INSERT', NOW(), USER());
+END//
+DELIMITER ;
+
+-- Use MariaDB-specific features
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+SET NAMES utf8mb4;
+
+-- Clean up temporary objects if needed
+DROP TEMPORARY TABLE IF EXISTS temp_table;

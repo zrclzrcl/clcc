@@ -1,0 +1,50 @@
+-- Set optimizer settings
+SET optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,pre Materialize=on';
+
+-- Create table t1 with various data types and indexes
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT DEFAULT 0,
+    birth_date DATE,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table t2 with a foreign key constraint and partitioning
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(50),
+    INDEX idx_t1_id (t1_id),
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+) ENGINE=InnoDB;
+
+-- Insert sample data into t1
+INSERT INTO t1 (name, age, birth_date, status, description)
+VALUES
+('Alice', 30, '1993-05-20', 'active', 'Software Engineer'),
+('Bob', 25, '1998-11-15', 'inactive', NULL),
+('Charlie', 35, '1988-07-10', 'active', 'Project Manager');
+
+-- Insert sample data into t2
+INSERT INTO t2 (t1_id, value, category)
+VALUES
+(1, 100.50, 'salary'),
+(1, 45.75, 'bonus'),
+(2, 98.20, 'salary');
+
+-- Update records in t1 using string functions and calculations
+UPDATE t1 SET description = CONCAT('Senior ', description) WHERE status = 'active';
+
+-- Delete specific records from t2
+DELETE FROM t2 WHERE category = 'bonus' AND value > 40;
+
+-- Alter table t1 to add a new column and index
+ALTER TABLE t1 ADD COLUMN email VARCHAR(100);
+ALTER TABLE t1 ADD INDEX idx_email (email);
+
+-- Analyze tables for optimization
+ANALYZE TABLE t1, t2;

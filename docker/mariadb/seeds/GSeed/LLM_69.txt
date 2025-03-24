@@ -1,0 +1,83 @@
+-- Create tables with different storage engines and constraints
+CREATE TABLE test_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  value DECIMAL(10,2) DEFAULT 0.00,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE INDEX idx_name (name),
+  ENGINE = InnoDB
+);
+
+CREATE TABLE test_table_p (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  amount INT NOT NULL,
+  year YEAR NOT NULL
+)
+PARTITION BY RANGE (year) (
+  PARTITION p0 VALUES LESS THAN (2015),
+  PARTITION p1 VALUES LESS THAN (2020),
+  PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Create a table with JSON support and foreign keys
+CREATE TABLE test_json (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  data JSON CHECK (JSON_VALID(data)),
+  metadata JSON DEFAULT '{}'
+);
+
+-- Create an index on JSON field
+ALTER TABLE test_json ADD INDEX idx_data USING BTREE (data->>'$.type');
+
+-- Insert initial data with edge cases
+INSERT INTO test_table VALUES 
+  (NULL, 'test1', NULL, NULL),
+  (NULL, 'test2', 100.5, NOW()),
+  (NULL, '', 0, '2023-01-01 00:00:00');
+
+-- Insert data with JSON values
+INSERT INTO test_json VALUES 
+  (NULL, '{"type": "user", "name": "Alice"}', '{"meta": true}'),
+  (NULL, '{"type": "post", "title": "Test Post"}', '{"meta": false}');
+
+-- Create a trigger to test DML operations
+DELIMITER $$
+
+CREATE TRIGGER trg_test AFTER INSERT ON test_table 
+FOR EACH ROW 
+BEGIN
+  INSERT INTO test_log VALUES (NEW.id, 'insert', NOW());
+END$$
+
+DELIMITER ;
+
+-- Test UNION and different query types
+SELECT id, name FROM test_table 
+UNION 
+SELECT id, data->>'$.name' AS name FROM test_json;
+
+-- Test stored procedure with parameters
+DELIMITER $$
+
+CREATE PROCEDURE sp_test(IN p_id INT, INOUT p_value DECIMAL(10,2))
+BEGIN
+  SELECT value INTO p_value FROM test_table WHERE id = p_id;
+END$$
+
+DELIMITER ;
+
+-- Test ALTER operations
+ALTER TABLE test_table ADD COLUMN status ENUM('active', 'inactive') DEFAULT 'active';
+ALTER TABLE test_json DISABLE KEYS;
+
+-- Test foreign key constraints
+CREATE TABLE dependent_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  test_id INT,
+  FOREIGN KEY (test_id) REFERENCES test_table(id)
+);
+
+-- Test index creation and modification
+CREATE INDEX idx_value ON test_table(value);
+ALTER TABLE test_table DROP INDEX idx_name;
+ADD INDEX idx_combined (name, value);

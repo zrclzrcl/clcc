@@ -1,0 +1,103 @@
+-- Create a database for testing
+CREATE DATABASE IF NOT EXISTS test_db;
+USE test_db;
+
+-- Create tables with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data JSON
+);
+
+-- Create a table with full-text search capabilities
+CREATE TABLE articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    FULLTEXT INDEX ft_content (content)
+);
+
+-- Create a recursive CTE example
+WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 10
+)
+SELECT * FROM numbers;
+
+-- Create a stored procedure with parameters and conditional logic
+DELIMITER $$
+CREATE PROCEDURE insert_article(
+    IN p_title VARCHAR(255),
+    IN p_content TEXT,
+    OUT p_id INT
+)
+BEGIN
+    DECLARE exit_handler INT DEFAULT 0;
+    
+    INSERT INTO articles (title, content) VALUES (p_title, p_content);
+    SET p_id = LAST_INSERT_ID();
+    
+    SELECT ROW_COUNT() INTO exit_handler;
+    IF exit_handler = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insert failed';
+    END IF;
+END$$
+DELIMITER ;
+
+-- Create a trigger for auditing table changes
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    action VARCHAR(255),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER $$
+CREATE TRIGGER after_article_insert AFTER INSERT ON articles
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, action) VALUES ('articles', 'insert');
+END$$
+DELIMITER ;
+
+-- Test the stored procedure and trigger
+CALL insert_article('Test Article 1', 'This is a test article.', @article_id);
+SELECT @article_id;
+
+-- Create indexes for testing query performance
+CREATE INDEX idx_name ON test_table(name);
+CREATE FULLTEXT INDEX idx_title_content ON articles(title, content);
+
+-- Test full-text search functionality
+SELECT * FROM articles WHERE MATCH (title, content) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test JSON data type and operations
+INSERT INTO test_table (name, data) VALUES ('Test JSON', '{"key": "value", "numbers": [1, 2, 3]}');
+SELECT data->>'$.key' AS extracted_value FROM test_table WHERE id = 1;
+
+-- Test MariaDB-specific features like binary log group commit
+SET GLOBAL binlog_group_commit_sync_delay = 10;
+SHOW VARIABLES LIKE 'binlog_group_commit%';
+
+-- Test transaction isolation levels
+SET GLOBAL transaction_isolation = 'REPEATABLE READ';
+START TRANSACTION;
+    SELECT * FROM test_table FOR UPDATE;
+COMMIT;
+
+-- Create a user and grant privileges for testing access control
+CREATE USER IF NOT EXISTS 'test_user'@'localhost' IDENTIFIED BY 'test_password';
+GRANT ALL PRIVILEGES ON test_db.* TO 'test_user'@'localhost';
+
+-- Install a plugin (e.g., audit plugin)
+INSTALL PLUGIN audit_log SONAME 'audit_log.so';
+SHOW PLUGINS;
+
+-- Clean up
+DROP DATABASE IF EXISTS test_db;

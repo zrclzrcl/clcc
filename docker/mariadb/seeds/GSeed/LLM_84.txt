@@ -1,0 +1,51 @@
+SET optimizer_switch='mrr=on,block_hash=off';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    score DECIMAL(5,2) DEFAULT 0.00,
+    data JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    description TEXT,
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+INSERT INTO t1 (name, score, data) VALUES
+('Alice', 95.5, '{"status": "active", "role": "admin"}'),
+('Bob', 87.2, '{"status": "inactive", "role": "user"}');
+
+CREATE INDEX idx_name ON t1(name);
+
+SET @var = (SELECT score FROM t1 WHERE name = 'Alice');
+SELECT CONCAT('Score: ', @var) AS result;
+
+DELIMITER //
+
+CREATE PROCEDURE update_score(IN p_id INT, IN p_new_score DECIMAL(5,2))
+BEGIN
+    UPDATE t1 SET score = p_new_score WHERE id = p_id;
+END//
+
+DELIMITER ;
+
+CALL update_score(1, 96.0);
+
+CREATE TRIGGER after_insert_t1 AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, description) VALUES (NEW.id, CONCAT('New entry by ', NEW.name));
+END;
+
+ANALYZE TABLE t1;
+CHECK TABLE t1;
+REPAIR TABLE t1;
+
+SELECT t1.name, t2.description FROM t1 JOIN t2 ON t1.id = t2.t1_id WHERE t1.score > 90;
+
+SELECT COUNT(*) AS total_active FROM t1 WHERE JSON_EXTRACT(data, '$.status') = 'active';
+
+DELETE FROM t1 WHERE score < 85;

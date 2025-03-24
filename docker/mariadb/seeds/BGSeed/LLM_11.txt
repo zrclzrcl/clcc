@@ -1,0 +1,208 @@
+-- Initial seed for MariaDB fuzz testing
+-- This seed includes various SQL statements to test different functionalities, edge cases, and MariaDB-specific features.
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL
+);
+
+INSERT INTO t1 (name, status)
+VALUES ('Test User 1', 'active'),
+       ('Test User 2', 'inactive'),
+       (NULL, 'active'), -- Testing NULL values for edge cases
+       ('Test User 4', 'active');
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    value DECIMAL(10, 2) NOT NULL,
+    description TEXT,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO t2 (id, value, description)
+VALUES (1, 100.50, 'Sample description for record 1'),
+       (2, 200.75, 'Another sample description'),
+       (3, NULL, 'Testing NULL values'); -- Edge case testing
+
+-- Create a table with unique constraints and indexes
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    age INT CHECK (age >= 0 AND age <= 150)
+);
+
+INSERT INTO t3 (id, email, age)
+VALUES (1, 'test@example.com', 30),
+       (2, 'another@example.com', 45),
+       (3, 'duplicate@example.com', 25); -- Testing unique constraint
+
+-- MariaDB-specific features: Stored Procedures and Triggers
+DELIMITER $$
+
+CREATE PROCEDURE sp_test()
+BEGIN
+    INSERT INTO t1 (name, status) VALUES ('Procedure Test', 'active');
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE TRIGGER tr_before_update_t1
+BEFORE UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = NOW();
+END$$
+
+DELIMITER ;
+
+-- Testing complex queries and edge cases
+SELECT 
+    t1.id, 
+    t1.name, 
+    t2.value 
+FROM 
+    t1 
+JOIN 
+    t2 
+ON 
+    t1.id = t2.id
+WHERE 
+    t1.status = 'active' AND t2.value > 100;
+
+-- Testing edge cases with NULL values and aggregates
+SELECT 
+    COUNT(*) as total,
+    SUM(value) as total_value
+FROM 
+    t2
+WHERE 
+    description IS NOT NULL;
+
+-- MariaDB-specific: Event Scheduler
+SET GLOBAL event_scheduler = ON;
+
+CREATE EVENT e_test
+ON SCHEDULE EVERY 1 MINUTE
+DO
+    INSERT INTO t3 (id, email, age)
+    VALUES (4, 'event@example.com', 35);
+
+-- Testing ALTER TABLE for schema changes
+ALTER TABLE t1 ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- Testing edge cases with large values and data types
+INSERT INTO t1 (name, status) 
+VALUES ('A very long name that exceeds character limits', 'active');
+
+-- MariaDB-specific: Using system variables
+SET GLOBAL max_connections = 500;
+SHOW VARIABLES LIKE 'max_connections';
+
+-- Cleanup statements for mutation testing
+DROP TABLE IF EXISTS t1, t2, t3;
+DROP PROCEDURE IF EXISTS sp_test;
+DROP TRIGGER IF EXISTS tr_before_update_t1;
+DROP EVENT IF EXISTS e_test;
+
+-- Testing unique MariaDB features: Partitioned tables
+CREATE TABLE t4 (
+    id INT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    transaction_date DATE
+) PARTITION BY RANGE (YEAR(transaction_date)) (
+    PARTITION p0 VALUES LESS THAN (2023),
+    PARTITION p1 VALUES LESS THAN (2024),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO t4 (id, amount, transaction_date)
+VALUES (1, 100.50, '2022-01-01'),
+       (2, 200.75, '2023-06-15'),
+       (3, 300.00, '2024-01-01');
+
+-- Testing edge cases with large data
+INSERT INTO t4 (id, amount, transaction_date)
+SELECT 
+    id + 1000,
+    amount * 1000,
+    DATE_SUB(transaction_date, INTERVAL FLOOR(RAND() * 365) DAY)
+FROM 
+    t4;
+
+-- MariaDB-specific: Using JSON data type
+CREATE TABLE t5 (
+    id INT PRIMARY KEY,
+    metadata JSON
+);
+
+INSERT INTO t5 (id, metadata)
+VALUES (1, '{"name": "Test", "age": 30}'),
+       (2, '{"status": "active"}');
+
+SELECT 
+    metadata->>'$.name' as name,
+    metadata->>'$.age' as age
+FROM 
+    t5;
+
+-- Testing edge cases with large JSON data
+INSERT INTO t5 (id, metadata)
+VALUES (3, JSON_OBJECT(
+    'large_array', JSON_ARRAY(1, 2, 3, 4, 5),
+    'nested_object', JSON_OBJECT(
+        'a', 1,
+        'b', JSON_OBJECT('c', 2)
+    )
+));
+
+-- MariaDB-specific: Using REGEXP and full-text search
+CREATE TABLE t6 (
+    id INT PRIMARY KEY,
+    content TEXT
+);
+
+INSERT INTO t6 (id, content)
+VALUES (1, 'This is a test sentence.'),
+       (2, 'Another sample text for testing.');
+
+ALTER TABLE t6 ADD FULLTEXT INDEX idx_content (content);
+
+SELECT 
+    * 
+FROM 
+    t6 
+WHERE 
+    MATCH(content) AGAINST('test*');
+
+-- Testing edge cases with regular expressions
+SELECT 
+    content REGEXP '^This.*$' as matches
+FROM 
+    t6;
+
+-- MariaDB-specific: Using spatial data types
+CREATE TABLE t7 (
+    id INT PRIMARY KEY,
+    location POINT
+);
+
+INSERT INTO t7 (id, location)
+VALUES (1, ST_GeomFromText('POINT(10 20)')),
+       (2, ST_GeomFromText('POINT(30 40)'));
+
+SELECT 
+    ST_AsText(location) as location_text
+FROM 
+    t7;
+
+-- Testing edge cases with large spatial data
+INSERT INTO t7 (id, location)
+VALUES (3, ST_GeomFromText('LINESTRING(10 20, 30 40)')),
+       (4, ST_GeomFromText('POLYGON((0 0, 10 0, 10 10, 0 10, 0 0))'));
+
+-- Cleanup
+DROP TABLE IF EXISTS t4, t5, t6, t7;

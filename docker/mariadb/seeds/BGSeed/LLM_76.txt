@@ -1,0 +1,110 @@
+-- Create a table with various column types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    data JSON,
+    UNIQUE KEY unique_name (name),
+    CHECK (price >= 0)
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED;
+
+-- Create a table with foreign key constraints
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    total DECIMAL(10, 2) DEFAULT 0.00,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES test_table(id)
+);
+
+-- Insert sample data
+INSERT INTO test_table (name, description, price, status, data)
+VALUES ('Product 1', 'Sample product description.', 99.99, 'active', '{"metadata": {"category": "electronics"}}'),
+       ('Product 2', 'Another sample product.', 149.99, 'inactive', '{"metadata": {"category": "clothing"}}');
+
+-- Insert with ON DUPLICATE KEY UPDATE
+INSERT INTO test_table (id, name, price)
+VALUES (1, 'Updated Product 1', 89.99)
+ON DUPLICATE KEY UPDATE price = VALUES(price), updated_at = CURRENT_TIMESTAMP;
+
+-- Update statement
+UPDATE test_table SET status = 'active' WHERE id = 2;
+
+-- Delete statement
+DELETE FROM test_table WHERE name LIKE 'Product%';
+
+-- Select with join and subquery
+SELECT t.name, o.total 
+FROM test_table t
+JOIN orders o ON t.id = o.customer_id
+WHERE o.order_date > (SELECT created_at FROM test_table WHERE id = 1);
+
+-- Union of two selects
+(SELECT id, name FROM test_table ORDER BY name DESC LIMIT 5)
+UNION
+(SELECT order_id, customer_id FROM orders ORDER BY order_id ASC LIMIT 5);
+
+-- Create a stored procedure
+DELIMITER $$
+CREATE PROCEDURE get_active_products()
+BEGIN
+    SELECT * FROM test_table WHERE status = 'active';
+END$$
+DELIMITER ;
+
+-- Call the stored procedure
+CALL get_active_products();
+
+-- Create a trigger
+DELIMITER $$
+CREATE TRIGGER before_update_test_table
+BEFORE UPDATE ON test_table
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = CURRENT_TIMESTAMP;
+END$$
+DELIMITER ;
+
+-- Create an index
+CREATE INDEX idx_name_status ON test_table(name, status);
+
+-- Complex query with JSON operations
+SELECT 
+    id,
+    name,
+    JSON_EXTRACT(data, '$.metadata.category') AS category,
+    price + (price * 0.1) AS price_with_tax
+FROM test_table
+WHERE status = 'active' AND data LIKE '%"category": "electronics"%';
+
+-- Transaction example
+START TRANSACTION;
+INSERT INTO test_table (name, description, price) VALUES ('Product 3', 'Transaction test product.', 49.99);
+SAVEPOINT my_savepoint;
+UPDATE test_table SET price = 59.99 WHERE id = LAST_INSERT_ID();
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+-- Create a view
+CREATE VIEW product_summary AS
+SELECT 
+    name,
+    price,
+    status,
+    created_at
+FROM test_table
+WHERE status = 'active';
+
+-- Select from the view
+SELECT * FROM product_summary;
+
+-- Drop statements (commented out for safety)
+-- DROP TABLE orders, test_table;
+-- DROP PROCEDURE get_active_products;
+-- DROP TRIGGER before_update_test_table;
+-- DROP INDEX idx_name_status;
+-- DROP VIEW product_summary;

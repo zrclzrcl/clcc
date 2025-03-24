@@ -1,0 +1,59 @@
+SET @previous_binlog_format = @@GLOBAL.binlog_format;
+SET GLOBAL binlog_format = 'STATEMENT';
+SET @default_storage_engine = (SELECT @@global.default_storage_engine);
+SET GLOBAL default_storage_engine = 'INNODB';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    data JSON,
+    FULLTEXT INDEX ft_name (name)
+) ENGINE=INNODB ROW_FORMAT=COMPRESSED;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    post_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES t1(id),
+    FOREIGN KEY (post_id) REFERENCES t3(id)
+);
+
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    views INT DEFAULT 0
+) ENGINE=INNODB;
+
+DELIMITER $$
+
+CREATE TRIGGER trig_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t3 (title, content) VALUES (NEW.name, 'New entry');
+END$$
+
+CREATE PROCEDURE proc_test()
+BEGIN
+    DECLARE var1 INT DEFAULT 0;
+    SET var1 = (SELECT COUNT(*) FROM t1);
+    IF var1 > 0 THEN
+        INSERT INTO t2 (user_id, post_id) VALUES (var1, var1);
+    END IF;
+END$$
+
+DELIMITER ;
+
+CREATE VIEW v1 AS SELECT t1.name, t3.title FROM t1 JOIN t3 ON t1.id = t3.id;
+
+INSERT INTO t1 (name) VALUES ('Test User');
+INSERT INTO t3 (title, content) VALUES ('Sample Post', 'This is a sample post.');
+CALL proc_test();
+
+SELECT COUNT(*) OVER () AS total_rows FROM t1;
+SELECT RANK() OVER (ORDER BY id) AS rank FROM t2;
+
+SET GLOBAL binlog_format = @previous_binlog_format;
+SET GLOBAL default_storage_engine = @default_storage_engine;

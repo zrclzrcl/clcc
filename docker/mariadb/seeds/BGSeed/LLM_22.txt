@@ -1,0 +1,58 @@
+SET optimizer_switch='index_merge=on, mrr=on';
+SET @save_read_rnd_buffer_size = @@read_rnd_buffer_size;
+SET read_rnd_buffer_size = 1024;
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT NOW(),
+    status ENUM('active', 'inactive') NOT NULL,
+    description TEXT
+);
+
+DELIMITER $$
+
+CREATE TRIGGER before_insert_t1
+BEFORE INSERT ON t1
+FOR EACH ROW
+BEGIN
+    IF NEW.status IS NULL THEN
+        SET NEW.status = 'active';
+    END IF;
+END$$
+
+CREATE FUNCTION get_status_description(status ENUM('active', 'inactive'))
+RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    IF status = 'active' THEN
+        RETURN 'Account is active.';
+    ELSE
+        RETURN 'Account is inactive.';
+    END IF;
+END$$
+
+DELIMITER ;
+
+CREATE VIEW v_t1 AS
+SELECT id, name, age, created_at, status, get_status_description(status) AS status_desc
+FROM t1;
+
+INSERT INTO t1 (name, age, status)
+VALUES ('Alice', 30, 'active'),
+       ('Bob', 25, 'inactive'),
+       ('Charlie', NULL, 'active');
+
+UPDATE t1 SET description = 'Senior user' WHERE id IN (SELECT id FROM t1 WHERE age > 25);
+
+DELETE FROM t1 WHERE id NOT IN (SELECT id FROM v_t1 WHERE status = 'active');
+
+ANALYZE TABLE t1;
+OPTIMIZE TABLE t1;
+
+BEGIN;
+    UPDATE t1 SET status = 'inactive' WHERE name = 'Alice';
+    COMMIT;
+
+SELECT * FROM t1 JOIN v_t1 ON t1.id = v_t1.id LIMIT 5 OFFSET 2;

@@ -1,0 +1,51 @@
+SET optimizer_switch='index_merge=on,loose_index_scan=off';
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age TINYINT UNSIGNED,
+    balance DECIMAL(10,2),
+    last_login DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX unique_name (name)
+);
+INSERT INTO test_table (name, age, balance) VALUES
+('Alice', 30, 1000.50),
+('Bob', 45, NULL),
+('Charlie', 25, 500.75);
+CREATE TABLE test_table_partitioned (
+    id INT AUTO_INCREMENT,
+    region VARCHAR(20),
+    amount DECIMAL(10,2)
+) PARTITION BY HASH (region) PARTITIONS 4;
+INSERT INTO test_table_partitioned VALUES
+(1, 'North', 100.00),
+(2, 'South', 200.00),
+(3, 'East', 300.00);
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    WHILE var < 5 DO
+        INSERT INTO test_table (name, age) VALUES (CONCAT('User', var), var * 10);
+        SET var = var + 1;
+    END WHILE;
+END;
+DELIMITER ;;
+CREATE TRIGGER trig_test BEFORE INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    IF NEW.age > 150 THEN
+        SET NEW.age = 150;
+    END IF;
+END;;
+DELIMITER ;
+ALTER TABLE test_table ADD COLUMN notes TEXT, ADD INDEX idx_notes (notes(255));
+ANALYZE TABLE test_table, test_table_partitioned;
+START TRANSACTION;
+INSERT INTO test_table VALUES (NULL, 'TestUser', 30, NULL, NOW());
+SAVEPOINT my_savepoint;
+UPDATE test_table SET balance = 1000.00 WHERE name = 'TestUser';
+ROLLBACK TO my_savepoint;
+COMMIT;
+CREATE EVENT my_event ON SCHEDULE EVERY 1 HOUR DO
+    INSERT INTO test_table (name, age) VALUES ('EventUser', RAND() * 100);
+SET GLOBAL max_connections = 500;
+SELECT /*+ USE_INDEX(test_table, PRIMARY) */ * FROM test_table WHERE id = UUID_TO_BIN(UUID());

@@ -1,0 +1,37 @@
+CREATE TEMPORARY TABLE test_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  value DECIMAL(10, 2),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status BOOLEAN,
+  data BLOB
+);
+
+INSERT INTO test_table (name, value, status)
+VALUES
+  ('Test 1', 100.50, TRUE),
+  ('Test 2', NULL, FALSE),
+  ('Test 3', 200.75, TRUE),
+  ('Test 4', -50.00, FALSE);
+
+SELECT 
+  t1.id,
+  t1.name,
+  t1.value,
+  t2.value AS value2,
+  SUM(t1.value) OVER (ORDER BY t1.id) AS running_total,
+  COUNT(*) OVER () AS total_rows,
+  CASE 
+    WHEN t1.status THEN 'Active'
+    ELSE 'Inactive'
+  END AS status_label,
+  DATE(t1.created_at) AS date_only
+FROM test_table t1
+JOIN test_table t2 ON t1.id = t2.id
+WHERE t1.value > (
+  SELECT AVG(value) FROM test_table WHERE status = TRUE
+)
+GROUP BY t1.id, t1.name, t1.value, t1.status, t1.created_at
+HAVING COUNT(*) >= 2
+ORDER BY t1.id DESC
+LIMIT 10;

@@ -1,0 +1,28 @@
+SET sql_mode = 'STRICT_TRANS_TABLES,TRADITIONAL';
+
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    geom GEOMETRY SRID 4326
+);
+
+INSERT INTO test_table (name, geom)
+VALUES
+('Point A', ST_GeomFromText('POINT(10 10)', 4326)),
+('', ST_GeomFromText('POINT(20 20)', 4326)),
+('Null Point', NULL),
+('Line String', ST_GeomFromText('LINESTRING(10 10, 20 20)', 4326));
+
+ALTER TABLE test_table ADD uuid_col CHAR(36) NOT NULL DEFAULT UUID();
+
+INSERT INTO test_table (name, uuid_col, geom)
+VALUES
+('New Point', UUID(), ST_GeomFromText('POINT(30 30)', 4326)),
+('Another Line', UUID(), ST_GeomFromText('LINESTRING(30 30, 40 40)', 4326));
+
+ALTER TABLE test_table ADD UNIQUE INDEX idx_uuid (uuid_col);
+ALTER TABLE test_table ADD SPATIAL INDEX idx_geom (geom);
+
+SHOW CREATE TABLE test_table;
+SHOW INDEXES FROM test_table;

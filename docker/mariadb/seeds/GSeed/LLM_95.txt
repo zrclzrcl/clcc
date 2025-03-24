@@ -1,0 +1,64 @@
+SET optimizer_switch='batched_key_access=on,block_nested_loop=off,mrr_cost_based=off';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL DEFAULT '',
+    created_at DATE NOT NULL,
+    amount DECIMAL(10, 2) DEFAULT 0.00,
+    description TEXT,
+    data BLOB,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    tags SET('tag1', 'tag2', 'tag3'),
+    metadata JSON
+);
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    INDEX idx_t2_t1id (t1_id),
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+ALTER TABLE t1 ADD COLUMN last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE t1 ADD INDEX idx_t1_amount (amount);
+ALTER TABLE t1 ADD CONSTRAINT chk_amount CHECK (amount >= 0);
+CREATE TRIGGER trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW BEGIN INSERT INTO t2 (t1_id, value) VALUES (NEW.id, 0.00); END;
+CREATE VIEW vw_t1 AS SELECT id, name, amount FROM t1 WHERE status = 'active';
+PARTITION TABLE t1 BY RANGE(id);
+INSERT INTO t3 VALUES (1, 'Test'), (2, 'Example');
+INSERT INTO t1 (
+    name,
+    created_at,
+    amount,
+    description,
+    data,
+    status,
+    tags,
+    metadata
+) VALUES (
+    'Sample Name',
+    '2023-01-01',
+    100.50,
+    'This is a sample description.',
+    'binary data',
+    'active',
+    'tag1,tag3',
+    '{"key": "value", "array": [1,2,3]}'
+);
+INSERT INTO t1 (
+    name,
+    created_at,
+    amount,
+    description,
+    status
+) VALUES (
+    'Another Name',
+    '2023-01-02',
+    50.75,
+    NULL,
+    'inactive'
+);
+UPDATE t1 SET amount = 150.00 WHERE id = 1;
+DELETE FROM t1 WHERE id = 2;

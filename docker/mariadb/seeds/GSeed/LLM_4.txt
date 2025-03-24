@@ -1,0 +1,28 @@
+CREATE TABLE test_data (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at DATETIME DEFAULT NOW(),
+    is_active BOOLEAN,
+    data BINARY(255),
+    status ENUM('active', 'inactive', 'pending')
+);
+
+INSERT INTO test_data (name, description, price, is_active, data, status) VALUES
+('', '', 0.00, FALSE, HEX(RAND()), 'active'),
+(NULL, NULL, NULL, NULL, NULL, 'inactive'),
+('Test Name', 'This is a test description.', 100.99, TRUE, ENCODE('test', 'AES', 'password'), 'pending'),
+('', '', 9999999999.99, FALSE, HEX(RAND()), 'active');
+
+SELECT * FROM test_data;
+
+SELECT name, description, price FROM test_data WHERE id > 5 ORDER BY price DESC LIMIT 10;
+
+SELECT SUM(price) AS total_price, COUNT(*) AS row_count FROM test_data GROUP BY status HAVING COUNT(*) > 2;
+
+SELECT id, name, created_at, DATEDIFF(NOW(), created_at) AS days_since_created FROM test_data WHERE is_active = TRUE;
+
+SELECT data, ENCODE(data, 'AES', 'password') AS encrypted_data FROM test_data WHERE data IS NOT NULL;
+
+SELECT *, RANK() OVER (ORDER BY price DESC) AS price_rank FROM test_data;

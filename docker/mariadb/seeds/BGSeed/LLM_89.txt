@@ -1,0 +1,78 @@
+-- Set optimizer parameters to ensure reproducible behavior
+SET optimizer_switch='index_merge=on,batch_key_access=off';
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) UNSIGNED DEFAULT 0.00,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    metadata JSON,
+    UNIQUE INDEX unique_name (name)
+) ENGINE=InnoDB;
+
+-- Insert sample data
+INSERT INTO test_table (name, price, status, metadata)
+VALUES 
+    ('Product 1', 19.99, 'active', '{"category": "electronics"}'),
+    ('Product 2', 29.99, 'inactive', '{"category": "clothing"}');
+
+-- Create a stored procedure with parameters and conditional logic
+DELIMITER $$
+CREATE PROCEDURE calculate_total(
+    IN start_date DATE,
+    IN end_date DATE,
+    OUT total DECIMAL(10, 2)
+)
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE current_price DECIMAL(10, 2);
+    
+    -- Cursor to fetch prices within the date range
+    DECLARE cur CURSOR FOR 
+        SELECT price FROM test_table 
+        WHERE status = 'active' AND metadata->>'$.category' IN ('electronics', 'clothing');
+        
+    -- Handle potential errors
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    OPEN cur;
+    
+    SET total = 0.00;
+    
+    read_loop: LOOP
+        FETCH cur INTO current_price;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        SET total = total + current_price;
+    END LOOP;
+    
+    CLOSE cur;
+END$$
+DELIMITER ;
+
+-- Create a trigger to test event-driven functionality
+CREATE TRIGGER after_insert_test_table
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    -- Log the insertion in another table
+    INSERT INTO log_table (table_name, operation, timestamp)
+    VALUES ('test_table', 'INSERT', NOW());
+END;
+
+-- Test JSON data extraction and manipulation
+CREATE TABLE json_data (
+    id INT PRIMARY KEY,
+    data JSON CHECK (JSON_VALID(data))
+);
+
+INSERT INTO json_data (id, data) 
+VALUES 
+    (1, '{"key": "value", "array": [1, 2, 3]}');
+
+-- Test UNION ALL operation with different result sets
+SELECT name AS product_name, price FROM test_table
+UNION ALL
+SELECT 'Total', SUM(price) FROM test_table;

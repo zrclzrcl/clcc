@@ -1,0 +1,93 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    birth_date DATE,
+    salary DECIMAL(10, 2),
+    status ENUM('active', 'inactive'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_name (name),
+    CHECK (salary >= 0)
+);
+
+-- Insert test data with edge cases
+INSERT INTO test_table (name, birth_date, salary, status) 
+VALUES 
+    ('Alice', '1990-01-01', 50000.50, 'active'),
+    ('Bob', '2000-05-25', NULL, 'inactive'),
+    ('Charlie', '1985-12-31', 75000.00, 'active'),
+    (NULL, '2010-07-15', 60000.75, 'inactive');
+
+-- Create a stored procedure
+DELIMITER $$
+CREATE PROCEDURE get_active_employees()
+BEGIN
+    SELECT name, salary 
+    FROM test_table 
+    WHERE status = 'active';
+END$$
+DELIMITER ;
+
+-- Create an index for faster queries
+CREATE INDEX idx_name_salary ON test_table (name, salary);
+
+-- Partition the table by birth year
+ALTER TABLE test_table PARTITION BY RANGE(YEAR(birth_date)) (
+    PARTITION p0 VALUES LESS THAN (1985),
+    PARTITION p1 VALUES LESS THAN (2000),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Create a trigger for logging updates
+DELIMITER $$
+CREATE TRIGGER update_logger 
+AFTER UPDATE ON test_table 
+FOR EACH ROW 
+BEGIN
+    INSERT INTO log_table (id, action, timestamp)
+    VALUES (OLD.id, 'update', NOW());
+END$$
+DELIMITER ;
+
+-- Insert more complex data with JSON
+INSERT INTO test_table (name, birth_date, salary, status, created_at) 
+VALUES 
+    ('David', '1995-06-20', 80000.00, 'active', '2023-01-01 12:00:00'),
+    ('Eve', '2005-04-10', NULL, 'inactive', '2023-01-02 15:30:00');
+
+-- Test JSON operations
+CREATE TABLE json_test (
+    id INT PRIMARY KEY,
+    data JSON CHECK (JSON_VALID(data))
+);
+
+INSERT INTO json_test VALUES 
+    (1, '{"name": "John", "age": 30}'),
+    (2, '{"name": "Jane", "city": "Paris"}');
+
+-- Test MariaDB-specific functions
+SELECT UUID(), RAND(), NOW() AS current_time;
+
+-- Setup multi-source replication
+CHANGE MASTER TO 
+    MASTER_HOST='master1.example.com',
+    MASTER_USER='repl_user',
+    MASTER_PASSWORD='secret_password',
+    MASTER_LOG_FILE='mysql-bin.000001',
+    MASTER_LOG_POS=123456;
+START SLAVE;
+
+-- Test with complex queries
+SELECT name, 
+       YEAR(birth_date) AS birth_year,
+       salary * 1.1 AS proposed_salary
+FROM test_table
+WHERE status = 'active'
+ORDER BY proposed_salary DESC
+LIMIT 5;
+
+-- Cleanup
+DROP TABLE IF EXISTS test_table;
+DROP TABLE IF EXISTS json_test;
+DROP PROCEDURE IF EXISTS get_active_employees;
+DROP TRIGGER IF EXISTS update_logger;
