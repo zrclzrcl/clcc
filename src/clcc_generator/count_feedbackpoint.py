@@ -35,32 +35,48 @@ class Normalizationer:
         
     
     def __add_one_score(self,point_now):
-        self._score_record = np.append(self._score_record,point_now)
-        if point_now < self._min_score:
-            self._min_score = point_now
-        if point_now > self._max_score:
-            self._max_score = point_now
+        self._score_record = np.append(self._score_record, point_now)
         self._count += 1
-        self._avg = np.mean(self._score_record)
-        self.median = np.median(self._score_record)
-        self._down4_score = np.percentile(self._score_record, 25)
-        self._up4_score = np.percentile(self._score_record, 75)
-        self._down1_score = np.percentile(self._score_record, 10)
-        self._up1_score = np.percentile(self._score_record, 90)
+        if self._score_record.size > 1000:
+            recent_scores = self._score_record[-1000:]
+        else:
+            recent_scores = self._score_record
+        
+        self._score_record = np.append(self._score_record,point_now)
+        self._avg = np.mean(recent_scores)
+        self.median = np.median(recent_scores)
+        self._down4_score = np.percentile(recent_scores, 25)
+        self._up4_score = np.percentile(recent_scores, 75)
+        self._down1_score = np.percentile(recent_scores, 10)
+        self._up1_score = np.percentile(recent_scores, 90)
+        self._min_score = np.min(recent_scores)
+        self._max_score = np.max(recent_scores)
+
+
+        # if point_now < self._min_score:
+        #     self._min_score = point_now
+        # if point_now > self._max_score:
+        #     self._max_score = point_now
+        # self._avg = np.mean(self._score_record)
+        # self.median = np.median(self._score_record)
+        # self._down4_score = np.percentile(self._score_record, 25)
+        # self._up4_score = np.percentile(self._score_record, 75)
+        # self._down1_score = np.percentile(self._score_record, 10)
+        # self._up1_score = np.percentile(self._score_record, 90)
     
-    def get_down_k_tanh(target_point , middle, check_point, k): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的斜率为指定值k 以此确定参数alpha
+    def get_down_k_tanh(self, target_point , middle, check_point, k): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的斜率为指定值k 以此确定参数alpha
         def equation(target):
-            return (target * np.cosh(target * (check_point - middle))^(-2)) - k
-        alpha = fsolve(equation,middle)
+            return (target * np.cosh(target * (check_point - middle))**(-2)) - k
+        alpha = fsolve(equation,0.5)
         alpha_set = alpha[0]
         normal_point = (np.tanh(alpha_set * (target_point - middle)) + 1)/2
         return normal_point
 
 
-    def get_down_y_tanh(target_point , middle, check_point, y): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的值为指定值y
+    def get_down_y_tanh(self, target_point , middle, check_point, y): #给定一个指定的中间点，和一个数值，确保数值对应的tanh函数的值为指定值y
         def equation(target):
             return ((np.tanh(target * (check_point - middle)) + 1) / 2) - y
-        alpha = fsolve(equation,middle)
+        alpha = fsolve(equation,0.5)
         alpha_set = alpha[0]
         normal_point = (np.tanh(alpha_set * (target_point - middle)) + 1)/2
         return normal_point
