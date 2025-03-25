@@ -1,0 +1,99 @@
+-- Create a table with various data types including NULL constraints and indexes
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    score DECIMAL(10, 2) DEFAULT NULL,
+    UNIQUE KEY unique_name (name),
+    INDEX idx_status_score (status, score)
+);
+
+-- Create another table with different data types for testing joins and relationships
+CREATE TABLE related_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    test_id INT NOT NULL,
+    value BLOB,
+    FOREIGN KEY (test_id) REFERENCES test_table(id)
+);
+
+-- Insert sample data into the tables
+INSERT INTO test_table (name, description, status, score) VALUES 
+('Test1', 'This is a test entry.', 'active', 98.7),
+('Test2', NULL, 'inactive', NULL),
+('', '', 'active', 0);
+
+-- Create a stored function to test stored procedures and functions
+DELIMITER $$
+
+CREATE FUNCTION calculate_score(test_id INT) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE avg_score DECIMAL(10, 2);
+    SELECT AVG(score) INTO avg_score FROM test_table WHERE id = test_id;
+    RETURN COALESCE(avg_score, 0.00);
+END$$
+
+DELIMITER ;
+
+-- Create a view to test query optimization and result sets
+CREATE VIEW score_summary AS
+SELECT 
+    t.name,
+    t.status,
+    rt.value,
+    calculate_score(t.id) AS calculated_score
+FROM 
+    test_table t
+LEFT JOIN 
+    related_table rt ON t.id = rt.test_id;
+
+-- Create triggers for testing database events
+DELIMITER $$
+
+CREATE TRIGGER before_insert_test_table BEFORE INSERT ON test_table FOR EACH ROW
+BEGIN
+    IF NEW.name = '' THEN
+        SET NEW.name = NULL;
+    END IF;
+END$$
+
+CREATE TRIGGER after_update_test_table AFTER UPDATE ON test_table FOR EACH ROW
+BEGIN
+    IF OLD.status != NEW.status THEN
+        INSERT INTO related_table (test_id, value) VALUES (OLD.id, CONCAT('Status changed from ', OLD.status, ' to ', NEW.status));
+    END IF;
+END$$
+
+CREATE TRIGGER after_delete_test_table AFTER DELETE ON test_table FOR EACH ROW
+BEGIN
+    DELETE FROM related_table WHERE test_id = OLD.id;
+END$$
+
+DELIMITER ;
+
+-- Insert additional data with edge cases
+INSERT INTO test_table (name, description) VALUES 
+('', 'Empty name'),
+(NULL, 'Null name');
+
+-- Update a record to test triggers and constraints
+UPDATE test_table SET status = 'inactive' WHERE id = 1;
+
+-- Test complex queries with joins and functions
+SELECT 
+    t.id,
+    t.name,
+    rt.value,
+    calculate_score(t.id) AS score,
+    DATE_FORMAT(t.created_at, '%Y-%m-%d %H:%i:%s') AS formatted_time
+FROM 
+    test_table t
+LEFT JOIN 
+    related_table rt ON t.id = rt.test_id
+WHERE 
+    t.status = 'active'
+ORDER BY 
+    t.updated_at DESC;

@@ -149,11 +149,11 @@ variable_lock = threading.Lock()
 
 
 #获得单次showmap的cmd指令行
-def get_showmap_cmd(showmap_path, showmap_out_path, testcase_id, showmap_testcase, target_db,config_path):
+def get_showmap_cmd(showmap_path, showmap_out_path, testcase_id, showmap_testcase, target_db,config_path,mapsize):
     if target_db == 'sqlite':
         cmd = f'{showmap_path} -o {showmap_out_path}{testcase_id} -- /home/ossfuzz {showmap_testcase}'
     elif target_db == 'mysql':
-        cmd = f'AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=(cat /tmp/mapsize) SQUIRREL_CONFIG="{config_path}" {showmap_path} -o {showmap_out_path}{testcase_id} -- /home/Squirrel/build/db_driver {showmap_testcase}'
+        cmd = f'AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE={mapsize} SQUIRREL_CONFIG="{config_path}" {showmap_path} -o {showmap_out_path}{testcase_id} -- /home/Squirrel/build_for_showmap/db_driver {showmap_testcase}'
     return cmd
 
 #读取showmap对应id的内容
@@ -173,22 +173,22 @@ def get_showmap_content(showmap_out_path, testcase_id):
     return result_dict
 
 def get_prompt(samples,target_db,one_time_generete):
-    prompt = f"""I want to perform fuzzy testing of {target_db} and need to generate test case for it. Please forget all database application background and generate complex and out-of-the-way {target_db} database test case from the point of view of a fuzzy testing expert, generate test cases that are complex and try to trigger database crashes as much as possible. Each test case consists of several SQLs. Below I will give a sample test case that can trigger more program coverage:"""
+    prompt = f"""I want to perform fuzzy testing of {target_db} and need to generate test case for it. Please forget all database application background and generate complex and out-of-the-way {target_db} database test case from the point of view of a fuzzy testing expert, generate test cases that are complex and try to trigger database crashes as much as possible. Each testcase consists of several SQLs. Below I will give a sample test case that can trigger more program coverage:"""
 
     for sample in samples:
         prompt += f"\n```sql\n{sample}\n```"
 
     prompt += f"""\nYou can refer to the test case I gave, add more contents base on the samples. And generate more test case randomly. It is not only important to refer to the test case I have given, but it is also important to think about the process of generating them according to the procedure I have given below.
     First of all, you need to make sure that the SQL syntax is correct when generating the test case.
-    Second, whether the generated test case have sufficient statement diversity, there are no more statement types in the test case, such as: MATCH, SELECT, INSERT, UPDATE, DELETE, CREATE DATABASE, CREATE TABLE, CREATE TEMPORARY TABLE, CREATE INDEX, CREATE VIEW, CREATE SEQUENCE, CREATE FUNCTION, CREATE PROCEDURE, CREATE TRIGGER, GRANT, REVOKE, BEGIN, COMMIT, ROLLBACK, MERGE, TRUNCATE, ANALYZE, EXPLAIN, SHOW, DESCRIBE and so on.
-    Third, it is very important that the generated test case test the functionality that the target database has and other databases do not. If not, it needs to be added to the test case.
+    Second, whether the generated test case have sufficient statement diversity, the generated testcase need contain SQL key word as mach as possible.
+    Third, it is very important that the generated test case test the functionality that the target database has and other databases do not. If not, it needs to be added to the testcase.
     Fourth, is the generated SQL complex enough, at least it's more complex than the structure of the sample I gave you.
     Fifth, check whether the SQL is semantically correct, and whether there is corresponding data in it to be manipulated, and if not, then create the insert data statement first to ensure that the statement can be successfully executed.
     Note that the generated statements must be very complex. Include multiple nesting with the use of functions, you can also create functions for testing!
     Based on the above description, you can start generating {one_time_generete} test cases and start them with
     ```sql
     ```
-    warp the generated test case. Now start generating sql testcase! Each testcase need have multiple sql. And just return the testcase!"""
+    warp the generated test case. Now start generating sql testcase! Each testcase need have multiple sql. And just return the testcase! REMEMBER the purpose of generated testcase is to trigger crash in database!"""
     return prompt
 
 
@@ -304,8 +304,20 @@ class ZrclSelectionQueue:
             selected_testcases_to_str.append(self.selectTestcases[i].content)  #将前3个加入数组
             selected_testcases.append(self.selectTestcases[i])
         return selected_testcases,selected_testcases_to_str
-
-
+    
+    def delete_winsize(self,num_now,winsize):
+        #基于当前窗口改变队列中过时的用例
+        if num_now <= winsize:
+            pass
+        else:
+            index = 0
+            for each_testcase in self.selectTestcases:
+                if each_testcase.id <= num_now-winsize:
+                    self.selectTestcases[index] = ZrclTestcase(-1,None,None)
+                    self.pointQueue[index] = 0
+                    self.lengthNow -= 1
+                index += 1
+            self.order_selectTestcases()
 
 #根据指定id获得完整文件名
 def get_file_by_id(path, filename_prefix, current):
@@ -329,7 +341,7 @@ def get_file_by_id(path, filename_prefix, current):
 #@testcase_path 测试用例所在的路径
 #@showmap_path showmap工具所在的路径
 #@showmap_out_path showmap输出结果保存的路径
-def to_showmap(out_queue, testcase_path, showmap_path, showmap_out_path, target_db, config_path):
+def to_showmap(out_queue, testcase_path, showmap_path, showmap_out_path, target_db, config_path, mapsize):
     # ===================定义区===================
     current_id = 0  #记录当前的id
     cmd = ''    #保存需要执行的cmd
@@ -351,11 +363,19 @@ def to_showmap(out_queue, testcase_path, showmap_path, showmap_out_path, target_
         print(Fore.YELLOW+f"showmap子线程: 正在处理 {current_id} 文件"+Style.RESET_ALL)
         first_time = True
         #得到cmd路径
-        cmd = get_showmap_cmd(showmap_path, showmap_out_path, current_id, full_testcase_path, target_db,config_path)
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        cmd = get_showmap_cmd(showmap_path, showmap_out_path, current_id, full_testcase_path, target_db,config_path,mapsize)
+        result = subprocess.run(cmd, shell=True, text=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         showmap_content = get_showmap_content(showmap_out_path, current_id)
         if target_db == 'mysql':
-            result = subprocess.run("kill $(cat /home/for_showmap/showmap_server_pid.pid)", shell=True, capture_output=True, text=True)
+            while True:
+                try:
+                    with open("/home/for_showmap/showmap_server_pid.pid", "r", encoding="utf-8") as f:
+                        first_line = f.readline().strip()  # 读取第一行并去除首尾空格和换行符
+                    result = subprocess.run(f"kill {first_line}", shell=True, text=True,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    break
+                except:
+                    time.sleep(0.1)
+                    continue
         testcase_now = ZrclTestcase(current_id, testcase_content, showmap_content)
         out_queue.put(testcase_now)
         print(Fore.YELLOW + f"showmap子线程: {current_id} 文件的showmap结果已放入队列" + Style.RESET_ALL)
@@ -545,7 +565,7 @@ def main():
     saver_thread.start()  # 保存子线程启动
 
     #showmap子线程配置
-    showmap_thread = multiprocessing.Process(target=to_showmap, args=(testcase_queue, testcase_path, showmap_path, showmap_out_path,target_db,showmap_config), daemon=True)
+    showmap_thread = multiprocessing.Process(target=to_showmap, args=(testcase_queue, testcase_path, showmap_path, showmap_out_path,target_db,showmap_config,map_size), daemon=True)
     showmap_thread.start()  #showmap子线程启动
 
     pa_llm_thread = threading.Thread(target=passively_llm_worker, args=(
@@ -587,13 +607,14 @@ def main():
  
         
         select_testcase.append_in(process_now, now_point)
+        select_testcase.delete_winsize(main_count,1000)
         #3.更新覆盖率向量
         showmap.recalculate_each_edgeCovPoint()
 
         with open(log_save_path+"point.csv", 'a', newline='', encoding='utf-8') as point_file:
             writer = csv.writer(point_file)
             writer.writerow([time.time(), process_now.id , now_point,min_max_normal_point,down4_k_avg_middle,down4_k_median_middle,down1_k_avg_middle,down1_k_median_middle,down1_y_avg_middle,down1_y_median_middle])
-
+        
         #当选择了一个队列长度的测试用例后，开始选择前3个测试用例，并发送给子线程
         #逻辑修改为，当得分超过阈值后，直接启动子线程
         if norm_point >= threshold:

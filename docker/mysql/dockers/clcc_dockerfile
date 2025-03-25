@@ -54,7 +54,10 @@ RUN sudo chown dobigthing:dobigthing /usr/local/mysql/ -R && \
     cd /usr/local/mysql/ && mkdir mysql-files && chmod 750 mysql-files && \
     AFL_IGNORE_PROBLEMS=1 bin/mysqld --initialize-insecure --user=dobigthing && bin/mysql_ssl_rsa_setup
 
+RUN mkdir -p /home/for_showmap/mysql/data &&  cp -r /usr/local/mysql/data/* /home/for_showmap/mysql/data/
+
 RUN AFL_DEBUG=1 __AFL_SHM_ID=1234 /usr/local/mysql/bin/mysqld 2>&1 | grep "__afl_map_size" | tail -n 1 | cut -d"," -f8 | cut -d" " -f 3 > /tmp/mapsize
 ADD ./docker/set_seed/  /home/Squirrel/data/fuzz_root/set_seed/
+ADD ./src/start_fuzz_py/run_with_no_M.py  /home/Squirrel/scripts/utils/clcc_run.py
 WORKDIR /home/Squirrel/scripts/utils
 # ENTRYPOINT AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=$(cat /tmp/mapsize) python3 run.py mysql ../../data/fuzz_root/mysql_input/

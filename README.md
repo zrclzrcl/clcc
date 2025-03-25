@@ -36,7 +36,7 @@ git submodule update --init
 cd docker/sqlright/SQLite/scripts/
 bash setup_sqlite.sh
 cd CLCC_REPO/
-cp -r docker/sqlite/seeds/[select seed]/* /docker/set_seed/
+cp -r docker/sqlite/seeds/[select seed]/* docker/set_seed/
 docker build -f ./docker/sqlright/SQLite/docker/Dockerfile -t sqlite_sqlright .
 ```
 ### PostgreSQL
@@ -94,7 +94,10 @@ python3 clcc_run.py sqlite /home/Squirrel/data/fuzz_root/set_seed/
 #下面语句请在主机运行，请注意使用linux环境，同docke构建部分
 cd CLCC_REPO/
 cd docker/sqlright/SQLite/scripts
-bash run_sqlite_fuzzing.sh SQLRight --start-core 28 --num-concurrent 1 --oracle NOREC
+docker run -it -v ~/clcc/docker/sqlright/SQLite/Results/fuzz_output:/home/sqlite/fuzzing/fuzz_root/outputs -v ~/clcc/docker/sqlright/SQLite/Results/bug_output:/home/sqlite/fuzzing/Bug_Analysis --name sqlite_sqlright_bgseed_1 --cpuset-cpus="24,25" sqlite_sqlright_bgseed
+
+#下面语句请在容器中运行！
+python3 run_parallel.py -o /home/sqlite/fuzzing/fuzz_root/outputs -E --start-core 24 --num-concurrent 1 --oracle NOREC
 ```
 ### mariadb
 1. squirrel
@@ -106,3 +109,29 @@ docker run -it --name mariadb_squirrel_bgseed_1  --cpuset-cpus="26,27" mariadb_s
 python3 run.py mariadb /home/Squirrel/data/fuzz_root/set_seed/
 ```
 2.  
+
+### mysql
+1. squirrel
+```SHELL
+#下面的语句请在主机上运行
+docker run -it --name mysql_squirrel  --cpuset-cpus="30,31" mysql_squirrel
+
+#以下语句请在容器中运行
+AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=$(cat /tmp/mapsize) python3 run.py mysql /home/Squirrel/data/fuzz_root/set_seed/
+#这将启动fuzz!!
+```
+2. clcc
+```SHELL
+#下面的语句请在主机上运行
+docker run -it --name mysql_clcc  --cpuset-cpus="29,28" mysql_clcc
+
+#以下语句请在容器中运行,您需要两个shell窗口进行操作
+#下面请在shell1中运行
+cd /home/clcc
+python3 count_feedbackpoint.py -t 0.5 -db mysql -o 1 -k 你的LLMkey -conf "/home/Squirrel/data/mysql_showmap_config.yml" -ms [check mapsize!] -norm 6  #这里的参数选择在后续会有详细解释
+
+#下面请在shell2中运行
+AFL_IGNORE_PROBLEMS=1 AFL_MAP_SIZE=$(cat /tmp/mapsize) python3 clcc_run.py mysql /home/Squirrel/data/fuzz_root/set_seed/
+#这将启动fuzz!!
+```
+4. 
