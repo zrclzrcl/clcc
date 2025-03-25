@@ -1,2 +1,1 @@
 docker/set_seed/*           #忽略当前种子选择情况
-!docker/set_seed/.gitkeep   #保留一个空文件夹
