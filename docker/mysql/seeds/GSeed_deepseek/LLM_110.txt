@@ -1,0 +1,47 @@
+-- Clean environment, prevent existing tables from affecting tests
+DROP TABLE IF EXISTS test_table;
+
+-- 1. Create test table
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT,
+    email VARCHAR(100)
+);
+
+-- 2. Insert data (normal data)
+INSERT INTO test_table (name, age, email) VALUES ('Alice', 25, 'alice@example.com');
+INSERT INTO test_table (name, age, email) VALUES ('Bob', 30, 'bob@example.com');
+INSERT INTO test_table (name, age, email) VALUES ('Charlie', 35, 'charlie@example.com');
+
+-- 3. Execute query to verify data insertion
+SELECT * FROM test_table;
+
+-- 4. Test UPDATE statement
+UPDATE test_table SET age = age + 1 WHERE name = 'Alice';
+
+-- 5. Query again to verify update result
+SELECT * FROM test_table WHERE name = 'Alice';
+
+-- 6. Test DELETE statement to delete partial data
+DELETE FROM test_table WHERE name = 'Charlie';
+
+-- 7. Query to verify deletion effect
+SELECT * FROM test_table;
+
+-- 8. Boundary test: Execute SQL injection attempt (for test environment only, do not use in production)
+SELECT * FROM test_table WHERE name = 'Bob' OR 1=1;
+
+-- 9. Test transaction operations (commit and rollback)
+START TRANSACTION;
+INSERT INTO test_table (name, age, email) VALUES ('David', 40, 'david@example.com');
+-- Verify if data temporarily exists: SELECT * FROM test_table;
+ROLLBACK;
+-- Verify data after rollback
+SELECT * FROM test_table WHERE name = 'David';
+
+-- 10. Long query test: Use SLEEP to simulate long-running query
+SELECT SLEEP(2);
+
+-- 11. Finally clean up test table
+DROP TABLE test_table;

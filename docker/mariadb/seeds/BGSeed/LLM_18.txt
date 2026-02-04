@@ -1,0 +1,124 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @autocommit=@@autocommit;
+SET autocommit = 0;
+SET @wait_timeout=@@wait_timeout;
+SET wait_timeout=28800;
+SET @interactive_timeout=@@interactive_timeout;
+SET interactive_timeout=28800;
+SET @net_write_timeout=@@net_write_timeout;
+SET net_write_timeout=600;
+SET @net_read_timeout=@@net_read_timeout;
+SET net_read_timeout=30;
+
+CREATE TABLE t1 (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  a INT,
+  b VARCHAR(255),
+  c TEXT,
+  d JSON
+);
+
+INSERT INTO t1 (a, b, c, d) VALUES
+(1, 'test1', 'long text 1', '{"key1": "value1"}'),
+(2, 'test2', 'long text 2', '{"key2": "value2"}'),
+(3, 'test3', 'long text 3', '{"key3": "value3"}');
+
+CREATE TABLE t2 (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  t1_id INT,
+  e DOUBLE,
+  FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+INSERT INTO t2 (t1_id, e) VALUES
+(1, 3.14),
+(2, 2.71),
+(3, 1.618);
+
+-- Test JSON functions
+SELECT JSON_EXTRACT(d, '$.key1') FROM t1 WHERE id = 1;
+
+-- Test window functions
+SELECT a, ROW_NUMBER() OVER (ORDER BY a) AS rn FROM t1;
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE my_proc(IN input_val INT)
+BEGIN
+  SELECT * FROM t1 WHERE a > input_val;
+END //
+DELIMITER ;
+CALL my_proc(1);
+
+-- Test triggers
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    row_id INT,
+    action VARCHAR(50),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER t1_insert_trigger
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, row_id, action) VALUES ('t1', NEW.id, 'insert');
+END//
+DELIMITER ;
+
+INSERT INTO t1 (a, b, c, d) VALUES (4, 'test4', 'long text 4', '{"key4": "value4"}');
+
+-- Test virtual columns (MariaDB specific)
+ALTER TABLE t1 ADD COLUMN a_plus_one INT AS (a + 1) VIRTUAL;
+
+SELECT * FROM t1;
+
+-- Test ANALYZE TABLE
+ANALYZE TABLE t1;
+
+-- Test OPTIMIZE TABLE
+OPTIMIZE TABLE t1;
+
+-- Test user-defined variables
+SET @my_var = 10;
+SELECT @my_var;
+
+-- Test temporary table
+CREATE TEMPORARY TABLE tmp_table (x INT);
+INSERT INTO tmp_table VALUES (1), (2), (3);
+SELECT * FROM tmp_table;
+
+-- Test GIS functions
+CREATE TABLE gis_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    geom GEOMETRY
+);
+INSERT INTO gis_table (geom) VALUES (ST_GeomFromText('POINT(1 1)'));
+SELECT ST_AsText(geom) FROM gis_table;
+
+-- Test Dynamic Columns (MariaDB Specific)
+ALTER TABLE t1 ADD COLUMN dyncol dynamic;
+UPDATE t1 SET dyncol=COLUMN_CREATE('x', 1, 'y', 'test') WHERE id = 1;
+SELECT COLUMN_GET(dyncol, 'x' AS CHAR) FROM t1 WHERE id=1;
+SELECT * FROM t1;
+SHOW WARNINGS;
+
+
+-- Cleanup
+DROP PROCEDURE IF EXISTS my_proc;
+DROP TRIGGER IF EXISTS t1_insert_trigger;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS gis_table;
+DROP TABLE IF EXISTS tmp_table;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t1;
+
+SET sql_mode=@old_sql_mode;
+SET autocommit = @autocommit;
+SET wait_timeout=@wait_timeout;
+SET interactive_timeout=@interactive_timeout;
+SET net_write_timeout=@net_write_timeout;
+SET net_read_timeout=@net_read_timeout;

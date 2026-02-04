@@ -1,0 +1,14 @@
+BEGIN;
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, salary REAL, department_id INTEGER);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT);
+INSERT INTO departments(id, name) VALUES (1, 'HR'), (2, 'Engineering'), (3, 'Sales');
+CREATE UNIQUE INDEX idx_employee_name ON employees(name);
+CREATE INDEX idx_department_salary ON employees(department_id, salary);
+COMMIT;
+
+SELECT * FROM employees WHERE age < 30 AND salary > 50000 ORDER BY salary DESC;
+SELECT d.name, COUNT(e.id) AS num_employees FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.id;
+SELECT AVG(salary) FROM employees WHERE department_id = (SELECT id FROM departments WHERE name = 'Engineering');
+SELECT name FROM employees WHERE department_id IS NULL;
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 2; -- Giving a 10% raise to Engineering employees
+DELETE FROM employees WHERE age > 65;

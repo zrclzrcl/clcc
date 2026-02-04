@@ -1,0 +1,67 @@
+SET SQL_WARNINGS=1;
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price >= 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    discount FLOAT NULL,
+    INDEX (category)
+);
+
+-- Insert some sample data
+INSERT INTO products (product_name, description, price, quantity, category, discount) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.50, 10, 'Electronics', 0.1),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 50, 'Clothing', NULL),
+('Coffee Maker', 'Automatic coffee maker with timer', 75.00, 20, 'Home Goods', 0.05),
+('The Lord of the Rings', 'Classic fantasy novel', 15.99, 100, 'Books', NULL);
+
+-- Create a table with JSON column and spatial data
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    coordinates POINT SRID 4326,  -- Spatial Reference Identifier for WGS 84
+    properties JSON
+);
+
+-- Insert some data into locations
+INSERT INTO locations (name, coordinates, properties) VALUES
+('Eiffel Tower', ST_GeomFromText('POINT(2.2945 48.8584)', 4326), '{"city": "Paris", "country": "France"}'),
+('Times Square', ST_GeomFromText('POINT(-73.9857 40.7589)', 4326), '{"city": "New York", "country": "USA"}');
+
+-- Add a generated column
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10,2) GENERATED ALWAYS AS (price * (1 - COALESCE(discount, 0))) STORED;
+
+-- Stored Procedure example
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory (IN category_name VARCHAR(255))
+BEGIN
+    SELECT * FROM products WHERE category = category_name;
+END //
+DELIMITER ;
+
+-- Trigger example
+DELIMITER //
+CREATE TRIGGER products_before_update
+BEFORE UPDATE ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.quantity < 0 THEN
+        SET NEW.quantity = 0;
+    END IF;
+END //
+DELIMITER ;
+
+-- Example using window function
+SELECT product_name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Example using GIS function
+SELECT name FROM locations WHERE ST_Distance_Sphere(coordinates, ST_GeomFromText('POINT(-74.0060 40.7128)', 4326)) < 1000000; -- Distance to NYC in meters

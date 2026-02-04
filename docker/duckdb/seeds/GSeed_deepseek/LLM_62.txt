@@ -1,0 +1,56 @@
+-- Create table with various data types and constraints to test edge cases
+CREATE TABLE t0 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL UNIQUE,
+    flag BOOLEAN DEFAULT FALSE,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data including NULL values for testing
+INSERT INTO t0 (id, name, value) VALUES 
+(1, 'test1', 123.45),
+(2, 'test2', NULL),
+(3, 'test3', -987.65);
+
+-- Create a table with ROWID and WITHOUT ROWID to test row-level operations
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    data BLOB,
+    CHECK (LENGTH(data) <= 1024)
+);
+INSERT INTO t1 VALUES 
+(1, X'deadbeef'),
+(2, NULL);
+
+-- Create a table with constraints and indexes for testing complex queries
+CREATE TABLE t2 (
+    a INT NOT NULL,
+    b INT UNIQUE,
+    c TEXT CHECK (c GLOB '*test*'),
+    FOREIGN KEY (a) REFERENCES t0(id)
+);
+INSERT INTO t2 VALUES 
+(1, 100, 'test_data_1');
+
+-- Create a view with window functions for testing analytical operations
+CREATE VIEW v0 AS
+WITH cte AS (
+    SELECT id, name, value,
+    ROW_NUMBER() OVER (ORDER BY value DESC) as rn
+    FROM t0
+)
+SELECT * FROM cte;
+
+-- DuckDB-specific features: VACUUM command to test database maintenance
+VACUUM;
+
+-- Query to test all components and join operations
+SELECT 
+    t0.id, 
+    t0.name, 
+    t2.b,
+    v0.rn
+FROM t0
+JOIN t2 ON t0.id = t2.a
+JOIN v0 ON t0.id = v0.id;

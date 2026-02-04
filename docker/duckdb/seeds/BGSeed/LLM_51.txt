@@ -1,0 +1,38 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR
+);
+
+INSERT INTO products (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Chair', 150.00, 'Furniture'),
+('Table', 300.00, 'Furniture');
+
+SELECT * FROM products WHERE category = 'Electronics' ORDER BY price DESC;
+
+-- DuckDB Specific: Using UNNEST and string_split
+SELECT value FROM products, UNNEST(string_split(name, 'o')) AS value LIMIT 3;
+
+-- DuckDB Specific: Using LIST
+SELECT LIST(price) FROM products WHERE category = 'Furniture';
+
+-- Test for NULL values
+INSERT INTO products (name, price, category) VALUES (NULL, NULL, 'Unknown');
+
+-- Test for aggregation and HAVING clause
+SELECT category, AVG(price) AS avg_price FROM products GROUP BY category HAVING AVG(price) > 100;
+
+-- Test for window functions (DuckDB supports window functions)
+SELECT name, price, category, RANK() OVER (PARTITION BY category ORDER BY price DESC) AS price_rank FROM products;
+
+-- Test for UPDATE statement
+UPDATE products SET price = price * 1.1 WHERE category = 'Electronics';
+
+-- Test for DELETE statement
+DELETE FROM products WHERE name IS NULL;
+
+SELECT * FROM products;

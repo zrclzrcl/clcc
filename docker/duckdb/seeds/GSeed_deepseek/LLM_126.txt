@@ -1,0 +1,75 @@
+-- Create a base table with various data types
+CREATE TABLE test_table (
+    id INTEGER,
+    name VARCHAR(100),
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP,
+    is_active BOOLEAN,
+    description TEXT,
+    category_id INT DEFAULT NULL
+);
+
+-- Alter the table to add constraints and rename a column
+ALTER TABLE test_table ADD CONSTRAINT pk_test PRIMARY KEY (id);
+ALTER TABLE test_table RENAME COLUMN category_id TO product_category;
+ALTER TABLE test_table ALTER COLUMN name SET NOT NULL;
+
+-- Insert sample data including edge cases
+INSERT INTO test_table VALUES 
+    (1, 'Product 1', 99.99, '2023-01-01 00:00:00', true, 'A great product', null),
+    (2, 'Product 2', 49.95, '2023-01-02 00:00:00', false, 'Another product', 1),
+    (null, 'Product 3', null, '2023-01-03 00:00:00', true, null, 2);
+
+-- Create a new table using CTAS with calculations
+CREATE TABLE aggregated_sales AS
+SELECT 
+    product_category,
+    COUNT(*) as total_products,
+    SUM(price) as total_revenue
+FROM test_table
+GROUP BY product_category;
+
+-- Create indexes to optimize queries
+CREATE INDEX idx_product_category ON test_table (product_category);
+CREATE INDEX idx_created_at ON test_table (created_at);
+
+-- Define a trigger to log inserts
+CREATE TABLE insert_log (
+    id INTEGER,
+    name VARCHAR(100),
+    created_at TIMESTAMP
+);
+
+CREATE TRIGGER after_insert_trigger
+AFTER INSERT ON test_table
+FOR EACH ROW
+WHEN NEW.id IS NOT NULL
+BEGIN
+    INSERT INTO insert_log VALUES (NEW.id, NEW.name, NEW.created_at);
+END;
+
+-- Create a view with window functions and joins
+CREATE VIEW product_stats AS
+SELECT 
+    t.name,
+    t.price,
+    COUNT(*) OVER (PARTITION BY t.product_category) as category_count,
+    SUM(t.price) OVER (PARTITION BY t.product_category) as category_total
+FROM test_table t
+LEFT JOIN aggregated_sales a ON t.product_category = a.product_category;
+
+-- Complex query with window functions and joins
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY price DESC) as rank,
+    name,
+    price,
+    created_at
+FROM test_table
+WHERE is_active = true
+UNION ALL
+SELECT 
+    0 as rank,
+    'Total' as name,
+    SUM(price) as price,
+    NULL as created_at
+FROM test_table;

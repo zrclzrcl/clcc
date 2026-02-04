@@ -1,0 +1,66 @@
+CREATE TABLE t0(
+    id INT PRIMARY KEY,
+    name TEXT UNIQUE,
+    age INT CHECK (age >= 18),
+    score REAL DEFAULT 0.0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSONB,
+    derived_score REAL GENERATED ALWAYS AS (score * 2)
+);
+
+CREATE INDEX idx_t0 ON t0(age DESC);
+
+CREATE TABLE t1(
+    id SERIAL PRIMARY KEY,
+    a INT,
+    b TEXT,
+    c JSON CHECK (json_valid(c)),
+    UNIQUE (a, b),
+    FOREIGN KEY (id) REFERENCES t0(id) MATCH SIMPLE
+);
+
+CREATE INDEX idx_t1 USING HASH ON t1(a);
+
+INSERT INTO t0(name, age, data)
+VALUES 
+    ('Alice', 30, '{"key": "value"}'),
+    ('Bob', 25, '{"points": [10, 20]}'),
+    (SELECT 'Charlie' AS name, 40 AS age, '{"status": "active"}' AS data);
+
+CREATE TABLE t2 AS 
+WITH cte AS (
+    SELECT id, name, RANK() OVER (ORDER BY age DESC) as rank
+    FROM t0
+)
+SELECT * FROM cte
+WHERE rank <= 3;
+
+CREATE INDEX idx_t2 ON t2(rank) WHERE age > 25;
+
+INSERT INTO t1(a, b, c)
+VALUES 
+    (1, 'x', '{"type": "A"}'),
+    (2, 'y', '{"type": "B"}');
+
+SELECT 
+    t0.name,
+    t0.age,
+    t0.derived_score,
+    t1.c->>'type' as type
+FROM 
+    t0
+JOIN 
+    t1 ON t0.id = t1.id
+WHERE 
+    t0.age > 25
+GROUP BY 
+    t0.name, t0.age, t0.derived_score, t1.c->>'type'
+HAVING 
+    COUNT(*) > 1
+ORDER BY 
+    t0.derived_score DESC;
+
+CREATE VIEW v_range AS 
+SELECT * FROM range(1, 10);
+
+SELECT * FROM v_range;

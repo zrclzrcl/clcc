@@ -1,0 +1,56 @@
+-- Create a table with various data types to test different scenarios
+CREATE TABLE test_edge_cases (
+    id INTEGER,
+    name TEXT,
+    is_active BOOLEAN,
+    timestamp TIMESTAMP,
+    value NUMERIC(10, 2)
+);
+
+-- Insert sample data with edge cases
+INSERT INTO test_edge_cases VALUES 
+    (0, NULL, TRUE, '2023-01-01 00:00:00', 0.00),
+    (1, 'test', FALSE, '9999-12-31 23:59:59', 99999999.99),
+    (-1, '', NULL, '1970-01-01 00:00:00', -99999999.99);
+
+-- Test aggregate functions with different data types
+SELECT 
+    COUNT(id) as count_id,
+    SUM(value) as sum_value,
+    AVG(value) as avg_value,
+    MIN(timestamp) as min_timestamp,
+    MAX(timestamp) as max_timestamp
+FROM test_edge_cases;
+
+-- Test window functions to cover more functionalities
+SELECT 
+    id,
+    name,
+    is_active,
+    timestamp,
+    value,
+    ROW_NUMBER() OVER (ORDER BY id) as row_num,
+    RANK() OVER (ORDER BY value DESC) as rank_value,
+    DENSE_RANK() OVER (PARTITION BY is_active ORDER BY timestamp) as dense_rank
+FROM test_edge_cases;
+
+-- Test CTE to cover more execution paths
+WITH cte_running_total AS (
+    SELECT 
+        id,
+        name,
+        is_active,
+        timestamp,
+        value,
+        SUM(value) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as running_total
+    FROM test_edge_cases
+)
+SELECT * FROM cte_running_total;
+
+-- Test DISTINCT on a boolean column to cover edge cases
+SELECT DISTINCT is_active FROM test_edge_cases;
+
+-- Test UNION ALL for query combination scenarios
+SELECT id, name FROM test_edge_cases 
+UNION ALL
+SELECT value, timestamp::TEXT FROM test_edge_cases;

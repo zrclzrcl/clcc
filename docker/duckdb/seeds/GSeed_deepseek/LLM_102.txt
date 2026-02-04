@@ -1,0 +1,72 @@
+CREATE TABLE t1(
+    id INT,
+    name VARCHAR(50),
+    value DECIMAL(10, 2)
+);
+
+INSERT INTO t1 VALUES 
+    (1, 'Alice', 100.50),
+    (2, 'Bob', 200.75),
+    (3, 'Charlie', NULL),
+    (4, '', 50.00),
+    (5, 'Eve', -100.00);
+
+CREATE TABLE t2(
+    id INT,
+    created_at TIMESTAMP,
+    status VARCHAR(20) CHECK (status IN ('active', 'inactive'))
+);
+
+INSERT INTO t2 VALUES 
+    (1, '2023-01-01 00:00:00', 'active'),
+    (2, '2024-05-15 12:34:56', 'inactive'),
+    (3, NULL, 'active');
+
+CREATE TABLE nullable_t(
+    id INT,
+    data VARCHAR(100),
+    amount DECIMAL(18, 2)
+);
+
+INSERT INTO nullable_t VALUES 
+    (1, NULL, 500.00),
+    (2, 'test', NULL),
+    (3, 'data', 123456789.99);
+
+CREATE VIEW v1 AS
+SELECT t1.id, t1.name, t2.created_at
+FROM t1
+JOIN t2 ON t1.id = t2.id;
+
+CREATE INDEX idx_t1_name ON t1(name COLLATE "C");
+
+CREATE INDEX idx_t2_status ON t2(status);
+
+WITH cte AS (
+    SELECT id, name, ROW_NUMBER() OVER (ORDER BY name) as rn
+    FROM t1
+)
+SELECT * FROM cte WHERE rn % 2 = 0;
+
+SELECT 
+    COUNT(*) as total,
+    AVG(value) as average_value
+FROM t1
+WHERE value > 50.00
+GROUP BY status
+HAVING COUNT(*) > 2;
+
+SELECT 
+    t1.id,
+    t1.name,
+    t2.status,
+    nt.amount
+FROM t1
+JOIN t2 ON t1.id = t2.id
+LEFT JOIN nullable_t nt ON t1.id = nt.id
+WHERE t2.status = 'active'
+ORDER BY t1.name DESC;
+
+SELECT 
+    (SELECT COUNT(*) FROM t1) as count_t1,
+    (SELECT MAX(value) FROM t1 WHERE name LIKE 'A%') as max_value_a;

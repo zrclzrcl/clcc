@@ -1,0 +1,135 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+    ('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+    ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+    ('Charlie Brown', 55000.00, 'Sales', '2023-03-01'),
+    ('David Lee', 80000.00, 'Engineering', '2020-11-10'),
+    ('Eve Wilson', 65000.00, 'Marketing', '2022-09-01');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 60000 ORDER BY salary DESC;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+SELECT name, salary FROM employees WHERE department IN ('Marketing', 'Sales') AND hire_date > '2022-01-01';
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT name, email FROM employees;
+
+ALTER TABLE employees DROP COLUMN email;
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    department,
+    AVG(salary) OVER (PARTITION BY department) AS avg_department_salary
+FROM
+    employees;
+
+-- Using Common Table Expressions (CTEs)
+WITH DepartmentAvgSalary AS (
+    SELECT
+        department,
+        AVG(salary) AS avg_salary
+    FROM
+        employees
+    GROUP BY
+        department
+)
+SELECT
+    e.name,
+    e.salary,
+    e.department,
+    d.avg_salary
+FROM
+    employees e
+JOIN
+    DepartmentAvgSalary d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Generate series
+SELECT generate_series(1, 10);
+
+-- Date manipulations
+SELECT hire_date + INTERVAL '1 year' FROM employees;
+
+-- Conditional expressions
+SELECT name, salary, CASE WHEN salary > 70000 THEN 'High' ELSE 'Low' END AS salary_level FROM employees;
+
+-- Triggers (example - needs a function, but can be expanded later)
+CREATE OR REPLACE FUNCTION check_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_check_trigger
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION check_salary();
+
+-- Try to insert invalid data to check trigger (this will throw error if trigger works)
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Invalid Employee', -100, 'HR', '2023-01-01');
+
+-- Aggregate functions with FILTER (WHERE)
+SELECT
+    department,
+    AVG(salary) FILTER (WHERE salary > 60000) AS avg_high_salary,
+    AVG(salary) AS avg_salary
+FROM
+    employees
+GROUP BY
+    department;
+
+-- Check constraints
+ALTER TABLE employees ADD CONSTRAINT positive_salary CHECK (salary >= 0);
+
+-- materialized view
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, COUNT(*) AS employee_count, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+
+SELECT * FROM employee_summary;
+REFRESH MATERIALIZED VIEW employee_summary;
+
+-- JSON support
+ALTER TABLE employees ADD COLUMN details JSONB;
+UPDATE employees SET details = jsonb_build_object('age', 30, 'city', 'New York');
+SELECT name, details -> 'age' FROM employees;
+
+-- hstore support
+CREATE EXTENSION IF NOT EXISTS hstore;
+
+ALTER TABLE employees ADD COLUMN extra hstore;
+UPDATE employees SET extra = 'age=>30,city=>New York'::hstore;
+SELECT name, extra -> 'age' FROM employees;
+
+DROP TABLE employees CASCADE;

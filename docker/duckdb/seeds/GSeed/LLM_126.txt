@@ -1,0 +1,24 @@
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+-- Insert some sample data
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2023-01-15', 150.00),
+(2, '2023-02-20', 200.50),
+(1, '2023-03-10', 75.25);
+
+-- DuckDB specific JSON functionality
+SELECT JSON('{"name": "John Doe", "age": 30}');
+
+-- Try a correlated subquery
+SELECT order_id, total_amount FROM orders o WHERE o.total_amount > (SELECT AVG(total_amount) FROM orders);
+
+-- Use window function
+SELECT order_id, total_amount, AVG(total_amount) OVER () AS avg_amount FROM orders;
+
+-- Virtual table function (DuckDB specific)
+SELECT * FROM duckdb_tables();

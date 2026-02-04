@@ -1,0 +1,17 @@
+SET @orig_log_state = @@global.general_log;
+SET GLOBAL general_log = 'OFF';
+CREATE TABLE t1 (a INT, b VARCHAR(20), c TIMESTAMP) ENGINE=InnoDB;
+INSERT INTO t1 (a, b) VALUES (1, 'test1');
+INSERT INTO t1 (a, b) VALUES (2, 'test2');
+CREATE INDEX idx_a ON t1 (a);
+ANALYZE TABLE t1;
+SELECT * FROM t1 WHERE a = 1;
+SELECT * FROM t1 WHERE b LIKE 'test%';
+SET @json_doc = '{"name": "John", "age": 30, "city": "New York"}';
+SELECT JSON_EXTRACT(@json_doc, '$.name');
+CREATE OR REPLACE VIEW v1 AS SELECT a, b FROM t1 WHERE a > 0;
+SELECT * FROM v1;
+FLUSH TABLES t1;
+SHOW CREATE TABLE t1;
+SHOW INDEX FROM t1;
+SET GLOBAL general_log = @orig_log_state;

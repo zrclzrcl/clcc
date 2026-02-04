@@ -1,0 +1,91 @@
+-- Set optimizer settings to enable various query execution strategies
+SET optimizer_switch='semijoin=on,materialization=on,mrr=on';
+SET sql_mode = 'ANSI_QUOTES,NO_ZERO_DATE';
+
+-- Create tables with different data types and constraints
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    modified_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    metadata JSON
+);
+
+-- Create a table with spatial data type for MariaDB-specific testing
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    location GEOMETRY NOT NULL,
+    description TEXT
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED;
+
+-- Create a table to store history of changes
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    action ENUM('INSERT', 'UPDATE', 'DELETE'),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a stored function for testing
+DELIMITER $$
+CREATE FUNCTION calculate_distance(p1 GEOMETRY, p2 GEOMETRY)
+RETURNS DOUBLE
+DETERMINISTIC
+BEGIN
+    RETURN ST_DISTANCE(p1, p2);
+END$$
+DELIMITER ;
+
+-- Create a trigger to log changes in t2
+DELIMITER $$
+CREATE TRIGGER after_insert_t2
+AFTER INSERT ON t2
+FOR EACH ROW
+BEGIN
+    INSERT INTO t3 (table_name, action)
+    VALUES ('t2', 'INSERT');
+END$$
+DELIMITER ;
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, price, status) VALUES
+('Product 1', 19.99, 'active'),
+('Product 2', 29.99, 'inactive');
+
+-- Prepare and execute a statement with dynamic parameters
+PREPARE stmt FROM 'INSERT INTO t2 (id, location, description) VALUES (?, ST_GeomFromText(?), ?)';
+EXECUTE stmt USING 1, 'POINT(0 0)', 'Origin point';
+DEALLOCATE PREPARE stmt;
+
+-- Test complex update and delete operations
+UPDATE t1 SET price = price * 1.1 WHERE status = 'active';
+DELETE FROM t2 WHERE ST_Y(location) < 0 LIMIT 1;
+
+-- Analyze, check, and repair tables
+ANALYZE TABLE t1, t2;
+CHECK TABLE t3;
+REPAIR TABLE t1;
+
+-- Test transactions
+START TRANSACTION;
+    INSERT INTO t1 (name, price) VALUES ('Product 3', 9.99);
+    ROLLBACK;
+
+START TRANSACTION;
+    INSERT INTO t1 (name, price) VALUES ('Product 4', 14.99);
+COMMIT;
+
+-- Create a view for testing
+CREATE VIEW v_products AS
+SELECT id, name, price, created_at FROM t1 WHERE status = 'active';
+
+-- Test query with join and spatial function
+SELECT 
+    t1.id,
+    t2.description,
+    calculate_distance(t2.location, ST_GeomFromText('POINT(0 0)')) AS distance_from_origin
+FROM t1
+JOIN t2 ON t1.status = 'active'
+WHERE t1.price > 10;

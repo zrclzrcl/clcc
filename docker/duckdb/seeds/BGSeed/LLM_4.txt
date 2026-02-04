@@ -1,0 +1,43 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('foo'), ('bar'), ('baz');
+
+-- Test window functions with PARTITION BY and ORDER BY.
+SELECT i, ROW_NUMBER() OVER (PARTITION BY i % 2 ORDER BY i) FROM integers;
+
+-- Test date functions and arithmetic.
+SELECT DATE('2023-10-27') + INTERVAL '1' DAY;
+SELECT DATE_TRUNC('month', DATE('2023-10-27'));
+
+-- Test string functions.
+SELECT UPPER(s), LENGTH(s) FROM strings;
+SELECT SUBSTRING(s, 2, 2) FROM strings;
+
+-- Test DuckDB-specific UUID functionality
+SELECT UUID();
+SELECT UUID_GENERATE_V4();
+
+-- Test LIST and STRUCT types
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES (LIST(1,2,3)), (LIST(4,5,6));
+SELECT l[1] FROM lists;
+
+CREATE TABLE structs (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO structs VALUES (STRUCT(1, 'hello')), (STRUCT(2, 'world'));
+SELECT s.a FROM structs;
+
+-- Demonstrate CREATE VIEW
+CREATE VIEW even_integers AS SELECT i FROM integers WHERE i % 2 = 0;
+SELECT * FROM even_integers;
+
+-- Demonstrate UNION ALL
+SELECT i FROM integers WHERE i < 3 UNION ALL SELECT i FROM integers WHERE i > 3;
+
+-- Test JSON functionality
+SELECT JSON('{"a": 1, "b": "hello"}');
+SELECT JSON_EXTRACT('{"a": 1, "b": "hello"}', '$.a');
+
+--Cleanup the temporary view
+DROP VIEW even_integers;

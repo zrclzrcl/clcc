@@ -1,0 +1,80 @@
+-- Create tables with various data types to cover different scenarios
+CREATE TABLE test_table (
+    id INTEGER,
+    name VARCHAR(100),
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP,
+    status BOOLEAN,
+    metadata JSONB
+);
+
+-- Insert sample data including edge cases like NULL and large integers
+INSERT INTO test_table VALUES
+    (NULL, 'Test Product 1', 19.99, '2023-01-01 12:00:00', TRUE, '{"category": "electronics"}'),
+    (4294967295, 'Test Product 2', NULL, '2023-01-02 13:00:00', FALSE, '{"category": "clothing", "stock": 0}'),
+    (-2147483648, 'Test Product 3', 99.99, NULL, TRUE, '{}');
+
+-- Test window functions and ordering
+SELECT 
+    id,
+    name,
+    ROW_NUMBER() OVER (ORDER BY price DESC) AS row_num,
+    RANK() OVER (PARTITION BY status ORDER BY created_at) AS rank
+FROM test_table;
+
+-- Test JSON operations
+SELECT 
+    name,
+    JSON_EXTRACT_SCALAR(metadata, '$.category') AS category,
+    JSON_EXTRACT_SCALAR(metadata, '$.stock') AS stock
+FROM test_table;
+
+-- Test CTE and subqueries
+WITH filtered_data AS (
+    SELECT * FROM test_table WHERE status = TRUE
+)
+SELECT 
+    COUNT(*) AS total_active,
+    AVG(price) AS avg_price
+FROM filtered_data;
+
+-- Test aggregate functions with HAVING clause
+SELECT 
+    status,
+    COUNT(id) AS count_id,
+    SUM(price) AS sum_price
+FROM test_table
+GROUP BY status
+HAVING COUNT(id) > 1;
+
+-- Test LEFT JOIN and NULL handling
+CREATE TABLE related_table (
+    id INTEGER,
+    related_id INTEGER,
+    description TEXT
+);
+
+INSERT INTO related_table VALUES
+    (1, 100, 'Related Item 1'),
+    (2, NULL, 'Related Item 2'),
+    (3, 200, NULL);
+
+SELECT 
+    t.id AS table_id,
+    rt.related_id,
+    COALESCE(t.name, 'N/A') AS name,
+    COALESCE(rt.description, 'No description') AS description
+FROM test_table t
+LEFT JOIN related_table rt ON t.id = rt.id;
+
+-- Test complex WHERE conditions with NULLs and operators
+SELECT 
+    *
+FROM test_table
+WHERE 
+    (price > 10 OR price IS NULL) AND 
+    (status IS TRUE OR metadata->>'category' = 'electronics');
+
+-- Cleanup
+DROP TABLE test_table;
+DROP TABLE related_table;

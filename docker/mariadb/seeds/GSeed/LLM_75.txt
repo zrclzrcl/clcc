@@ -1,0 +1,59 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    age INT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO t1 (name, email, age) VALUES
+('Alice', 'alice@example.com', 30),
+('Bob', 'bob@example.com', 25),
+('Charlie', 'charlie@example.com', 40);
+
+CREATE TABLE t2 (
+  data JSON
+);
+
+INSERT INTO t2 (data) VALUES
+('{"name": "Eve", "age": 28, "city": "New York"}'),
+('{"name": "David", "age": 35, "city": "London"}');
+
+-- MariaDB Specific: Using JSON functions
+SELECT JSON_EXTRACT(data, '$.name') FROM t2;
+
+-- MariaDB Specific: Virtual Columns
+ALTER TABLE t1 ADD COLUMN is_adult BOOLEAN GENERATED ALWAYS (age >= 18) VIRTUAL;
+
+-- MariaDB Specific: Dynamic Columns (Demonstrates flexibility)
+CREATE TABLE t3 (id INT PRIMARY KEY, attributes COLUMN_CREATE( 'color', 'blue', 'size', 'large'));
+INSERT INTO t3 (id, attributes) VALUES (1, COLUMN_CREATE('color', 'red', 'weight', 10));
+SELECT id, COLUMN_GET(attributes, 'color' AS CHAR) FROM t3;
+
+-- Using window functions
+SELECT name, age, RANK() OVER (ORDER BY age DESC) AS age_rank FROM t1;
+
+-- Using stored procedures
+DELIMITER //
+CREATE PROCEDURE GetAdults()
+BEGIN
+    SELECT * FROM t1 WHERE age >= 18;
+END //
+DELIMITER ;
+
+CALL GetAdults();
+
+-- Test optimizer hints
+SELECT /*+ MAX_EXECUTION_TIME(1000) */ * FROM t1 WHERE age > 20;
+
+-- Test with different character sets and collations
+ALTER TABLE t1 MODIFY name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Test geospatial data types
+CREATE TABLE t4 (location POINT SRID 4326);
+INSERT INTO t4 VALUES (ST_GeomFromText('POINT(10 20)', 4326));
+SELECT ST_AsText(location) FROM t4;
+
+TRUNCATE t1;
+
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';

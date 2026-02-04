@@ -1,0 +1,40 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+CREATE VIEW large_integers AS
+SELECT * FROM integers WHERE value > 1000;
+
+CREATE TABLE strings (
+    id INTEGER PRIMARY KEY,
+    text VARCHAR
+);
+
+INSERT INTO integers (value) VALUES (1),(500),(10000),(NULL);
+INSERT INTO strings (text) VALUES ('hello'), ('world'), ('duckdb');
+
+SELECT id, value, CASE WHEN value > 1000 THEN 'large' ELSE 'small' END FROM integers;
+
+-- DuckDB specific: UNNEST and LIST
+SELECT * FROM UNNEST([1, 2, 3], ['a', 'b', 'c']);
+
+-- DuckDB specific: APPROXIMATE COUNT DISTINCT
+SELECT approx_count_distinct(value) FROM integers;
+
+-- Test NULL handling
+SELECT value + 1 FROM integers WHERE value IS NULL;
+
+-- Test string manipulation
+SELECT upper(text) FROM strings;
+
+-- Test Date/Time Functions (DuckDB support)
+CREATE TABLE datetest (ts TIMESTAMP);
+INSERT INTO datetest VALUES ('2023-10-26 12:34:56');
+SELECT date_trunc('day', ts) FROM datetest;
+
+-- Test Correlation
+SELECT corr(id, value) from integers;
+
+-- Test Window Functions
+SELECT value, RANK() OVER (ORDER BY value DESC) AS rank_val FROM integers;

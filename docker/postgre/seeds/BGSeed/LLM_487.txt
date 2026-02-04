@@ -1,0 +1,76 @@
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP COLLATION IF EXISTS german_phonebook;
+DROP DOMAIN IF EXISTS us_postal_code;
+DROP EXTENSION IF EXISTS citext;
+
+CREATE COLLATION german_phonebook (LOCALE = 'de_DE', PROVIDER = icu);
+
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK(VALUE ~ '^\d{5}(-\d{4})?$');
+
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE department (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE employee (
+    emp_id SERIAL PRIMARY KEY,
+    emp_name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    dept_id INTEGER REFERENCES department(dept_id),
+    email CITEXT UNIQUE,
+    info JSONB
+);
+
+INSERT INTO department (dept_name) VALUES ('Sales');
+INSERT INTO department (dept_name) VALUES ('Marketing');
+INSERT INTO department (dept_name) VALUES ('Engineering');
+
+INSERT INTO employee (emp_name, salary, dept_id, email, info) VALUES
+('Alice Smith', 60000.00, 1, 'alice.smith@example.com', '{"age": 30, "city": "New York"}');
+INSERT INTO employee (emp_name, salary, dept_id, email, info) VALUES
+('Bob Johnson', 75000.00, 2, 'bob.johnson@example.com', '{"age": 25, "city": "Los Angeles"}');
+INSERT INTO employee (emp_name, salary, dept_id, email, info) VALUES
+('Charlie Brown', 90000.00, 3, 'charlie.brown@example.com', '{"age": 40, "city": "Chicago"}');
+INSERT INTO employee (emp_name, salary, dept_id, email, info) VALUES
+('Diana Miller', 120000.00, 3, 'diana.miller@example.com', '{"age": 35, "city": "San Francisco", "skills": ["Java", "Python"]}');
+
+CREATE INDEX idx_emp_name ON employee (emp_name);
+CREATE INDEX idx_dept_name ON department (dept_name);
+
+SELECT * FROM employee;
+SELECT * FROM department;
+
+SELECT emp_name, salary FROM employee WHERE salary > 70000;
+SELECT emp_name, dept_name FROM employee e JOIN department d ON e.dept_id = d.dept_id;
+SELECT dept_name, COUNT(*) FROM employee e JOIN department d ON e.dept_id = d.dept_id GROUP BY dept_name;
+
+SELECT emp_name FROM employee WHERE email = 'alice.smith@example.com';
+SELECT emp_name FROM employee WHERE email LIKE '%example.com';
+
+SELECT emp_name, info ->> 'city' AS city FROM employee;
+SELECT emp_name, info -> 'skills' AS skills FROM employee WHERE info ? 'skills';
+
+UPDATE employee SET salary = salary * 1.1 WHERE dept_id = 3;
+DELETE FROM employee WHERE emp_name = 'Bob Johnson';
+
+VACUUM employee;
+ANALYZE employee;
+
+--Using collation
+SELECT * FROM department ORDER BY dept_name COLLATE "german_phonebook";
+
+--Complex query with windowing function
+SELECT emp_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employee;
+
+-- Insert with ON CONFLICT DO NOTHING
+INSERT INTO department (dept_name) VALUES ('Sales') ON CONFLICT DO NOTHING;
+
+-- JSONB operators
+SELECT * FROM employee WHERE info @> '{"age": 30}';
+SELECT * FROM employee WHERE info ->> 'city' = 'New York';

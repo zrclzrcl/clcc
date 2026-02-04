@@ -1,0 +1,93 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), ('d'), ('e');
+
+CREATE TABLE mixed (i INTEGER, s VARCHAR);
+INSERT INTO mixed VALUES (1, 'a'), (2, 'b'), (3, 'c');
+
+-- Test some basic aggregation
+SELECT sum(i) FROM integers;
+SELECT avg(i) FROM integers;
+SELECT min(i) FROM integers;
+SELECT max(i) FROM integers;
+SELECT count(*) FROM integers;
+
+-- Test some string functions
+SELECT upper(s) FROM strings;
+SELECT lower(s) FROM strings;
+SELECT length(s) FROM strings;
+SELECT substr(s, 2, 1) FROM strings;
+
+-- Test joins
+SELECT * FROM integers JOIN strings ON i = length(s);
+
+-- Test case-insensitive comparison
+SELECT * FROM strings WHERE upper(s) = 'A';
+
+-- Test window functions (DuckDB specific)
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+SELECT s, RANK() OVER (ORDER BY s) FROM strings;
+
+-- Test date functions (DuckDB specific)
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-02-15'), ('2023-03-31');
+SELECT d, EXTRACT(YEAR FROM d), EXTRACT(MONTH FROM d), EXTRACT(DAY FROM d) FROM dates;
+
+-- Test list functions (DuckDB specific)
+SELECT list(i) FROM integers;
+SELECT unnest(list(i)) FROM integers;
+
+-- Test struct functions (DuckDB specific)
+CREATE TABLE structs (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO structs VALUES ({'a': 1, 'b': 'x'}), ({'a': 2, 'b': 'y'});
+SELECT s.a, s.b FROM structs;
+
+-- Test JSON functions (DuckDB specific)
+CREATE TABLE jsons (j VARCHAR);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "x"}'), ('{"a": 2, "b": "y"}');
+SELECT json_extract_string(j, '$.a'), json_extract_string(j, '$.b') FROM jsons;
+
+-- Test UNNEST with multiple columns and a limit
+SELECT i, s FROM integers, strings LIMIT 3;
+
+-- Test date arithmetics (DuckDB specific)
+SELECT d + INTERVAL '1 day' FROM dates;
+SELECT d - INTERVAL '1 month' FROM dates;
+
+-- Test complex filtering with LIKE
+SELECT s FROM strings WHERE s LIKE 'a%';
+
+-- Test set operations
+SELECT i FROM integers UNION ALL SELECT 10;
+SELECT i FROM integers EXCEPT SELECT 1;
+SELECT i FROM integers INTERSECT SELECT 2;
+
+-- Test a more complex join
+CREATE TABLE more_strings (s VARCHAR, val INTEGER);
+INSERT INTO more_strings VALUES ('a', 100), ('b', 200), ('c', 300);
+SELECT i, val FROM integers JOIN more_strings ON strings.s = more_strings.s and integers.i = more_strings.val WHERE integers.i < 5;
+
+-- Test grouping and having
+SELECT length(s), count(*) FROM strings GROUP BY length(s) HAVING count(*) > 0;
+
+-- Test views
+CREATE VIEW my_view AS SELECT i FROM integers WHERE i > 2;
+SELECT * FROM my_view;
+
+-- Test temporary table
+CREATE TEMP TABLE temp_integers AS SELECT i FROM integers WHERE i < 3;
+SELECT * FROM temp_integers;
+
+-- Test case statement
+SELECT CASE WHEN i > 3 THEN 'large' ELSE 'small' END FROM integers;
+
+-- Testing DISTINCT
+SELECT DISTINCT s FROM strings;
+
+-- Test NULL values
+CREATE TABLE null_test (n INTEGER);
+INSERT INTO null_test VALUES (1), (NULL), (2);
+SELECT * FROM null_test WHERE n IS NULL;
+SELECT * FROM null_test WHERE n IS NOT NULL;

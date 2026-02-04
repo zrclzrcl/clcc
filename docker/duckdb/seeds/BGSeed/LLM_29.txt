@@ -1,0 +1,77 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), ('d'), ('e');
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) AS row_num FROM integers;
+
+-- Test string functions
+SELECT s, UPPER(s), LOWER(s) FROM strings;
+
+-- Test date functions (DuckDB-specific)
+SELECT CURRENT_DATE, DATE_TRUNC('month', CURRENT_DATE);
+
+-- Test aggregation
+SELECT COUNT(*), AVG(i) FROM integers;
+
+-- Test joins
+CREATE TABLE more_integers (j INTEGER);
+INSERT INTO more_integers VALUES (3), (4), (5), (6), (7);
+
+SELECT i, j FROM integers INNER JOIN more_integers ON i = j;
+
+-- Test UNION ALL
+SELECT i FROM integers UNION ALL SELECT j FROM more_integers;
+
+-- Test EXCEPT
+SELECT i FROM integers EXCEPT SELECT j FROM more_integers;
+
+-- Test INTERSECT
+SELECT i FROM integers INTERSECT SELECT j FROM more_integers;
+
+-- Test CASE statements
+SELECT i, CASE WHEN i > 3 THEN 'large' ELSE 'small' END FROM integers;
+
+-- Test views
+CREATE VIEW integer_view AS SELECT i FROM integers WHERE i > 2;
+SELECT * FROM integer_view;
+
+-- Test DuckDB-specific features: UUID
+SELECT uuid();
+
+-- Test DuckDB-specific features: JSON
+SELECT json('[1, 2, 3]');
+SELECT json_extract_path(json('[1, 2, 3]'), 0);
+
+-- Test DuckDB-specific features: LIST
+CREATE TABLE list_table AS SELECT list([1,2,3]) as l;
+SELECT list_extract(l,1) from list_table;
+
+-- Complex query with multiple features
+SELECT
+    i,
+    UPPER(s),
+    DATE_TRUNC('week', CURRENT_DATE),
+    CASE WHEN i > (SELECT AVG(i) FROM integers) THEN 'above average' ELSE 'below average' END
+FROM
+    integers, strings
+WHERE i IN (SELECT j FROM more_integers WHERE j < 6)
+ORDER BY i DESC;
+
+--Test DuckDB type conversion
+SELECT CAST('42' AS INTEGER);
+
+--Test DuckDB try_cast function
+SELECT try_cast('abc' AS INTEGER);
+
+-- Test create table as select statement
+CREATE TABLE derived_table AS SELECT i*2 as double_i from integers;
+SELECT * FROM derived_table;
+
+-- Test pragma functions (DuckDB-specific)
+PRAGMA show_tables;
+
+-- Test vacuum
+VACUUM;

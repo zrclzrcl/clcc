@@ -1,0 +1,18 @@
+SHOW VARIABLES LIKE 'version_comment';
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    category ENUM('electronics', 'clothing', 'books', 'other') DEFAULT 'other',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO products (name, description, price, category) VALUES
+('Awesome T-Shirt', 'A really cool t-shirt.', 19.99, 'clothing'),
+('Super Gadget 3000', 'Does everything you can imagine!', 299.00, 'electronics');
+SELECT * FROM products WHERE price BETWEEN 10 AND 20;
+CREATE TRIGGER product_audit AFTER INSERT ON products FOR EACH ROW INSERT INTO product_audit (product_id, action, timestamp) VALUES (NEW.id, 'insert', NOW());
+CREATE TABLE product_audit (product_id INT, action VARCHAR(10), timestamp DATETIME);
+ALTER TABLE products ADD FULLTEXT INDEX name_description_idx (name, description);
+SELECT * FROM products WHERE MATCH(name, description) AGAINST ('cool gadget' IN NATURAL LANGUAGE MODE);
+SELECT SLEEP(RAND() * 2);

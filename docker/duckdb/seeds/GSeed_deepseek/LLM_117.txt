@@ -1,0 +1,33 @@
+-- Create a table with various data types and constraints
+CREATE TABLE t0(
+    id INTEGER PRIMARY KEY,
+    text_col TEXT DEFAULT 'default_text',
+    num_col INTEGER DEFAULT 0,
+    bool_col BOOLEAN NOT NULL,
+    unique_col UNIQUE,
+    generated_col AS (lower(text_col))
+);
+
+-- Insert sample data with edge cases
+INSERT INTO t0(id, text_col, bool_col, unique_col) VALUES
+(1, 'Test', TRUE, 123),
+(2, NULL, FALSE, 456),
+(3, 'Edge Case', TRUE, 789);
+
+-- Create a table utilizing DuckDB-specific features like MATCH
+CREATE TABLE t1(
+    id INTEGER,
+    pattern TEXT,
+    data TEXT
+);
+
+-- Insert data for pattern matching tests
+INSERT INTO t1 VALUES
+(1, '^test$', 'testdata'),
+(2, '\d+', '12345');
+
+-- Query to test joins and DuckDB features
+SELECT t0.id, t1.data 
+FROM t0 
+JOIN t1 ON t0.id = t1.id 
+WHERE t1.pattern MATCH t0.text_col;

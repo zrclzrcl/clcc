@@ -1,0 +1,91 @@
+SET optimizer_switch='index_merge=on,query_cache=off';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score FLOAT DEFAULT 0.0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    notes TEXT,
+    data BLOB,
+    is_active BOOLEAN
+) ENGINE=InnoDB;
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    value INT UNIQUE,
+    description VARCHAR(100)
+) ENGINE=MyISAM;
+
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE UNIQUE INDEX idx_t2_value ON t2(value);
+CREATE INDEX idx_t1_score_status ON t1(score, status);
+ALTER TABLE t1 ADD CONSTRAINT chk_t1_score CHECK (score >= 0);
+
+INSERT INTO t1 (name, score, created_at, status) 
+VALUES ('Alice', 95.5, '2024-01-01 00:00:00', 'active'),
+       ('Bob', 87.2, '2024-01-02 00:00:00', 'inactive'),
+       ('Charlie', 92.3, '2024-01-03 00:00:00', 'active');
+
+INSERT INTO t2 (id, value, description)
+VALUES (1, 100, 'One hundred'),
+       (2, 200, 'Two hundred'),
+       (3, 300, 'Three hundred');
+
+ANALYZE TABLE t1, t2;
+
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 5 DO
+        INSERT INTO t1 (name, score) VALUES (CONCAT('User', i), RAND() * 100);
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CREATE FUNCTION fn_test(x INT)
+RETURNS VARCHAR(255)
+DETERMINISTIC
+BEGIN
+    IF x > 100 THEN
+        RETURN 'High';
+    ELSEIF x < 50 THEN
+        RETURN 'Low';
+    ELSE
+        RETURN 'Medium';
+    END IF;
+END$$
+
+CREATE TRIGGER trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (id, value) VALUES (NEW.id, NEW.score);
+END$$
+
+ALTER TABLE t1 ADD COLUMN new_column INT DEFAULT 0;
+
+START TRANSACTION;
+INSERT INTO t1 (name, score) VALUES ('TestUser', 99.9);
+SAVEPOINT sp1;
+UPDATE t1 SET score = 100 WHERE name = 'TestUser';
+ROLLBACK TO sp1;
+COMMIT;
+
+SELECT 
+    t1.name,
+    t2.description,
+    COUNT(*) AS total_records,
+    SUM(t1.score) AS total_score,
+    MAX(t1.score) AS max_score
+FROM t1
+JOIN t2 ON t1.id = t2.id
+WHERE t1.status = 'active'
+GROUP BY t1.name, t2.description
+HAVING total_records > 0
+ORDER BY max_score DESC;
+
+SELECT 
+    (SELECT COUNT(*) FROM t1 WHERE status = 'active') AS active_count,
+    (SELECT COUNT(*) FROM t1 WHERE status = 'inactive') AS inactive_count;
+
+SELECT * FROM t1 UNION ALL SELECT * FROM t2;

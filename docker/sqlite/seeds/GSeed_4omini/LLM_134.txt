@@ -1,0 +1,10 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, age INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users(username, age) VALUES('testuser1', 25);
+INSERT INTO users(username, age) VALUES('testuser2', 30);
+INSERT INTO users(username, age) VALUES('testuser3', NULL);
+UPDATE users SET age = 35 WHERE username = 'testuser1';
+SELECT * FROM users WHERE age IS NOT NULL AND created_at > DATE('now', '-30 days');
+SELECT username FROM users WHERE age < 20 UNION SELECT username FROM users WHERE age IS NULL;
+DELETE FROM users WHERE age > 30;
+CREATE INDEX idx_username ON users(username);
+SELECT COUNT(*) FROM users GROUP BY age HAVING COUNT(*) > 1;

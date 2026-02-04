@@ -1,0 +1,73 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL
+);
+
+ALTER TABLE products ADD FOREIGN KEY (category_id) REFERENCES categories(id);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, description, price, category_id) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.00, 1),
+('The Lord of the Rings', 'A classic fantasy novel', 25.00, 2),
+('T-Shirt', 'Comfortable cotton t-shirt', 15.00, 3),
+('Smartphone', 'Latest smartphone with advanced features', 900.00, 1),
+('Pride and Prejudice', 'A beloved romance novel', 18.00, 2);
+
+CREATE INDEX idx_product_name ON products (name);
+
+SELECT * FROM products WHERE price > 100 ORDER BY price DESC LIMIT 3;
+
+UPDATE products SET price = price * 1.1 WHERE category_id = 1;
+
+DELETE FROM products WHERE price < 10;
+
+-- Example of a MySQL specific function (JSON support)
+SELECT JSON_OBJECT('id', id, 'name', name) AS product_json FROM products LIMIT 1;
+
+-- Example using window function
+SELECT name, price, AVG(price) OVER () AS avg_price FROM products;
+
+-- Example using a stored procedure (if the user has sufficient privileges)
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN category_name VARCHAR(255))
+BEGIN
+    SELECT p.name, p.price FROM products p
+    JOIN categories c ON p.category_id = c.id
+    WHERE c.name = category_name;
+END //
+DELIMITER ;
+CALL GetProductsByCategory('Electronics');
+
+-- Example using a FULLTEXT index and search (requires MyISAM or InnoDB with specific configuration)
+ALTER TABLE products ADD FULLTEXT INDEX idx_product_description (description);
+SELECT * FROM products WHERE MATCH(description) AGAINST('laptop' IN NATURAL LANGUAGE MODE);
+
+-- Example using INSERT IGNORE to avoid duplicate key errors
+INSERT IGNORE INTO products (name, description, price, category_id) VALUES ('Laptop', 'Another Laptop', 1200.00, 1);
+
+-- Example using REPLACE (if a primary key or unique index conflict exists)
+REPLACE INTO products (id, name, description, price, category_id) VALUES (1, 'Laptop Pro', 'Improved laptop', 1300.00, 1);
+
+-- Example using a common table expression (CTE)
+WITH ExpensiveProducts AS (
+  SELECT name, price
+  FROM products
+  WHERE price > 500
+)
+SELECT name, price
+FROM ExpensiveProducts
+ORDER BY price DESC;
+
+SHOW INDEXES FROM products;
+
+EXPLAIN SELECT * FROM products WHERE name = 'Laptop';

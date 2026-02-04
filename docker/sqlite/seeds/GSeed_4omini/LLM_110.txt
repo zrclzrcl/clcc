@@ -1,0 +1,37 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);
+INSERT INTO users(name, email) VALUES('Alice', 'alice@example.com'), ('Bob', 'bob@example.com'), ('Charlie', 'charlie@example.com');
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount DECIMAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (1, 200.75), (2, 150.00);
+
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, product_name TEXT, price DECIMAL);
+INSERT INTO products(product_name, price) VALUES('Widget', 19.99), ('Gadget', 29.99), ('Doodad', 12.99);
+
+CREATE VIEW user_orders AS
+SELECT users.name, SUM(orders.amount) AS total_spent
+FROM users
+JOIN orders ON users.id = orders.user_id
+GROUP BY users.name;
+
+SELECT * FROM user_orders ORDER BY total_spent DESC;
+
+WITH HighValueOrders AS (
+    SELECT user_id, SUM(amount) AS total_amount
+    FROM orders
+    GROUP BY user_id
+    HAVING total_amount > 100
+)
+SELECT u.name, hvo.total_amount
+FROM HighValueOrders hvo
+JOIN users u ON hvo.user_id = u.id
+ORDER BY hvo.total_amount DESC;
+
+DELETE FROM orders WHERE amount < 20.00;
+
+INSERT INTO products(product_name, price) VALUES('Thingamajig', 25.00);
+UPDATE products SET price = price * 1.10;
+
+SELECT name, email FROM users WHERE email LIKE '%@example.com' COLLATE NOCASE;
+SELECT product_name FROM products WHERE price BETWEEN 10 AND 30 ORDER BY price ASC;
+
+DROP VIEW IF EXISTS user_orders;

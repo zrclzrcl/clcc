@@ -1,0 +1,49 @@
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    is_active BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO t1 (id, name, is_active, created_at, price) VALUES
+    (1, 'Item 1', TRUE, '2023-01-01 00:00:00', 19.99),
+    (2, 'Item 2', FALSE, '2023-01-02 00:00:00', NULL),
+    (3, 'Item 3', TRUE, '2023-01-03 00:00:00', 29.99);
+
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    item_id INTEGER REFERENCES t1(id),
+    quantity INTEGER CHECK (quantity > 0)
+);
+
+INSERT INTO t2 (id, user_id, item_id, quantity) VALUES
+    (1, 1, 1, 5),
+    (2, 2, 3, 10),
+    (3, NULL, 2, 0); -- Invalid quantity to test constraint
+
+UPDATE t1 SET is_active = FALSE WHERE created_at < '2023-01-02 00:00:00';
+
+WITH cte AS (
+    SELECT user_id, SUM(quantity) as total_quantity
+    FROM t2
+    GROUP BY user_id
+)
+SELECT * FROM cte;
+
+SELECT DISTINCT name, is_active
+FROM t1
+WHERE price IS NOT NULL AND created_at >= '2023-01-01 00:00:00';
+
+SELECT 
+    t1.name,
+    t2.quantity,
+    ROW_NUMBER() OVER (ORDER BY t1.created_at) as row_num
+FROM t1
+JOIN t2 ON t1.id = t2.item_id
+WHERE t2.user_id IS NOT NULL;
+
+PRAGMA table_info(t1);
+PRAGMA integrity_check;

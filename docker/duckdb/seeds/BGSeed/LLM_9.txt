@@ -1,0 +1,57 @@
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    email VARCHAR(255),
+    phone_number VARCHAR(20)
+);
+
+-- Demonstrate DuckDB's support for Parquet files.  Requires the parquet extension to be loaded.  Handle errors gracefully if extension is not loaded.
+-- We don't *actually* create the file, this is just to test syntax.
+TRY EXECUTE IMMEDIATE 'CREATE TABLE my_parquet_table AS SELECT * FROM read_parquet(''./data.parquet'')';
+
+-- Example of using UNNEST with a list literal (array)
+SELECT * FROM UNNEST([1, 2, 3], ['a', 'b', 'c']);
+
+-- Demonstrate string functions that might be interesting.
+SELECT string_split('hello,world', ',');
+SELECT regexp_matches('foobarbaz', 'b..');
+
+-- Use of window functions, including frame specification
+SELECT
+    order_id,
+    order_date,
+    total_amount,
+    AVG(total_amount) OVER (ORDER BY order_date ASC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_average
+FROM orders;
+
+-- Create a view using a window function
+CREATE VIEW recent_orders AS
+SELECT
+    order_id,
+    customer_id,
+    order_date,
+    total_amount
+FROM orders
+WHERE order_date >= date('now', '-7 days');
+
+-- Example of using a CTE (Common Table Expression)
+WITH high_value_customers AS (
+    SELECT customer_id
+    FROM orders
+    GROUP BY customer_id
+    HAVING SUM(total_amount) > 1000
+)
+SELECT c.first_name, c.last_name
+FROM customers c
+JOIN high_value_customers hvc ON c.customer_id = hvc.customer_id;
+
+-- Using generate_series function
+SELECT generate_series(1, 5);

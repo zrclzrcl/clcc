@@ -1,0 +1,130 @@
+CREATE TYPE employee_info AS (
+    employee_id INT,
+    employee_name TEXT,
+    department TEXT,
+    salary NUMERIC
+);
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    info employee_info
+);
+
+INSERT INTO employees (info) VALUES
+    (ROW(1, 'Alice Smith', 'Sales', 60000)::employee_info),
+    (ROW(2, 'Bob Johnson', 'Marketing', 75000)::employee_info),
+    (ROW(3, 'Charlie Brown', 'Engineering', 90000)::employee_info);
+
+SELECT (info).employee_name, (info).salary FROM employees WHERE (info).department = 'Engineering';
+
+CREATE TYPE address AS (
+    street TEXT,
+    city TEXT,
+    zipcode TEXT
+);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name TEXT,
+    location address
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+    ('Sales', ROW('123 Main St', 'Anytown', '12345')::address),
+    ('Marketing', ROW('456 Oak Ave', 'Springfield', '67890')::address);
+
+SELECT dept_name, (location).city FROM departments WHERE (location).zipcode = '12345';
+
+CREATE DOMAIN email AS TEXT
+CHECK (VALUE LIKE '%@%.%');
+
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email_address email
+);
+
+INSERT INTO users (username, email_address) VALUES
+    ('testuser1', 'test1@example.com'),
+    ('testuser2', 'test2@example.net');
+
+SELECT * FROM users WHERE email_address LIKE '%@example.%';
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name TEXT,
+    price NUMERIC,
+    available BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO products (product_name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00);
+
+SELECT product_name, price FROM products WHERE available = TRUE AND price > 50;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount NUMERIC
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+    (1, 250.00),
+    (2, 100.00),
+    (1, 50.00);
+
+SELECT order_id, order_date, total_amount FROM orders WHERE customer_id = 1 AND order_date > CURRENT_DATE - INTERVAL '30 days';
+
+CREATE TABLE logs (
+    log_id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    message TEXT
+);
+
+INSERT INTO logs (message) VALUES
+    ('Application started'),
+    ('User logged in'),
+    ('Data processed');
+
+SELECT log_id, timestamp, message FROM logs WHERE timestamp BETWEEN NOW() - INTERVAL '1 hour' AND NOW();
+
+CREATE TABLE items (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO items (name, description) VALUES
+    ('Item 1', 'This is the first item.'),
+    ('Item 2', 'This is the second item.');
+
+SELECT id, name, created_at AT TIME ZONE 'UTC' FROM items;
+
+CREATE TABLE measurements (
+    id SERIAL PRIMARY KEY,
+    value NUMERIC,
+    unit TEXT,
+    measured_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO measurements (value, unit) VALUES
+    (25.5, 'Celsius'),
+    (77.0, 'Fahrenheit');
+
+SELECT value, unit, measured_at AT TIME ZONE 'America/Los_Angeles' FROM measurements;
+
+CREATE TABLE metadata (
+    id SERIAL PRIMARY KEY,
+    key TEXT UNIQUE NOT NULL,
+    value JSONB
+);
+
+INSERT INTO metadata (key, value) VALUES
+    ('app_config', '{"version": "1.0", "theme": "dark"}'),
+    ('user_prefs', '{"notifications": true, "language": "en"}');
+
+SELECT key, value -> 'version' FROM metadata WHERE key = 'app_config';

@@ -1,0 +1,35 @@
+-- Create various tables to test different functionalities
+CREATE TABLE t1 (id INT PRIMARY KEY, name TEXT NOT NULL, score FLOAT);
+CREATE TABLE t2 (event_id INT PRIMARY KEY, timestamp TIMESTAMP);
+CREATE TABLE t3 (data JSON);
+CREATE TABLE t4 (arr INT[]);
+
+-- Insert sample data into the tables
+INSERT INTO t1 VALUES (1, 'Alice', 85.5), (2, 'Bob', 90.0), (3, 'Charlie', 78.2);
+INSERT INTO t2 VALUES (1, '2024-01-01 12:00:00'), (2, '2024-01-02 15:30:00');
+INSERT INTO t3 VALUES ('{"name": "DuckDB", "version": "0.9"}');
+INSERT INTO t4 VALUES (ARRAY[1,2,3]), (ARRAY[4,5]);
+
+-- Use a CTE to test complex queries
+WITH cte_avg AS (
+    SELECT AVG(score) as avg_score FROM t1
+)
+SELECT name, score - (SELECT avg_score FROM cte_avg) AS diff FROM t1;
+
+-- Test aggregate functions with conditions
+SELECT SUM(score) as total_score FROM t1 WHERE score > 80;
+
+-- Use window function to rank scores
+SELECT id, name, score, ROW_NUMBER() OVER (ORDER BY score DESC) as rank FROM t1;
+
+-- Create a trigger for testing events
+CREATE TRIGGER log_events AFTER INSERT ON t2 
+BEGIN
+    INSERT INTO t2_log VALUES (NEW.event_id, NEW.timestamp);
+END;
+
+-- Test JSON functions by extracting data from the JSON column
+SELECT json_extract(data, '$.name') as name FROM t3;
+
+-- Use array operations to test array functionalities
+SELECT arr, array_length(arr) as len FROM t4;

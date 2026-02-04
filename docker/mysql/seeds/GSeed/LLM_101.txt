@@ -1,0 +1,125 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET optimizer_switch='semijoin=on,materialization=on,firstmatch=on,loosescan=on,index_condition_pushdown=on,mrr=on';
+
+-- Create tables with diverse data types and constraints
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_data JSON
+);
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    stock_quantity INT UNSIGNED DEFAULT 0,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status ENUM('Pending', 'Shipped', 'Delivered', 'Cancelled') DEFAULT 'Pending',
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Insert sample data
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com');
+
+INSERT INTO products (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('T-Shirt', 25.00, 'Clothing'),
+('Coffee Maker', 50.00, 'Home Goods');
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1200.00),
+(2, 75.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(2, 2, 1, 25.00),
+(2, 3, 1, 50.00);
+
+-- Complex queries with joins, subqueries, and aggregations
+SELECT u.username, SUM(oi.quantity * oi.price) AS total_spent
+FROM users u
+JOIN orders o ON u.id = o.user_id
+JOIN order_items oi ON o.id = oi.order_id
+GROUP BY u.username
+HAVING total_spent > 100;
+
+SELECT p.name
+FROM products p
+WHERE p.id IN (SELECT product_id FROM order_items WHERE quantity > 1);
+
+-- Window function example
+SELECT
+    p.name,
+    p.price,
+    AVG(p.price) OVER () AS average_price
+FROM products p;
+
+-- Stored procedure example (create and call)
+DELIMITER //
+CREATE PROCEDURE GetOrdersByUser(IN user_id_param INT)
+BEGIN
+    SELECT * FROM orders WHERE user_id = user_id_param;
+END //
+DELIMITER ;
+
+CALL GetOrdersByUser(1);
+
+-- Trigger example (create and simulate triggering)
+DELIMITER //
+CREATE TRIGGER update_product_stock
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE products SET stock_quantity = stock_quantity - NEW.quantity WHERE id = NEW.product_id;
+END //
+DELIMITER ;
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1,2,5,25.00);
+
+-- JSON function example
+SELECT username, profile_data->>'$.address.city' AS city FROM users;
+
+-- Fulltext search (create index and query)
+ALTER TABLE products ADD FULLTEXT INDEX idx_product_name (name);
+SELECT * FROM products WHERE MATCH(name) AGAINST('Laptop');
+
+-- Test optimizer hints
+SELECT /*+ INDEX(orders user_id) */ * FROM orders WHERE user_id = 1;
+
+-- Test EXPLAIN ANALYZE (if supported by the MySQL version, otherwise fallback to EXPLAIN)
+EXPLAIN ANALYZE SELECT * FROM users WHERE id = 1;
+
+-- Clean up (for repeated runs)
+DROP TRIGGER IF EXISTS update_product_stock;
+DROP PROCEDURE IF EXISTS GetOrdersByUser;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS users;
+
+SET sql_mode=@old_sql_mode;

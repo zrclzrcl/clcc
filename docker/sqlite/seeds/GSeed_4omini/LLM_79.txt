@@ -1,0 +1,47 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, salary REAL, department_id INTEGER);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT);
+BEGIN;
+INSERT INTO departments VALUES(1, 'HR');
+INSERT INTO departments VALUES(2, 'Engineering');
+INSERT INTO departments VALUES(3, 'Sales');
+INSERT INTO employees VALUES(1, 'Alice', 70000, 1);
+INSERT INTO employees VALUES(2, 'Bob', 90000, 2);
+INSERT INTO employees VALUES(3, 'Charlie', 50000, 1);
+INSERT INTO employees VALUES(4, 'Dave', 110000, 2);
+INSERT INTO employees VALUES(5, 'Eve', 60000, 3);
+INSERT INTO employees VALUES(6, 'Frank', 80000, 2);
+INSERT INTO employees VALUES(7, 'Grace', 45000, 3);
+INSERT INTO employees VALUES(8, 'Hank', 75000, NULL);
+-- Query to find average salary by department including those without a department
+SELECT d.name AS department_name, 
+       AVG(e.salary) AS avg_salary, 
+       COUNT(e.id) AS employee_count 
+FROM departments d 
+LEFT JOIN employees e ON d.id = e.department_id 
+GROUP BY d.id 
+ORDER BY avg_salary DESC;
+
+-- Query to find departments with more than 2 employees
+SELECT d.name, COUNT(e.id) AS employee_count 
+FROM departments d 
+JOIN employees e ON d.id = e.department_id 
+GROUP BY d.id 
+HAVING employee_count > 2;
+
+-- Query to find employees with salaries above the average salary of their department
+SELECT e.name, e.salary, d.name AS department_name 
+FROM employees e 
+JOIN departments d ON e.department_id = d.id 
+WHERE e.salary > (SELECT AVG(salary) FROM employees WHERE department_id = e.department_id);
+
+-- Test for NULL department entries
+SELECT e.name, IFNULL(d.name, 'No Department') AS department_name 
+FROM employees e 
+LEFT JOIN departments d ON e.department_id = d.id 
+ORDER BY e.salary DESC;
+
+-- Query showcasing window functions (SQLite specific)
+SELECT name, salary, department_id, 
+       RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS salary_rank 
+FROM employees 
+ORDER BY department_id, salary_rank;

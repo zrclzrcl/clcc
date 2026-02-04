@@ -1,0 +1,36 @@
+BEGIN;
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    value FLOAT CHECK (value > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO test_table VALUES 
+    (1, 'Test Name', 123.45, '2023-01-01'),
+    (2, 'Another Test', NULL, CURRENT_TIMESTAMP),
+    (3, '', 987.65, '2023-01-02');
+CREATE TABLE test_table2 (
+    id INTEGER PRIMARY KEY,
+    test_id INTEGER REFERENCES test_table(id),
+    data TEXT
+);
+INSERT INTO test_table2 VALUES 
+    (1, 1, 'Sample Data'),
+    (2, 2, 'More Data'),
+    (3, NULL, '');
+SELECT t.id, t.name, t.value, COUNT(t2.id) AS related_count
+FROM test_table t
+LEFT JOIN test_table2 t2 ON t.id = t2.test_id
+GROUP BY t.id;
+WITH recursive_cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM recursive_cte WHERE n < 5
+)
+SELECT * FROM recursive_cte;
+CREATE VIEW test_view AS 
+SELECT id, name FROM test_table WHERE value IS NULL;
+CREATE INDEX idx_test_value ON test_table(value);
+VACUUM;
+PRAGMA memory_limit='2GB';
+COMMIT;

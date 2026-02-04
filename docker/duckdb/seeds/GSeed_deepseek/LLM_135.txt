@@ -1,0 +1,4 @@
+CREATE TABLE t1(a INT, b TEXT, c REAL, d BLOB);
+INSERT INTO t1 VALUES(0, '', 0.0, x'');
+INSERT INTO t1 VALUES(-2147483648, 'test', 150, x'41');
+SELECT a + 1 AS new_a, b || ' added text' AS new_b, c * 2 AS new_c, hex(d) AS d_hex FROM t1;

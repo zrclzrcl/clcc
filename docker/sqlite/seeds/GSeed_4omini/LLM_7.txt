@@ -1,0 +1,21 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (username, email) VALUES ('user1', 'user1@example.com');
+INSERT INTO users (username, email) VALUES ('user2', 'user2@example.com');
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, order_date DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount) VALUES (1, 99.99);
+INSERT INTO orders (user_id, amount) VALUES (1, 49.99);
+INSERT INTO orders (user_id, amount) VALUES (2, 19.99);
+ALTER TABLE users ADD COLUMN last_login DATETIME;
+UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = 1;
+SELECT * FROM users WHERE last_login IS NOT NULL ORDER BY last_login DESC;
+-- Using a Common Table Expression (CTE) to calculate total amount spent by each user
+WITH total_spent AS (SELECT user_id, SUM(amount) AS total_amount FROM orders GROUP BY user_id)
+SELECT u.username, t.total_amount FROM total_spent t JOIN users u ON u.id = t.user_id ORDER BY t.total_amount DESC;
+DROP TABLE IF EXISTS feedback;
+CREATE TABLE feedback(id INTEGER PRIMARY KEY, user_id INTEGER, feedback TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO feedback (user_id, feedback) VALUES (1, 'Great service!');
+INSERT INTO feedback (user_id, feedback) VALUES (2, 'Satisfactory experience.');
+SELECT f.id, u.username, f.feedback FROM feedback f JOIN users u ON f.user_id = u.id ORDER BY f.created_at DESC;
+ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'pending';
+UPDATE orders SET status = 'completed' WHERE order_id = 1;
+SELECT * FROM orders WHERE status = 'completed';

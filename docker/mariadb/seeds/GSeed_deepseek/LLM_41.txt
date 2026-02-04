@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS `test_table` (
+  `id` int(10) unsigned AUTO_INCREMENT PRIMARY KEY,
+  `tiny_int_col` tinyint(3) DEFAULT NULL,
+  `year_col` year(4) NOT NULL,
+  `boolean_col` boolean DEFAULT FALSE,
+  `binary_col` BINARY(5) NOT NULL,
+  `text_col` TEXT(256) DEFAULT 'default_text',
+  UNIQUE KEY `unique_tiny_int_year` (`tiny_int_col`, `year_col`),
+  FULLTEXT KEY `ft_text_col` (`text_col`)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+INSERT INTO test_table (tiny_int_col, year_col, boolean_col, binary_col, text_col)
+VALUES (127, 2024, TRUE, BINARY 'data', 'Sample text for testing.');
+
+CREATE TABLE IF NOT EXISTS `test_table_child` (
+  `id` int(10) unsigned AUTO_INCREMENT PRIMARY KEY,
+  `parent_id` int(10) unsigned NOT NULL,
+  `decimal_col` decimal(5,2) DEFAULT NULL,
+  CONSTRAINT `fk_parent` FOREIGN KEY (`parent_id`) REFERENCES `test_table`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO test_table_child (parent_id, decimal_col)
+VALUES (1, 100.50);
+
+DELIMITER $$
+CREATE FUNCTION get_concat_data(a VARCHAR(255), b VARCHAR(255)) RETURNS VARCHAR(510)
+DETERMINISTIC
+BEGIN
+    RETURN CONCAT_WS(' | ', a, b);
+END$$
+
+DELIMITER ;

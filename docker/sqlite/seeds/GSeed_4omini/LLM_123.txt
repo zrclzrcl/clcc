@@ -1,0 +1,7 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users(name, age) VALUES ('Alice', 30), ('Bob', 25), ('Charlie', 35);
+SELECT * FROM users WHERE age > (SELECT AVG(age) FROM users) ORDER BY created_at DESC;
+CREATE INDEX idx_age ON users(age);
+UPDATE users SET age = age + 1 WHERE name IN (SELECT name FROM users WHERE age < 35);
+DELETE FROM users WHERE created_at < DATE('now', '-1 year');
+SELECT name, COUNT(*) OVER (PARTITION BY age) AS age_count FROM users HAVING age_count > 1;

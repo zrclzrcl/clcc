@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, salary REAL, is_full_time BOOLEAN);
+INSERT INTO employees(name, salary, is_full_time) VALUES ('Alice', 70000, TRUE), ('Bob', 50000, FALSE), ('Charlie', 60000, TRUE);
+CREATE UNIQUE INDEX idx_salary ON employees(salary);
+UPDATE employees SET salary = salary * 1.05 WHERE is_full_time = TRUE;
+DELETE FROM employees WHERE name = 'Bob';
+SELECT * FROM employees WHERE salary > 60000;
+SELECT COUNT(*) AS full_time_count FROM employees WHERE is_full_time = TRUE;
+CREATE VIEW full_time_employees AS SELECT name, salary FROM employees WHERE is_full_time = TRUE;
+SELECT * FROM full_time_employees;
+DROP VIEW IF EXISTS full_time_employees;
+VACUUM;

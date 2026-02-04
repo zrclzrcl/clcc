@@ -1,0 +1,115 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id)
+    REFERENCES departments (id)
+    ON DELETE SET NULL;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 2, 75000.00, 2),
+('Robert', 'Jones', 'robert.jones@example.com', '2023-03-10', 3, 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT AVG(salary) AS average_salary FROM employees;
+
+SELECT COUNT(*) AS total_employees FROM employees;
+
+SELECT MAX(salary) AS max_salary, MIN(salary) AS min_salary FROM employees;
+
+SELECT department_id, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department_id;
+
+SELECT first_name, last_name
+FROM employees
+WHERE first_name LIKE 'J%';
+
+SELECT * FROM employees ORDER BY last_name ASC;
+
+SELECT * FROM employees LIMIT 2;
+
+CREATE VIEW employee_summary AS
+SELECT first_name, last_name, salary
+FROM employees;
+
+SELECT * FROM employee_summary WHERE salary > 65000;
+
+-- PostgreSQL specific features
+SELECT version();
+
+SELECT current_database();
+
+SELECT inet_client_addr();
+
+SELECT pg_backend_pid();
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE TABLESPACE my_tablespace LOCATION '/tmp/my_tablespace';
+
+DROP TABLESPACE my_tablespace;
+
+SELECT generate_series(1, 5);
+
+SELECT pg_sleep(1);
+
+-- More complex queries
+SELECT d.name, COUNT(e.id) AS employee_count, AVG(e.salary) AS avg_salary
+FROM departments d
+LEFT JOIN employees e ON d.id = e.department_id
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+WITH DepartmentAvgSalaries AS (
+    SELECT department_id, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department_id
+)
+SELECT e.first_name, e.last_name, d.avg_salary
+FROM employees e
+JOIN DepartmentAvgSalaries d ON e.department_id = d.department_id
+WHERE e.salary > d.avg_salary;
+
+-- Cleanup
+DROP VIEW employee_summary;
+DROP FUNCTION increment(INTEGER);
+DROP TABLE employees;
+DROP TABLE departments;

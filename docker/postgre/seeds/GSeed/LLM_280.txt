@@ -1,0 +1,156 @@
+CREATE TEMP TABLE fuzz_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT,
+    num INTEGER,
+    ts TIMESTAMP WITH TIME ZONE
+);
+
+-- Basic INSERT statements
+INSERT INTO fuzz_table (data, num, ts) VALUES ('test data 1', 123, NOW());
+INSERT INTO fuzz_table (data, num) VALUES ('test data 2', 456);
+INSERT INTO fuzz_table (num, data) VALUES (789, 'test data 3');
+INSERT INTO fuzz_table (data, num, ts) VALUES (NULL, 101, '2024-01-01 00:00:00+00');
+
+-- COPY statement using stdin
+COPY fuzz_table (data, num) FROM stdin;
+test data 4	1122
+test data 5	3344
+\.
+
+-- COPY statement with delimiters
+COPY fuzz_table (data, num) FROM stdin WITH DELIMITER ',';
+test data 6,5566
+test data 7,7788
+\.
+
+-- COPY statement with NULL definition
+COPY fuzz_table (data, num) FROM stdin WITH NULL AS 'NULL';
+NULL	9900
+test data 8	NULL
+\.
+
+-- COPY statement with CSV format
+COPY fuzz_table (data, num) FROM stdin WITH (FORMAT CSV, DELIMITER ',');
+"test data 9",1212
+"test data 10",3434
+\.
+
+-- COPY statement to stdout
+COPY fuzz_table TO stdout;
+COPY fuzz_table (data, num) TO stdout WITH DELIMITER '|';
+
+-- SELECT statements
+SELECT * FROM fuzz_table;
+SELECT data, num FROM fuzz_table WHERE num > 500;
+SELECT COUNT(*) FROM fuzz_table;
+
+-- UPDATE statements
+UPDATE fuzz_table SET data = 'updated data' WHERE num = 123;
+UPDATE fuzz_table SET num = num + 100;
+
+-- DELETE statements
+DELETE FROM fuzz_table WHERE num > 1000;
+DELETE FROM fuzz_table WHERE data LIKE 'test%';
+
+-- TRUNCATE statement
+TRUNCATE TABLE fuzz_table;
+
+-- ALTER TABLE statement
+ALTER TABLE fuzz_table ADD COLUMN new_column BOOLEAN DEFAULT FALSE;
+ALTER TABLE fuzz_table ALTER COLUMN data TYPE VARCHAR(255);
+ALTER TABLE fuzz_table DROP COLUMN new_column;
+
+-- CREATE INDEX statement
+CREATE INDEX idx_fuzz_table_num ON fuzz_table (num);
+
+-- DROP INDEX statement
+DROP INDEX idx_fuzz_table_num;
+
+-- Vacuum analyze
+VACUUM ANALYZE fuzz_table;
+
+-- Create function and trigger example
+CREATE OR REPLACE FUNCTION update_ts()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.ts = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_fuzz_ts
+BEFORE UPDATE ON fuzz_table
+FOR EACH ROW
+EXECUTE PROCEDURE update_ts();
+
+UPDATE fuzz_table SET data = 'Triggered update' WHERE num = 456;
+
+DROP TRIGGER update_fuzz_ts ON fuzz_table;
+DROP FUNCTION update_ts();
+
+-- Test different timestamp input formats
+INSERT INTO fuzz_table (data, num, ts) VALUES ('timestamp test', 1, '2024-10-26 14:30:00');
+INSERT INTO fuzz_table (data, num, ts) VALUES ('timestamp test', 2, '20241026 143000');
+INSERT INTO fuzz_table (data, num, ts) VALUES ('timestamp test', 3, 'October 26, 2024');
+INSERT INTO fuzz_table (data, num, ts) VALUES ('timestamp test', 4, '2024-10-26');
+INSERT INTO fuzz_table (data, num, ts) VALUES ('timestamp test', 5, '14:30:00');
+
+-- Test generated series
+INSERT INTO fuzz_table (data, num) SELECT 'generated data', generate_series(1, 10);
+
+-- Using LIKE and ILIKE operators
+SELECT * FROM fuzz_table WHERE data LIKE '%data%';
+SELECT * FROM fuzz_table WHERE data ILIKE '%DATA%';
+
+-- Using SIMILAR TO operator
+SELECT * FROM fuzz_table WHERE data SIMILAR TO '%(data|test)%';
+
+-- Test case-insensitive comparisons
+SELECT * FROM fuzz_table WHERE lower(data) = 'test data 1';
+
+-- More COPY tests with varying delimiters
+COPY fuzz_table (data, num) FROM stdin WITH DELIMITER E'\t';
+tab data 1	1
+tab data 2	2
+\.
+
+COPY fuzz_table (data, num) FROM stdin WITH DELIMITER '|' NULL 'NULL';
+pipe data 1|NULL
+NULL|3
+\.
+
+-- Using window functions
+SELECT data, num, ROW_NUMBER() OVER (ORDER BY num) FROM fuzz_table;
+
+-- Using DISTINCT clause
+SELECT DISTINCT data FROM fuzz_table;
+
+-- Using GROUP BY clause
+SELECT data, COUNT(*) FROM fuzz_table GROUP BY data;
+
+-- Using HAVING clause
+SELECT data, COUNT(*) FROM fuzz_table GROUP BY data HAVING COUNT(*) > 1;
+
+-- Using WITH clause (Common Table Expressions)
+WITH data_counts AS (SELECT data, COUNT(*) AS count FROM fuzz_table GROUP BY data) SELECT * FROM data_counts WHERE count > 0;
+
+-- Test NULLIF function
+SELECT NULLIF(data, 'test data 1') FROM fuzz_table;
+
+-- Test COALESCE function
+SELECT COALESCE(data, 'default data') FROM fuzz_table;
+
+-- Test greatest and least functions
+SELECT GREATEST(num, 100), LEAST(num, 100) FROM fuzz_table;
+
+-- Test case expression
+SELECT
+    CASE
+        WHEN num > 100 THEN 'High'
+        WHEN num < 50 THEN 'Low'
+        ELSE 'Medium'
+    END AS value_range
+FROM fuzz_table;
+
+-- Clean up the table
+DROP TABLE fuzz_table;

@@ -1,0 +1,109 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+-- Create a simple table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email CITEXT NOT NULL,
+    join_date TIMESTAMPTZ DEFAULT now(),
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_data JSONB
+);
+
+-- Create an unlogged table
+CREATE UNLOGGED TABLE temp_data (
+    id SERIAL PRIMARY KEY,
+    value TEXT
+);
+
+-- Insert some data
+INSERT INTO users (username, email, profile_data) VALUES
+('john_doe', 'john.doe@example.com', '{"age": 30, "city": "New York"}'),
+('jane_smith', 'jane.smith@example.org', '{"age": 25, "city": "Los Angeles"}'),
+('peter_jones', 'peter.jones@example.net', '{"age": 40, "city": "Chicago"}');
+
+INSERT INTO temp_data (value) SELECT md5(random()::text) FROM generate_series(1, 100);
+
+-- Select data with various clauses
+SELECT id, username, email, join_date FROM users WHERE is_active = TRUE ORDER BY join_date DESC LIMIT 10;
+
+SELECT COUNT(*) FROM users;
+
+SELECT city, AVG(profile_data ->> 'age') FROM users GROUP BY city;
+
+SELECT username, email FROM users WHERE email LIKE '%example.com%';
+
+SELECT * FROM users WHERE profile_data ? 'age'; -- Check if 'age' key exists in jsonb
+
+-- Update data
+UPDATE users SET is_active = FALSE WHERE username = 'john_doe';
+
+UPDATE users SET profile_data = jsonb_set(profile_data, '{address}', '"123 Main St"') WHERE username = 'jane_smith';
+
+-- Delete data
+DELETE FROM users WHERE id = 3;
+
+-- Alter table
+ALTER TABLE users ADD COLUMN phone_number VARCHAR(20);
+
+ALTER TABLE users ALTER COLUMN email TYPE VARCHAR(100);
+
+-- Join example
+CREATE TABLE user_roles (
+    user_id INTEGER REFERENCES users(id),
+    role VARCHAR(50) NOT NULL
+);
+
+INSERT INTO user_roles (user_id, role) VALUES
+(1, 'admin'),
+(2, 'editor'),
+(1, 'moderator');
+
+SELECT u.username, r.role FROM users u JOIN user_roles r ON u.id = r.user_id;
+
+-- Subquery example
+SELECT username FROM users WHERE id IN (SELECT user_id FROM user_roles WHERE role = 'admin');
+
+-- Case statement
+SELECT username,
+       CASE
+           WHEN is_active THEN 'Active'
+           ELSE 'Inactive'
+       END AS status
+FROM users;
+
+-- Exists
+SELECT username FROM users WHERE EXISTS (SELECT 1 FROM user_roles WHERE user_id = users.id AND role = 'admin');
+
+-- Distinct
+SELECT DISTINCT role FROM user_roles;
+
+-- Copy data
+CREATE TABLE copy_test (
+  id serial primary key,
+  name text
+);
+
+COPY copy_test(name) FROM stdin;
+test1
+test2
+\.
+
+-- With ordinality
+SELECT * FROM string_to_array('a,b,c', ',') WITH ORDINALITY AS t(element, ordinality);
+
+-- Generate series with timestamptz
+SELECT generate_series(now(), now() + interval '1 hour', interval '10 minutes');
+
+-- Try some JSONB operators
+SELECT profile_data ->> 'age' as age FROM users;
+SELECT profile_data #>> '{address}' as address FROM users where username = 'jane_smith';
+SELECT profile_data || '{"new_field": "new_value"}'::jsonb FROM users where username = 'john_doe';
+
+-- Drop Table
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS temp_data;
+DROP TABLE IF EXISTS copy_test;
+DROP TABLE IF EXISTS users;
+
+DROP EXTENSION IF EXISTS citext;

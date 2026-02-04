@@ -1,0 +1,74 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000.00, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie Brown', 'Engineering', 90000.00, '2020-11-01'),
+('David Lee', 'Sales', 62000.00, '2022-03-10'),
+('Eve Wilson', 'Finance', 80000.00, '2021-09-25');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = 5;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary) AS max_salary, MIN(salary) AS min_salary FROM employees;
+
+SELECT name, hire_date FROM employees WHERE hire_date BETWEEN '2021-01-01' AND '2022-12-31';
+
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT id, name, COALESCE(email, 'N/A') AS email FROM employees;
+
+CREATE VIEW sales_employees AS SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+DROP VIEW sales_employees;
+
+SELECT version();
+
+SELECT pg_backend_pid();
+
+-- Trigger Example (requires superuser or table owner privileges, omitted for broader compatibility initially)
+-- CREATE OR REPLACE FUNCTION audit_salary_change() RETURNS TRIGGER AS $$
+-- BEGIN
+--   INSERT INTO salary_audit (employee_id, old_salary, new_salary, updated_at)
+--   VALUES (OLD.id, OLD.salary, NEW.salary, NOW());
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+-- CREATE TABLE salary_audit (
+--   employee_id INT,
+--   old_salary DECIMAL,
+--   new_salary DECIMAL,
+--   updated_at TIMESTAMP
+-- );
+-- CREATE TRIGGER salary_change_trigger
+-- AFTER UPDATE OF salary ON employees
+-- FOR EACH ROW
+-- EXECUTE FUNCTION audit_salary_change();
+
+SELECT current_database();
+SHOW search_path;

@@ -1,0 +1,30 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    amount DECIMAL(10, 2) NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO users (username, email) VALUES
+('test_user1', 'test1@example.com'),
+('test_user2', 'test2@example.com'),
+('test_user3', 'test3@example.com');
+
+INSERT INTO orders (user_id, amount) VALUES
+(1, 99.99),
+(1, 19.99),
+(2, 25.00);
+
+UPDATE users SET email = 'updated_user1@example.com' WHERE username = 'test_user1';
+
+DELETE FROM orders WHERE amount < 20.00;
+
+SELECT * FROM users WHERE id NOT IN (SELECT user_id FROM orders);

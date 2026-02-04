@@ -1,0 +1,92 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY,
+    department_name VARCHAR(100),
+    manager_id INT,
+    location_id INT
+);
+
+CREATE TABLE jobs (
+    job_id INT PRIMARY KEY,
+    job_title VARCHAR(100),
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (employee_id, first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES
+(100, 'Steven', 'King', 'SKING', '515.123.4567', '2003-06-17', 1, 24000.00, NULL, NULL, 90),
+(101, 'Neena', 'Kochhar', 'NKOCHHAR', '515.123.4568', '2005-09-21', 2, 17000.00, NULL, 100, 90),
+(102, 'Lex', 'De Haan', 'LDEHAAN', '515.123.4569', '2001-01-13', 3, 17000.00, NULL, 100, 90),
+(103, 'Alexander', 'Hunold', 'AHUNOLD', '590.423.4567', '2006-01-03', 4, 9000.00, NULL, 102, 60),
+(104, 'Bruce', 'Ernst', 'BERNST', '590.423.4568', '2007-05-21', 5, 6000.00, NULL, 103, 60);
+
+INSERT INTO departments (department_id, department_name, manager_id, location_id) VALUES
+(90, 'Executive', 100, 1700),
+(60, 'IT', 103, 1400);
+
+INSERT INTO jobs (job_id, job_title, min_salary, max_salary) VALUES
+(1, 'President', 20000.00, 40000.00),
+(2, 'Administration Vice President', 15000.00, 30000.00),
+(3, 'Administration Assistant', 3000.00, 6000.00),
+(4, 'Programmer', 4000.00, 10000.00),
+(5, 'Accountant', 4200.00, 9000.00);
+
+ANALYZE TABLE employees;
+ANALYZE TABLE departments;
+ANALYZE TABLE jobs;
+
+-- Test case sensitivity and identifier quoting
+SELECT `EMPLOYEE_ID`, FirstName FROM `employees` WHERE employee_id = 100;
+
+-- Test group by and aggregate functions with nulls
+SELECT department_id, AVG(salary), SUM(commission_pct) FROM employees GROUP BY department_id;
+
+-- Test subqueries in where clause
+SELECT employee_id, first_name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Test date functions
+SELECT employee_id, hire_date, DATE_FORMAT(hire_date, '%Y-%m') AS hire_month FROM employees;
+
+-- Test string functions
+SELECT employee_id, UPPER(first_name), LOWER(last_name) FROM employees WHERE email LIKE '%@%';
+
+-- Test IF and CASE statements
+SELECT employee_id, IF(salary > 10000, 'High', 'Low') AS salary_level,
+       CASE department_id
+           WHEN 90 THEN 'Top Management'
+           WHEN 60 THEN 'Tech Department'
+           ELSE 'Other'
+       END AS department_category
+FROM employees;
+
+-- Test window functions (MySQL 8.0+) -  Simulate using variables for older versions
+SET @rank = 0;
+SELECT employee_id, first_name, salary, @rank := @rank + 1 AS salary_rank
+FROM employees
+ORDER BY salary DESC;
+
+-- Test stored procedure call (example - requires creating a stored procedure first)
+-- CREATE PROCEDURE GetEmployeeCount() BEGIN SELECT COUNT(*) FROM employees; END;
+-- CALL GetEmployeeCount();
+
+-- Test temporary table
+CREATE TEMPORARY TABLE temp_salaries AS SELECT employee_id, salary FROM employees WHERE salary > 8000;
+SELECT * FROM temp_salaries;
+DROP TEMPORARY TABLE IF EXISTS temp_salaries;
+
+-- Test full-text search (requires fulltext index)
+-- ALTER TABLE employees ADD FULLTEXT INDEX name (first_name, last_name);
+-- SELECT employee_id FROM employees WHERE MATCH(first_name, last_name) AGAINST('Steven King');

@@ -1,0 +1,18 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, price REAL);
+CREATE TABLE order_items(order_id INTEGER, product_id INTEGER, quantity INTEGER, PRIMARY KEY(order_id, product_id), FOREIGN KEY(order_id) REFERENCES orders(id), FOREIGN KEY(product_id) REFERENCES products(id));
+
+INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com'), ('Bob', 'bob@example.com');
+INSERT INTO products (name, price) VALUES ('Product A', 19.99), ('Product B', 29.99);
+INSERT INTO orders (user_id, amount) VALUES (1, 49.99);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2), (1, 2, 1);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE VIEW user_orders AS SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id;
+
+SELECT * FROM user_orders WHERE amount > 25 ORDER BY name;
+SELECT name, COUNT(order_id) as total_orders FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id HAVING total_orders > 1;
+SELECT product_id, SUM(quantity) as total_sold FROM order_items GROUP BY product_id ORDER BY total_sold DESC;
+SELECT u.name, o.amount, oi.quantity FROM users u JOIN orders o ON u.id = o.user_id JOIN order_items oi ON o.id = oi.order_id WHERE u.name LIKE 'A%';

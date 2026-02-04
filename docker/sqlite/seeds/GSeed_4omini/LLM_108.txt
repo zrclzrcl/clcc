@@ -1,0 +1,17 @@
+ATTACH ':memory:' AS aux_db;
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT, email TEXT UNIQUE);
+INSERT INTO users (username, email) VALUES ('user1', 'user1@example.com');
+INSERT INTO users (username, email) VALUES ('user2', 'user2@example.com');
+CREATE TEMP TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL);
+INSERT INTO orders (user_id, amount) VALUES (1, 100.50);
+INSERT INTO orders (user_id, amount) VALUES (2, 200.75);
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, price REAL);
+INSERT INTO products (name, price) VALUES ('Product A', 30.00);
+INSERT INTO products (name, price) VALUES ('Product B', 45.50);
+CREATE TABLE aux_db.cart(user_id INTEGER, product_id INTEGER);
+INSERT INTO aux_db.cart(user_id, product_id) VALUES (1, 1);
+INSERT INTO aux_db.cart(user_id, product_id) VALUES (2, 2);
+UPDATE users SET email='user1_updated@example.com' WHERE id=1;
+DELETE FROM orders WHERE id=1;
+SELECT u.username, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 50.00;
+SELECT p.name, c.user_id FROM aux_db.cart c JOIN products p ON c.product_id = p.id WHERE c.user_id = 1 UNION SELECT username, NULL FROM users WHERE username LIKE 'user%';

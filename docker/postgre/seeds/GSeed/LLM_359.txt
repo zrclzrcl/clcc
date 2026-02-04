@@ -1,0 +1,137 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ
+);
+
+CREATE TYPE product_category AS ENUM ('electronics', 'clothing', 'books', 'home');
+
+ALTER TABLE products ADD COLUMN category product_category;
+
+INSERT INTO products (product_name, price, description, category) VALUES
+('Laptop', 1200.50, 'High-performance laptop for professionals.', 'electronics'),
+('T-Shirt', 25.00, 'Comfortable cotton t-shirt.', 'clothing'),
+('The Lord of the Rings', 15.75, 'A classic fantasy novel.', 'books'),
+('Sofa', 500.00, 'A comfortable sofa for your living room.', 'home');
+
+CREATE INDEX idx_product_name ON products (product_name);
+CREATE INDEX idx_product_category ON products (category);
+
+SELECT * FROM products WHERE price > 50 ORDER BY price DESC LIMIT 10;
+SELECT product_name, price FROM products WHERE category = 'clothing';
+
+UPDATE products SET price = 27.50, updated_at = NOW() WHERE product_name = 'T-Shirt';
+
+DELETE FROM products WHERE product_name = 'Sofa';
+
+SELECT AVG(price) AS average_price FROM products;
+SELECT COUNT(*) AS total_products FROM products;
+
+CREATE VIEW product_summary AS
+SELECT product_name, price, category FROM products WHERE price > 10;
+
+SELECT * FROM product_summary;
+
+CREATE TABLE product_details (
+    detail_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    color VARCHAR(50),
+    size VARCHAR(10),
+    weight DECIMAL(5, 2)
+);
+
+INSERT INTO product_details (product_id, color, size, weight) VALUES
+(1, 'Silver', NULL, 2.5),
+(2, 'Blue', 'M', 0.2);
+
+SELECT p.product_name, pd.color, pd.size FROM products p JOIN product_details pd ON p.product_id = pd.product_id;
+
+CREATE FUNCTION discount_price(price DECIMAL, discount DECIMAL) RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT product_name, price, discount_price(price, 0.1) AS discounted_price FROM products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER
+);
+
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 1);
+
+SELECT o.order_id, p.product_name, oi.quantity FROM orders o JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_id = p.product_id;
+
+-- Using window functions
+SELECT product_name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Using Common Table Expressions (CTEs)
+WITH ExpensiveProducts AS (
+    SELECT product_name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT * FROM ExpensiveProducts;
+
+-- Conditional expressions
+SELECT product_name, price,
+       CASE
+           WHEN price > 1000 THEN 'Expensive'
+           ELSE 'Affordable'
+       END AS price_category
+FROM products;
+
+-- Full text search (requires extension)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_product_description_trgm ON products USING gin (description gin_trgm_ops);
+SELECT product_name FROM products WHERE description % 'laptop';
+
+-- Foreign Key Constraints with ON DELETE CASCADE
+CREATE TABLE reviews (
+    review_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id) ON DELETE CASCADE,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT
+);
+
+INSERT INTO reviews (product_id, rating, comment) VALUES (1, 5, 'Excellent product!');
+
+DELETE FROM products WHERE product_name = 'Laptop'; --This will also delete the corresponding reviews.
+
+-- Create a materialized view
+CREATE MATERIALIZED VIEW product_stats AS
+SELECT category, COUNT(*) AS product_count, AVG(price) AS average_price
+FROM products
+GROUP BY category;
+
+REFRESH MATERIALIZED VIEW product_stats;
+
+SELECT * FROM product_stats;
+
+-- JSONB example
+ALTER TABLE products ADD COLUMN attributes JSONB;
+UPDATE products SET attributes = '{"color": "red", "size": "L"}' WHERE product_name = 'T-Shirt';
+SELECT product_name FROM products WHERE attributes ->> 'color' = 'red';
+
+-- Generate Series
+SELECT generate_series(1, 10);
+
+--Unnest array example
+CREATE TABLE tag_map (product_id INT, tags TEXT[]);
+INSERT INTO tag_map (product_id, tags) VALUES (1, ARRAY['cool', 'laptop', 'fast']);
+SELECT product_id, UNNEST(tags) FROM tag_map;

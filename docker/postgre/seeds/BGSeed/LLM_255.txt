@@ -1,0 +1,141 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+CREATE EXTENSION IF NOT EXISTS ltree;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE EXTENSION IF NOT EXISTS btree_gin;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email CITEXT UNIQUE NOT NULL,
+    mood mood,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    available BOOLEAN DEFAULT TRUE,
+    tags TEXT[]
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    order_date TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO users (username, email, mood) VALUES
+('john_doe', 'john.doe@example.com', 'happy'),
+('jane_smith', 'jane.smith@example.org', 'ok'),
+('peter_jones', 'peter.jones@example.net', 'sad');
+
+INSERT INTO products (name, description, price, tags) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.00, '{"electronics", "computers"}'),
+('Mouse', 'Ergonomic wireless mouse', 25.00, '{"electronics", "accessories"}'),
+('Keyboard', 'Mechanical keyboard for gamers', 100.00, '{"electronics", "gaming"}');
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1325.00),
+(2, 25.00),
+(3, 100.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(1, 3, 1, 100.00),
+(2, 2, 1, 25.00),
+(3, 3, 1, 100.00);
+
+UPDATE products SET price = 1250.00 WHERE name = 'Laptop';
+
+DELETE FROM products WHERE name = 'Mouse';
+
+CREATE INDEX idx_username ON users USING gin (username gin_trgm_ops);
+CREATE INDEX idx_product_name ON products USING gist (name gist_trgm_ops);
+
+SELECT * FROM users WHERE username % 'john';
+SELECT * FROM products WHERE name % 'laptop';
+
+CREATE FUNCTION get_user_orders(user_id INTEGER)
+RETURNS TABLE (order_id INTEGER, order_date TIMESTAMP WITHOUT TIME ZONE, total_amount DECIMAL(10, 2)) AS $$
+BEGIN
+  RETURN QUERY SELECT id, order_date, total_amount FROM orders WHERE user_id = get_user_orders.user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_user_orders(1);
+
+CREATE TEXT SEARCH CONFIGURATION custom_english (copy=english);
+ALTER TEXT SEARCH CONFIGURATION custom_english ALTER MAPPING FOR asciiword, asciihword, hword_asciipart, hword, hword_part, word WITH english_stem;
+
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    content TEXT,
+    tsv tsvector
+);
+
+CREATE INDEX idx_documents_tsv ON documents USING gin (tsv);
+
+ALTER TABLE documents ADD COLUMN searchable tsvector;
+UPDATE documents SET searchable = to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, ''));
+
+CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE
+ON documents FOR EACH ROW
+EXECUTE FUNCTION tsvector_update_trigger('searchable', 'pg_catalog.english', title, content);
+
+INSERT INTO documents (title, content) VALUES ('PostgreSQL Tutorial', 'Learn PostgreSQL features.');
+
+SELECT * FROM documents WHERE searchable @@ to_tsquery('english', 'PostgreSQL & features');
+
+CREATE TYPE inventory_item AS (
+    name            text,
+    supplier_id     integer,
+    price           numeric
+);
+
+CREATE TABLE inventory (
+    item inventory_item
+);
+
+INSERT INTO inventory (item) VALUES (ROW('fuzzy dice', 42, 1.99));
+SELECT (item).name FROM inventory;
+
+-- Row level security
+CREATE POLICY user_policy ON users TO PUBLIC
+USING (username = current_user);
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+
+DROP TABLE IF EXISTS inventory;
+DROP TYPE IF EXISTS inventory_item;
+DROP TABLE IF EXISTS documents;
+DROP TEXT SEARCH CONFIGURATION IF EXISTS custom_english;
+DROP FUNCTION IF EXISTS get_user_orders(INTEGER);
+DROP INDEX IF EXISTS idx_product_name;
+DROP INDEX IF EXISTS idx_username;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS mood;
+DROP EXTENSION IF EXISTS btree_gin;
+DROP EXTENSION IF EXISTS btree_gist;
+DROP EXTENSION IF EXISTS pg_trgm;
+DROP EXTENSION IF EXISTS ltree;
+DROP EXTENSION IF EXISTS citext;

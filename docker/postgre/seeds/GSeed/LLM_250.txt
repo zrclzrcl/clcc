@@ -1,0 +1,106 @@
+-- Initial seed for PostgreSQL 18 RC1
+
+-- Create an extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Create a table with SERIAL and JSONB columns
+CREATE UNLOGGED TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    profile JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some data
+INSERT INTO users (username, email, profile) VALUES
+('john_doe', 'john.doe@example.com', '{"age": 30, "city": "New York"}'),
+('jane_smith', 'jane.smith@example.com', '{"age": 25, "city": "Los Angeles"}'),
+('peter_jones', 'peter.jones@example.com', '{"age": 40, "city": "Chicago"}');
+
+-- Create another table with foreign key relationship
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some posts
+INSERT INTO posts (user_id, title, content) VALUES
+(1, 'First post', 'This is the first post by John Doe.'),
+(2, 'Jane''s blog', 'A blog post by Jane Smith.'),
+(1, 'Another post', 'Another post by John Doe.');
+
+-- Select data with JOIN
+SELECT u.username, p.title
+FROM users u
+JOIN posts p ON u.id = p.user_id;
+
+-- Update data using WHERE clause
+UPDATE users SET email = 'john.new@example.com' WHERE username = 'john_doe';
+
+-- Delete data
+DELETE FROM posts WHERE user_id = 3;
+
+-- Select data with GROUP BY and aggregate function
+SELECT u.username, COUNT(p.id) AS post_count
+FROM users u
+LEFT JOIN posts p ON u.id = p.user_id
+GROUP BY u.username
+ORDER BY post_count DESC;
+
+-- Select with LIMIT and OFFSET
+SELECT * FROM users LIMIT 2 OFFSET 1;
+
+-- Use CASE expression
+SELECT
+    username,
+    CASE
+        WHEN profile ->> 'age' IS NULL THEN 'Age unknown'
+        ELSE profile ->> 'age'
+    END AS age
+FROM users;
+
+-- Create an index CONCURRENTLY
+CREATE INDEX CONCURRENTLY idx_users_username ON users (username);
+
+-- Create a view
+CREATE VIEW user_posts AS
+SELECT u.username, p.title
+FROM users u
+JOIN posts p ON u.id = p.user_id;
+
+-- Select from the view
+SELECT * FROM user_posts;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION get_user_age(user_name VARCHAR)
+RETURNS INTEGER AS $$
+DECLARE
+    user_age INTEGER;
+BEGIN
+    SELECT (profile ->> 'age')::INTEGER INTO user_age FROM users WHERE username = user_name;
+    RETURN user_age;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Call the function
+SELECT get_user_age('john_doe');
+
+--WITH RECURSIVE example using generate_series (adapted from Postgres docs)
+WITH RECURSIVE t(n) AS (
+    SELECT 1
+  UNION ALL
+    SELECT n+1 FROM t WHERE n < 5
+)
+SELECT n FROM t;
+
+-- Cleanup (drop in reverse order of creation to avoid dependencies)
+DROP VIEW IF EXISTS user_posts;
+DROP INDEX CONCURRENTLY IF EXISTS idx_users_username;
+DROP FUNCTION IF EXISTS get_user_age(VARCHAR);
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS users;
+DROP EXTENSION IF EXISTS pgcrypto;

@@ -1,0 +1,46 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL);
+
+CREATE TABLE doubles (d DOUBLE);
+INSERT INTO doubles VALUES (1.1), (2.2), (3.3), (NULL);
+
+-- Demonstrate DuckDB's powerful array and struct support
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES ([1, 2, 3]), ([4, NULL, 6]), (NULL);
+
+CREATE TABLE structs (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO structs VALUES ({a: 1, b: 'abc'}), ({a: 2, b: NULL}), (NULL);
+
+-- Demonstrate window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) AS row_num FROM integers;
+
+-- Demonstrate string functions
+SELECT s, UPPER(s), LENGTH(s) FROM strings;
+
+-- Demonstrate arithmetic and NULL handling
+SELECT i, d, i + d, i * d FROM integers, doubles;
+
+-- Demonstrate joins
+CREATE TABLE more_integers (i INTEGER);
+INSERT INTO more_integers VALUES (2), (4), (6);
+
+SELECT i1.i, i2.i FROM integers i1 INNER JOIN more_integers i2 ON i1.i = i2.i;
+
+-- Demonstrate aggregate functions
+SELECT COUNT(*), AVG(i), SUM(i), MIN(i), MAX(i) FROM integers;
+
+-- Demonstrate DuckDB specific date functions and extensions
+SELECT CURRENT_TIMESTAMP, DATE('2023-10-27'), STRFTIME('%Y-%m-%d %H:%M:%S', CURRENT_TIMESTAMP);
+
+-- Try a parquet read (assuming a parquet file exists in /tmp/) -  this requires installation: INSTALL parquet; LOAD parquet;
+-- SELECT * FROM read_parquet('/tmp/example.parquet'); -- Replace with a valid path and filename
+
+--Try a json read
+-- SELECT * FROM read_json_auto('["{\\"a\\":1, \\"b\\":2}", "{\\"a\\":3, \\"b\\":4}"]');
+
+-- Demonstrate DuckDB's unnest function
+SELECT * FROM UNNEST([1,2,3]);
+SELECT l, UNNEST(l) FROM lists;

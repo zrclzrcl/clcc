@@ -1,0 +1,110 @@
+\echo Initial seed for PostgreSQL fuzz testing (REL_18_RC1)
+
+-- Basic table creation and manipulation
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com'),
+('peter_jones', 'peter.jones@example.com');
+
+INSERT INTO products (name, description, price) VALUES
+('Awesome Widget', 'A truly awesome widget.', 19.99),
+('Deluxe Gadget', 'The ultimate gadget experience.', 99.99),
+('Super Thingamajig', 'Solve all your problems with this!', 49.99);
+
+UPDATE products SET price = price * 1.1 WHERE product_id = 1;
+
+DELETE FROM users WHERE username = 'peter_jones';
+
+-- Complex queries
+SELECT u.username, p.name, p.price
+FROM users u
+JOIN products p ON u.id = (p.product_id % 3) + 1  -- Intentionally nonsensical join
+WHERE p.price > 20
+ORDER BY u.username;
+
+SELECT COUNT(*) FROM users;
+
+SELECT AVG(price) FROM products;
+
+-- Using GROUP BY and HAVING
+SELECT substring(email from '@(.*)$') AS domain, COUNT(*)
+FROM users
+GROUP BY domain
+HAVING COUNT(*) > 1;
+
+-- ALTER TABLE operations
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE products RENAME COLUMN name TO product_name;
+
+-- Index creation
+CREATE INDEX idx_username ON users (username);
+
+-- Using JSONB
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"color": "red", "weight": "1.2kg"}'::JSONB WHERE product_id = 1;
+
+SELECT product_name FROM products WHERE details ->> 'color' = 'red';
+
+-- Using ARRAY
+ALTER TABLE users ADD COLUMN roles TEXT[];
+UPDATE users SET roles = ARRAY['user', 'admin'] WHERE username = 'john_doe';
+
+-- WITH RECURSIVE (example calculates factorial up to 10)
+WITH RECURSIVE factorial(n, factorial) AS (
+    SELECT 1, 1
+    UNION ALL
+    SELECT n + 1, (n + 1) * factorial FROM factorial WHERE n < 10
+)
+SELECT * FROM factorial;
+
+-- generate_series function
+SELECT generate_series(1, 5);
+
+-- UNLOGGED TABLE
+CREATE UNLOGGED TABLE temp_data (id SERIAL PRIMARY KEY, value TEXT);
+INSERT INTO temp_data (value) SELECT md5(random()::text) FROM generate_series(1, 1000);
+
+-- Views
+CREATE VIEW active_users AS SELECT username, email FROM users WHERE is_active = TRUE;
+SELECT * FROM active_users;
+
+-- DROP operations
+DROP VIEW active_users;
+DROP TABLE temp_data;
+DROP INDEX idx_username;
+DROP TABLE products;
+DROP TABLE users;
+
+-- Create function and trigger (simple example)
+CREATE OR REPLACE FUNCTION update_users_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.created_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER users_timestamp_trigger
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_users_timestamp();
+
+INSERT INTO users (username, email) VALUES ('updated_user', 'updated@example.com');
+UPDATE users SET username = 'updated_user_new' WHERE email = 'updated@example.com';
+
+DROP TRIGGER users_timestamp_trigger ON users;
+DROP FUNCTION update_users_timestamp();

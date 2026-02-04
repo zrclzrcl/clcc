@@ -1,0 +1,62 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL);
+
+-- Test various join types and conditions
+SELECT * FROM integers INNER JOIN strings ON i = LENGTH(s);
+SELECT * FROM integers LEFT JOIN strings ON i = LENGTH(s);
+SELECT * FROM integers RIGHT JOIN strings ON i = LENGTH(s);
+SELECT * FROM integers FULL OUTER JOIN strings ON i = LENGTH(s);
+
+-- Test window functions
+SELECT
+    i,
+    ROW_NUMBER() OVER (ORDER BY i),
+    RANK() OVER (ORDER BY i),
+    DENSE_RANK() OVER (ORDER BY i),
+    LAG(i, 1, 0) OVER (ORDER BY i),
+    LEAD(i, 1, 0) OVER (ORDER BY i)
+FROM integers;
+
+-- Test aggregations
+SELECT
+    COUNT(*),
+    SUM(i),
+    AVG(i),
+    MIN(i),
+    MAX(i),
+    STRING_AGG(s, ',')
+FROM integers, strings;
+
+-- Test correlated subquery
+SELECT i FROM integers WHERE i IN (SELECT LENGTH(s) FROM strings);
+
+-- Test DuckDB specific functionality: INSTALL and LOAD
+INSTALL httpfs;
+LOAD httpfs;
+
+-- Test reading from a CSV file directly (assuming a file exists)
+-- SELECT * FROM read_csv_auto('test.csv'); -- Requires 'test.csv' to exist locally.  Commented out for safety.  Uncomment to test IF the file exists.
+
+-- Test UNNEST
+SELECT * FROM UNNEST([1, 2, 3], ['a', 'b', 'c']);
+
+-- Create a view
+CREATE VIEW int_view AS SELECT i FROM integers WHERE i > 1;
+
+SELECT * FROM int_view;
+
+-- Test case-insensitive comparison
+SELECT * FROM strings WHERE lower(s) = 'a';
+
+-- Test date functions
+SELECT CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP;
+SELECT DATE('2023-10-27');
+SELECT STRFTIME('%Y-%m-%d', '2023-10-27');

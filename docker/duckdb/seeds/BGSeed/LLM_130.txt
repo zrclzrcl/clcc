@@ -1,0 +1,35 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi');
+
+-- Test window functions with partitions and orderings
+SELECT i, RANK() OVER (PARTITION BY i % 2 ORDER BY i DESC) FROM integers;
+
+-- Test string manipulation functions
+SELECT s, UPPER(s), LOWER(s), SUBSTRING(s, 1, 2) FROM strings;
+
+-- Test date/time functions (DuckDB specific - EPOCH)
+SELECT EPOCH(TIMESTAMP '2023-10-27 10:00:00');
+
+-- Test aggregate functions with DISTINCT
+SELECT COUNT(DISTINCT i) FROM integers;
+
+-- Test CASE WHEN expressions
+SELECT i, CASE WHEN i > 3 THEN 'Large' ELSE 'Small' END FROM integers;
+
+-- Test JSON functions (DuckDB supports)
+CREATE TABLE jsontable (j JSON);
+INSERT INTO jsontable VALUES ('{"a": 1, "b": "hello"}');
+SELECT j->'a', j->'b' FROM jsontable;
+
+-- Test LIST functions (DuckDB supports)
+CREATE TABLE listtable (l INTEGER[]);
+INSERT INTO listtable VALUES (list(1,2,3));
+SELECT list_extract(l,1) from listtable;
+
+-- Test UNNEST
+CREATE TABLE unnest_test (a INTEGER, b INTEGER[]);
+INSERT INTO unnest_test VALUES (1, list(1,2,3));
+SELECT a, UNNEST(b) FROM unnest_test;

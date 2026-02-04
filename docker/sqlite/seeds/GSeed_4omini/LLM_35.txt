@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT UNIQUE);
+INSERT INTO users(username, email) VALUES('test_user', 'test@example.com');
+INSERT INTO users(username, email) VALUES('another_user', 'another@example.com');
+INSERT INTO users(username, email) VALUES('duplicate_user', 'duplicate@example.com');
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders(user_id, amount) VALUES(1, 99.99);
+INSERT INTO orders(user_id, amount) VALUES(1, 29.99);
+INSERT INTO orders(user_id, amount) VALUES(2, 15.50);
+CREATE VIEW total_spent AS SELECT user_id, SUM(amount) AS total FROM orders GROUP BY user_id;
+SELECT (SELECT total FROM total_spent WHERE user_id=1) AS user1_total, (SELECT total FROM total_spent WHERE user_id=2) AS user2_total;
+CREATE TRIGGER update_user_total AFTER INSERT ON orders BEGIN
+    UPDATE users SET total_spent = (SELECT SUM(amount) FROM orders WHERE user_id = NEW.user_id) WHERE id = NEW.user_id;
+END;

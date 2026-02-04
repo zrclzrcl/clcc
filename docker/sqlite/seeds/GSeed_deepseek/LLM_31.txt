@@ -1,0 +1,12 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value >= 0),
+    data BLOB
+);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,0 +1,53 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert some sample data
+INSERT INTO products (name, description, price, category) VALUES
+('Awesome T-Shirt', 'A comfortable and stylish t-shirt.', 19.99, 'Apparel'),
+('Gaming Mouse', 'High-precision gaming mouse with customizable buttons.', 49.99, 'Electronics'),
+('Coffee Maker', 'Automatic coffee maker for delicious coffee.', 79.99, 'Appliances');
+
+-- Create a user table
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create an index on the name column of the products table for faster searching
+CREATE INDEX idx_product_name ON products (name);
+
+-- Simulate a slow query using SLEEP() function (MariaDB specific)
+SELECT SLEEP(2);
+
+-- Test JSON functionality (MariaDB specific)
+SELECT JSON_OBJECT('id', 1, 'name', 'Test Product', 'price', 99.99);
+
+-- Test FULLTEXT indexing (MariaDB specific)
+ALTER TABLE products ADD FULLTEXT(name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('Awesome');
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory (IN category_name VARCHAR(100))
+BEGIN
+    SELECT * FROM products WHERE category = category_name;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Apparel');
+
+-- Test AUTO_INCREMENT reset (MariaDB specific - although standard SQL has similar concepts through sequences)
+ALTER TABLE products AUTO_INCREMENT = 1000;
+INSERT INTO products (name, description, price, category) VALUES ('New Product', 'A brand new product.', 50.00, 'Other');
+
+-- Check Character Set Support
+SELECT CHARSET('Awesome T-Shirt');

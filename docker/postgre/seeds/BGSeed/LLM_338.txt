@@ -1,0 +1,48 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(100),
+    hire_date DATE,
+    data JSONB
+);
+
+INSERT INTO employees (name, salary, department, hire_date, data) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15', '{"title": "Sales Representative", "level": "Junior"}'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20', '{"title": "Marketing Manager", "level": "Mid"}'),
+('Charlie Brown', 90000.00, 'Engineering', '2020-11-01', '{"title": "Software Engineer", "level": "Senior"}');
+
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(255);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT department, AVG(salary) FROM employees GROUP BY department ORDER BY AVG(salary) DESC;
+
+SELECT * FROM employees WHERE data @> '{"level": "Senior"}';
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(100) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+ALTER TABLE employees ADD COLUMN dept_id INT REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+DROP INDEX idx_department;
+
+DROP TABLE employees;
+
+DROP TABLE departments;

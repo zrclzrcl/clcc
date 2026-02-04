@@ -1,0 +1,52 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    age INT,
+    data JSON
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO t1 (name, age, data) VALUES
+('Alice', 30, '{"city": "New York", "occupation": "Engineer"}'),
+('Bob', 25, '{"city": "Los Angeles", "occupation": "Designer"}');
+
+-- Test JSON functionality
+SELECT id, data->'$.city' AS city FROM t1 WHERE JSON_EXTRACT(data, '$.age') > 20;
+
+-- Test spatial functions (requires spatial extensions)
+CREATE TABLE spatial_test (
+    id INT PRIMARY KEY,
+    geom GEOMETRY NOT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO spatial_test (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+SELECT ST_AsText(geom) FROM spatial_test WHERE ST_Contains(ST_PolygonFromText('POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))'), geom);
+
+-- Test generated columns
+ALTER TABLE t1 ADD COLUMN full_name VARCHAR(512) GENERATED ALWAYS AS (CONCAT(name, ' ', age)) STORED;
+SELECT id, full_name FROM t1;
+
+-- Test partitioning
+CREATE TABLE partition_test (
+    id INT,
+    event_date DATE
+)
+PARTITION BY RANGE ( YEAR(event_date) ) (
+    PARTITION p0 VALUES LESS THAN (2023),
+    PARTITION p1 VALUES LESS THAN (2024),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO partition_test (id, event_date) VALUES (1, '2022-01-01'), (2, '2023-05-15'), (3, '2024-12-31');
+SELECT * FROM partition_test PARTITION (p0);
+
+-- Test character sets and collations
+CREATE TABLE charset_test (
+    id INT,
+    text VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+);
+INSERT INTO charset_test (id, text) VALUES (1, '你好世界');
+
+SHOW CREATE TABLE t1;
+SHOW CREATE TABLE spatial_test;
+SHOW CREATE TABLE partition_test;
+SHOW CREATE TABLE charset_test;

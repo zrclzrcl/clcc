@@ -1,0 +1,70 @@
+DROP TABLE IF EXISTS aggregate_test;
+CREATE TABLE aggregate_test (
+  id INTEGER,
+  group_id INTEGER,
+  value INTEGER
+);
+INSERT INTO aggregate_test VALUES (1, 1, 5);
+INSERT INTO aggregate_test VALUES (2, 1, 10);
+INSERT INTO aggregate_test VALUES (3, 2, 15);
+INSERT INTO aggregate_test VALUES (4, 2, 20);
+INSERT INTO aggregate_test VALUES (5, 3, NULL);
+INSERT INTO aggregate_test VALUES (6, 3, NULL);
+
+SELECT group_id, SUM(value) FROM aggregate_test GROUP BY group_id ORDER BY group_id;
+
+DROP TABLE IF EXISTS string_test;
+CREATE TABLE string_test (
+  id INTEGER,
+  str VARCHAR
+);
+INSERT INTO string_test VALUES (1, 'hello');
+INSERT INTO string_test VALUES (2, 'world');
+INSERT INTO string_test VALUES (3, NULL);
+
+SELECT id, UPPER(str) FROM string_test WHERE str IS NOT NULL;
+
+-- DuckDB specific JSON functions
+DROP TABLE IF EXISTS json_test;
+CREATE TABLE json_test (
+  id INTEGER,
+  json_data JSON
+);
+
+INSERT INTO json_test VALUES (1, '{"a": 1, "b": "hello"}');
+INSERT INTO json_test VALUES (2, '{"c": [1, 2, 3]}');
+INSERT INTO json_test VALUES (3, NULL);
+
+SELECT id, json_extract_string(json_data, '$.a') FROM json_test WHERE json_data IS NOT NULL;
+
+-- Testing window functions
+DROP TABLE IF EXISTS window_test;
+CREATE TABLE window_test (
+  id INTEGER,
+  group_id INTEGER,
+  value INTEGER
+);
+
+INSERT INTO window_test VALUES (1, 1, 10);
+INSERT INTO window_test VALUES (2, 1, 20);
+INSERT INTO window_test VALUES (3, 2, 30);
+INSERT INTO window_test VALUES (4, 2, 40);
+
+SELECT id, group_id, value, ROW_NUMBER() OVER (PARTITION BY group_id ORDER BY value) FROM window_test;
+
+-- Test unnesting arrays (DuckDB Specific)
+DROP TABLE IF EXISTS array_test;
+CREATE TABLE array_test (
+  id INTEGER,
+  values INTEGER[]
+);
+
+INSERT INTO array_test VALUES (1, [1, 2, 3]);
+INSERT INTO array_test VALUES (2, [4, 5]);
+INSERT INTO array_test VALUES (3, []);
+
+SELECT id, UNNEST(values) FROM array_test;
+
+-- Try some edge cases with division
+SELECT 1/0;
+SELECT 1/NULL;

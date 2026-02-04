@@ -1,0 +1,310 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+('Eve Wilson', 65000.00, 'Marketing', '2022-09-01');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 60000 ORDER BY salary DESC;
+
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+-- Using window functions
+SELECT name, salary, department,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Using common table expressions (CTEs)
+WITH high_earners AS (
+    SELECT name, salary FROM employees WHERE salary > 70000
+)
+SELECT * FROM high_earners ORDER BY salary;
+
+-- Using DISTINCT ON
+SELECT DISTINCT ON (department) department, name, salary
+FROM employees
+ORDER BY department, salary DESC;
+
+-- Using generate_series
+SELECT generate_series(1, 5, 2);
+
+-- Using jsonb functions
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "price": 1200, "specs": {"ram": "16GB", "storage": "512GB SSD"}}'),
+('Monitor', '{"brand": "LG", "price": 300, "specs": {"size": "27 inch", "resolution": "4K"}}');
+
+SELECT name, details -> 'price' AS price FROM products;
+
+SELECT name FROM products WHERE details ->> 'brand' = 'Dell';
+
+-- Using array functions
+CREATE TABLE tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    tags VARCHAR(50)[]
+);
+
+INSERT INTO tags (name, tags) VALUES
+('Product A', ARRAY['electronics', 'gadget', 'new']),
+('Product B', ARRAY['clothing', 'fashion', 'sale']);
+
+SELECT name, tags FROM tags WHERE 'electronics' = ANY(tags);
+
+-- Create user and grant permissions
+CREATE ROLE test_user WITH LOGIN PASSWORD 'password';
+GRANT SELECT ON employees TO test_user;
+
+-- Alter table
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+UPDATE employees SET email = lower(replace(name, ' ', '.')) || '@example.com';
+
+-- Functions
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- Aggregate functions
+CREATE AGGREGATE myavg (numeric)
+(
+    sfunc = numeric_avg_accum,
+    stype = numeric[],
+    finalfunc = numeric_avg,
+    initcond = '{0,0,0}'
+);
+
+SELECT myavg(salary) FROM employees;
+
+-- Partitioning
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    sale_date DATE,
+    amount DECIMAL(10, 2),
+    region VARCHAR(50)
+) PARTITION BY LIST (region);
+
+CREATE TABLE sales_east PARTITION OF sales FOR VALUES IN ('East');
+CREATE TABLE sales_west PARTITION OF sales FOR VALUES IN ('West');
+
+INSERT INTO sales (sale_date, amount, region) VALUES
+('2024-01-05', 100.00, 'East'),
+('2024-01-10', 150.00, 'West');
+
+SELECT * FROM sales;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+SELECT * FROM employee_summary;
+
+-- Check constraint
+ALTER TABLE employees ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Invalid', -100, 'HR', '2024-01-01');
+
+-- Foreign Key Constraint
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50)
+);
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER;
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+INSERT INTO departments (department_name) VALUES ('HR');
+UPDATE employees SET department_id = (SELECT department_id FROM departments WHERE department_name = 'HR') WHERE department = 'HR';
+
+-- Domains
+CREATE DOMAIN positive_integer AS INTEGER CHECK (VALUE > 0);
+
+CREATE TABLE test_domain (
+    id SERIAL PRIMARY KEY,
+    value positive_integer
+);
+
+INSERT INTO test_domain (value) VALUES (10);
+-- INSERT INTO test_domain (value) VALUES (-1); -- This will fail
+
+-- Triggers
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO employee_audit (employee_id, old_salary, new_salary, updated_at)
+    VALUES (OLD.id, OLD.salary, NEW.salary, NOW());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TABLE employee_audit (
+    id SERIAL PRIMARY KEY,
+    employee_id INTEGER,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    updated_at TIMESTAMP
+);
+
+CREATE TRIGGER employee_salary_update
+AFTER UPDATE OF salary ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+UPDATE employees SET salary = 90000 WHERE name = 'David Lee';
+SELECT * FROM employee_audit;
+
+-- Security labels (Requires superuser privileges)
+ALTER TABLE employees OWNER TO postgres;
+-- SECURITY LABEL FOR dummy ON TABLE employees IS 'classified';
+
+-- Temporary tables
+CREATE TEMP TABLE temp_employees AS SELECT * FROM employees;
+SELECT * FROM temp_employees;
+
+-- Views
+CREATE VIEW sales_view AS SELECT sale_date, amount FROM sales;
+SELECT * FROM sales_view;
+
+-- Set operations (UNION, INTERSECT, EXCEPT)
+CREATE TABLE employees_copy AS SELECT * FROM employees WHERE department = 'Sales';
+SELECT name FROM employees UNION SELECT name FROM employees_copy;
+
+-- Savepoint
+BEGIN;
+    INSERT INTO employees (name, salary, department, hire_date) VALUES ('Temp Employee', 50000, 'IT', '2024-01-01');
+    SAVEPOINT my_savepoint;
+    UPDATE employees SET salary = 100000 WHERE name = 'Temp Employee';
+    ROLLBACK TO my_savepoint;
+    COMMIT;
+
+SELECT * FROM employees WHERE name = 'Temp Employee';
+
+-- XML features
+CREATE TABLE xml_data (
+    id SERIAL PRIMARY KEY,
+    data XML
+);
+
+INSERT INTO xml_data (data) VALUES ('<book><title>Example</title><author>John Doe</author></book>');
+SELECT data FROM xml_data WHERE xpath('/book/title/text()', data) = ARRAY['Example'];
+
+-- Recursive queries
+CREATE TABLE category (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    parent_id INTEGER REFERENCES category(id)
+);
+
+INSERT INTO category (name, parent_id) VALUES
+('Electronics', NULL),
+('Computers', 1),
+('Laptops', 2);
+
+WITH RECURSIVE category_tree AS (
+    SELECT id, name, parent_id, 1 AS level
+    FROM category
+    WHERE parent_id IS NULL
+    UNION ALL
+    SELECT c.id, c.name, c.parent_id, ct.level + 1
+    FROM category c
+    JOIN category_tree ct ON c.parent_id = ct.id
+)
+SELECT * FROM category_tree;
+
+-- Generate UUID
+SELECT gen_random_uuid();
+
+-- LISTEN/NOTIFY
+LISTEN my_channel;
+NOTIFY my_channel, 'Test message';
+
+-- Using hstore
+CREATE EXTENSION IF NOT EXISTS hstore;
+
+CREATE TABLE hstore_example (
+  id SERIAL PRIMARY KEY,
+  properties hstore
+);
+
+INSERT INTO hstore_example (properties) VALUES (
+  'color => red, price => 100, material => cotton'
+);
+
+SELECT properties -> 'color' FROM hstore_example;
+
+-- Blobs
+CREATE TABLE images (
+  id SERIAL PRIMARY KEY,
+  image bytea
+);
+
+-- FDW (Foreign Data Wrapper) - Requires configuration and another postgres database.
+-- CREATE EXTENSION postgres_fdw;
+-- CREATE SERVER remote_db FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host 'remote_host', dbname 'remote_db', port '5432');
+-- CREATE USER MAPPING FOR CURRENT_USER SERVER remote_db OPTIONS (user 'remote_user', password 'remote_password');
+-- CREATE FOREIGN TABLE remote_employees (id integer, name varchar) SERVER remote_db OPTIONS (schema_name 'public', table_name 'employees');
+-- SELECT * FROM remote_employees;
+
+-- Range types
+CREATE TABLE meetings (
+  id SERIAL PRIMARY KEY,
+  start_time timestamptz,
+  end_time timestamptz,
+  during tsrange
+);
+ALTER TABLE meetings ADD CONSTRAINT during_range CHECK (during = tsrange(start_time, end_time));
+
+INSERT INTO meetings (start_time, end_time) VALUES (
+  '2024-01-01 10:00:00+00',
+  '2024-01-01 11:00:00+00'
+);
+UPDATE meetings SET during = tsrange(start_time, end_time);
+
+SELECT * FROM meetings WHERE during @> '2024-01-01 10:30:00+00';
+
+-- Statistics objects
+CREATE STATISTICS employees_department_salary (dependencies) ON department, salary FROM employees;
+
+-- Rules
+CREATE OR REPLACE RULE view_insert AS ON INSERT TO sales_view DO INSTEAD
+    INSERT INTO sales (sale_date, amount, region) VALUES (NEW.sale_date, NEW.amount, 'Unknown');
+
+-- Type modifiers
+CREATE TABLE type_modifiers_test (
+    v1 text collate "default",
+    v2 text collate "C",
+    v3 text collate "POSIX"
+);
+
+INSERT INTO type_modifiers_test (v1) VALUES ('Hello');
+SELECT v1 FROM type_modifiers_test;
+
+-- Multi-column statistics
+CREATE STATISTICS multi_col_stats ON department, salary FROM employees;
+
+-- Row level security (Requires superuser)
+-- CREATE POLICY select_employees ON employees FOR SELECT USING (department = current_user);

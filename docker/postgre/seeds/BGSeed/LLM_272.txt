@@ -1,0 +1,156 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (product_name, description, price) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD.', 1200.00),
+('Mouse', 'Ergonomic wireless mouse.', 25.00),
+('Keyboard', 'Mechanical keyboard with RGB lighting.', 100.00);
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+CREATE OR REPLACE FUNCTION discount_price(original_price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN original_price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT product_name, price, discount_price(price, 10) AS discounted_price FROM products;
+
+CREATE TYPE product_category AS ENUM ('Electronics', 'Clothing', 'Books');
+
+ALTER TABLE products ADD COLUMN category product_category;
+
+UPDATE products SET category = 'Electronics' WHERE product_id IN (1, 2, 3);
+
+CREATE TABLE product_reviews (
+    review_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO product_reviews (product_id, rating, review_text) VALUES
+(1, 5, 'Great laptop! Fast and reliable.'),
+(1, 4, 'Good laptop, but the battery life could be better.'),
+(2, 5, 'Very comfortable mouse.');
+
+CREATE VIEW product_average_rating AS
+SELECT
+    p.product_id,
+    p.product_name,
+    AVG(r.rating) AS average_rating
+FROM
+    products p
+LEFT JOIN
+    product_reviews r ON p.product_id = r.product_id
+GROUP BY
+    p.product_id, p.product_name;
+
+SELECT * FROM product_average_rating;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL, -- Assume customer_id exists
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 25.00);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 1, 25.00);
+
+CREATE MATERIALIZED VIEW monthly_sales AS
+SELECT
+    DATE_TRUNC('month', order_date) AS sales_month,
+    SUM(total_amount) AS total_sales
+FROM
+    orders
+GROUP BY
+    DATE_TRUNC('month', order_date)
+ORDER BY
+    sales_month;
+
+REFRESH MATERIALIZED VIEW monthly_sales;
+
+SELECT * FROM monthly_sales;
+
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX idx_email ON users (email);
+
+INSERT INTO users (username, password, email) VALUES
+('testuser', 'password123', 'test@example.com');
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(255),
+    operation_type VARCHAR(50),
+    record_id INTEGER,
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER REFERENCES users(user_id)
+);
+
+CREATE OR REPLACE FUNCTION log_audit()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO audit_log (table_name, operation_type, record_id, user_id)
+    VALUES (TG_TABLE_NAME, TG_OP, (CASE WHEN TG_OP = 'DELETE' THEN OLD.product_id ELSE NEW.product_id END), 1); --Hardcoded userID
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER products_audit
+AFTER INSERT OR UPDATE OR DELETE ON products
+FOR EACH ROW
+EXECUTE FUNCTION log_audit();
+
+UPDATE products SET price = 1300 WHERE product_id = 1;
+DELETE FROM products WHERE product_id = 3;
+
+SELECT * FROM audit_log;
+
+CREATE TABLE large_text_data (
+    id SERIAL PRIMARY KEY,
+    long_text TEXT
+);
+
+INSERT INTO large_text_data (long_text) VALUES (repeat('This is a long text string. ', 10000));
+
+SELECT length(long_text) FROM large_text_data;
+
+CREATE TABLE range_example (
+    id SERIAL PRIMARY KEY,
+    int4range_val int4range,
+    numrange_val numrange
+);
+
+INSERT INTO range_example (int4range_val, numrange_val) VALUES
+('[10, 20]', '(10.5, 20.5]');
+
+SELECT * FROM range_example WHERE int4range_val @> 15;

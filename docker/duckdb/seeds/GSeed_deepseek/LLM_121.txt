@@ -1,0 +1,61 @@
+-- Create table with various data types
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value REAL,
+    is_active BOOLEAN,
+    last_updated TIMESTAMP
+);
+
+-- Insert sample data including edge cases and NULLs
+INSERT INTO t1 VALUES 
+(0, 'Test', 3.14, TRUE, '2023-01-01'),
+(-1, NULL, -999.99, FALSE, CURRENT_TIMESTAMP),
+(2, 'EdgeCase', 1e6, TRUE, '2024-12-31');
+
+-- Use a Common Table Expression (CTE)
+WITH cte AS (
+    SELECT id, name, value
+    FROM t1
+    WHERE is_active = TRUE
+)
+SELECT * FROM cte;
+
+-- Aggregate functions
+SELECT 
+    COUNT(*) as total,
+    SUM(value) as sum_value,
+    MAX(id) as max_id,
+    MIN(last_updated) as earliest_update
+FROM t1;
+
+-- Window functions
+SELECT 
+    id, name, value,
+    ROW_NUMBER() OVER (ORDER BY id) as row_num,
+    RANK() OVER (ORDER BY value DESC) as rank_val
+FROM t1;
+
+-- Join operations (self-join)
+SELECT a.id as id_a, b.id as id_b, a.name, b.name
+FROM t1 a
+JOIN t1 b ON a.id = b.id;
+
+-- Transaction control
+BEGIN;
+INSERT INTO t1 VALUES (3, 'TransactionTest', 42.0, TRUE, CURRENT_TIMESTAMP);
+ROLLBACK;
+
+-- Temporary table operations
+CREATE TEMPORARY TABLE temp_t (
+    id INTEGER,
+    data TEXT
+);
+
+INSERT INTO temp_t VALUES 
+(1, 'TempData1'),
+(2, 'TempData2');
+
+SELECT * FROM temp_t;
+
+DROP TABLE temp_t;

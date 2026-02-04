@@ -1,0 +1,86 @@
+-- Create a table with various data types including NULL values
+CREATE TABLE t1(
+    id INTEGER,
+    name TEXT,
+    price REAL,
+    created_at TIMESTAMP,
+    status BOOLEAN,
+    metadata JSONB
+);
+
+-- Insert test data using WITH RECURSIVE for diverse datasets
+WITH RECURSIVE c(i) AS (
+    VALUES(1)
+    UNION ALL
+    SELECT i+1 FROM c WHERE i < 100
+)
+INSERT INTO t1(id, name, price, created_at, status, metadata)
+SELECT 
+    i,
+    printf('item_%d', i),
+    random() * 1000,
+    datetime('now', '-' || (i % 365) || ' days'),
+    (i % 2) == 0,
+    jsonb_build_object(
+        'category', printf('cat_%d', (i % 10)),
+        'tags', jsonb_array_elements_text(jsonb_build_array(printf('tag_%d', (i % 5))))
+    )
+FROM c;
+
+-- Create an index for testing query optimization
+CREATE INDEX t1_idx ON t1(id, created_at);
+
+-- Create a table for testing JSON operations
+CREATE TABLE t2(
+    id INTEGER,
+    data JSONB
+);
+
+-- Insert JSON test data
+INSERT INTO t2 VALUES 
+(1, '{"name": "Alice", "age": 30, "hobbies": ["reading", "music"]}'::JSONB),
+(2, '{"name": "Bob", "age": 25, "hobbies": ["sports", "travel"]}');
+
+-- Create a view for testing CTEs and complex queries
+CREATE VIEW v1 AS
+WITH cte1 AS (
+    SELECT id, name, price, status 
+    FROM t1 
+    WHERE created_at >= datetime('now', '-7 days')
+),
+cte2 AS (
+    SELECT id, data->>'name' as name, data->>'age' as age 
+    FROM t2
+)
+SELECT cte1.id, cte1.name, cte1.price, cte1.status, cte2.age 
+FROM cte1 
+LEFT JOIN cte2 ON cte1.name = cte2.name;
+
+-- Test window functions and aggregates
+SELECT 
+    id,
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank,
+    ROW_NUMBER() OVER () as row_num,
+    COUNT(*) OVER (PARTITION BY status) as status_count,
+    SUM(price) OVER (ORDER BY created_at) as cumulative_sum
+FROM t1;
+
+-- Test GROUP BY and HAVING clauses
+SELECT 
+    status,
+    COUNT(*) as total_items,
+    AVG(price) as avg_price,
+    MAX(created_at) as last_created
+FROM t1
+GROUP BY status
+HAVING COUNT(*) > 50;
+
+-- Test JSON operations
+SELECT 
+    id,
+    data->>'name' as name,
+    (data->'age')::INT as age,
+    jsonb_pretty(data) as pretty_data
+FROM t2;

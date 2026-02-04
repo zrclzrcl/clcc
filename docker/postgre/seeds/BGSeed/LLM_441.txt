@@ -1,0 +1,123 @@
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    stock_quantity INTEGER NOT NULL
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(order_id),
+    product_id INTEGER NOT NULL REFERENCES products(product_id),
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO customers (first_name, last_name, email, phone_number) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '555-123-4567'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '555-987-6543'),
+('Charlie', 'Brown', 'charlie.brown@example.com', '555-111-2222');
+
+INSERT INTO products (product_name, description, price, stock_quantity) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 10),
+('Mouse', 'Wireless mouse', 25.00, 50),
+('Keyboard', 'Ergonomic keyboard', 75.00, 30);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2024-01-15', 1225.00),
+(2, '2024-01-20', 50.00),
+(1, '2024-01-25', 75.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 2, 25.00),
+(3, 3, 1, 75.00);
+
+SELECT * FROM customers WHERE first_name = 'Alice';
+SELECT product_name, price FROM products WHERE price > 50.00;
+SELECT order_date, total_amount FROM orders ORDER BY order_date DESC;
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+UPDATE products SET stock_quantity = 45 WHERE product_id = 2;
+DELETE FROM products WHERE product_id = 3;
+
+CREATE INDEX idx_customer_email ON customers (email);
+DROP INDEX idx_customer_email;
+
+-- PostgreSQL specific features
+CREATE OR REPLACE FUNCTION get_customer_name(customer_id_param INTEGER)
+RETURNS VARCHAR AS $$
+BEGIN
+    RETURN (SELECT first_name || ' ' || last_name FROM customers WHERE customer_id = customer_id_param);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_customer_name(1);
+
+-- Using WITH RECURSIVE for hierarchical data (example, although simplified)
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    employee_name VARCHAR(100),
+    manager_id INTEGER REFERENCES employees(employee_id)
+);
+
+INSERT INTO employees (employee_name, manager_id) VALUES
+('John Doe', NULL),
+('Jane Smith', 1),
+('Peter Jones', 1),
+('David Lee', 2);
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT employee_id, employee_name, manager_id, 1 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.employee_id, e.employee_name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.employee_id
+)
+SELECT * FROM employee_hierarchy;
+
+-- Window functions
+SELECT
+    product_name,
+    price,
+    AVG(price) OVER () AS average_price
+FROM
+    products;
+
+-- Check constraint example
+ALTER TABLE products ADD CONSTRAINT positive_stock CHECK (stock_quantity >= 0);
+
+-- Aggregate function with FILTER
+SELECT
+    COUNT(*) FILTER (WHERE total_amount > 1000) AS high_value_orders,
+    COUNT(*) AS total_orders
+FROM
+    orders;
+
+DROP FUNCTION get_customer_name(INTEGER);
+DROP TABLE employees;
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE customers;
+DROP TABLE products;

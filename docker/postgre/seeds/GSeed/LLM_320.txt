@@ -1,0 +1,123 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create a simple table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username TEXT UNIQUE NOT NULL,
+    email TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some data
+INSERT INTO users (username, email) VALUES
+    ('john_doe', 'john.doe@example.com'),
+    ('jane_smith', 'jane.smith@example.com');
+
+-- Update a record
+UPDATE users SET email = 'john.updated@example.com' WHERE username = 'john_doe';
+
+-- Delete a record
+DELETE FROM users WHERE username = 'jane_smith';
+
+-- Select data
+SELECT * FROM users;
+
+-- Select with a where clause
+SELECT username, created_at FROM users WHERE email LIKE '%example.com%';
+
+-- Create another table with a foreign key
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    title TEXT NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some posts
+INSERT INTO posts (user_id, title, content)
+SELECT id, 'First Post', 'This is the first post.' FROM users WHERE username = 'john_doe';
+
+INSERT INTO posts (user_id, title, content)
+SELECT id, 'Second Post', 'This is the second post.' FROM users WHERE username = 'john_doe';
+
+
+-- Join tables
+SELECT users.username, posts.title
+FROM users
+JOIN posts ON users.id = posts.user_id;
+
+-- Group by
+SELECT users.username, COUNT(posts.id) AS post_count
+FROM users
+LEFT JOIN posts ON users.id = posts.user_id
+GROUP BY users.username
+ORDER BY post_count DESC;
+
+-- Create an index
+CREATE INDEX idx_users_username ON users (username);
+
+-- Create a custom enum type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+
+-- Using JSONB
+
+CREATE TABLE events (
+  id SERIAL PRIMARY KEY,
+  payload JSONB
+);
+
+INSERT INTO events (payload) VALUES ('{"event_type": "user_login", "user_id": 123, "timestamp": "2024-01-01T12:00:00Z"}');
+SELECT payload ->> 'event_type' FROM events;
+
+-- CTE example
+WITH user_post_counts AS (
+  SELECT users.username, COUNT(posts.id) AS post_count
+  FROM users
+  LEFT JOIN posts ON users.id = posts.user_id
+  GROUP BY users.username
+)
+SELECT username, post_count
+FROM user_post_counts
+WHERE post_count > 0;
+
+-- Create a view
+CREATE VIEW active_users AS
+SELECT id, username FROM users WHERE created_at > NOW() - INTERVAL '1 year';
+
+SELECT * FROM active_users;
+
+-- Create a materialized view
+CREATE MATERIALIZED VIEW user_summary AS
+SELECT username, COUNT(posts.id) AS total_posts
+FROM users
+LEFT JOIN posts ON users.id = posts.user_id
+GROUP BY username;
+
+REFRESH MATERIALIZED VIEW user_summary;
+
+SELECT * FROM user_summary;
+
+--Creating a trigger
+
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.created_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_users_timestamp
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION update_timestamp();
+
+UPDATE users SET email = 'john.doe@example.net' WHERE username = 'john_doe';

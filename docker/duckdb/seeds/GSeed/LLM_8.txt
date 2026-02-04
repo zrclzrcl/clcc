@@ -1,0 +1,52 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR
+);
+
+INSERT INTO products (name, price, category) VALUES
+    ('Laptop', 1200.00, 'Electronics'),
+    ('Keyboard', 75.00, 'Electronics'),
+    ('T-shirt', 20.00, 'Clothing'),
+    ('Jeans', 60.00, 'Clothing');
+
+CREATE VIEW expensive_products AS
+SELECT name, price FROM products WHERE price > 100;
+
+CREATE INDEX idx_category ON products (category);
+
+-- DuckDB specific features
+INSTALL spatial;
+LOAD spatial;
+
+CREATE TABLE geom_test (id INTEGER, geom GEOMETRY);
+INSERT INTO geom_test VALUES (1, ST_GeomFromText('POINT(1 2)'));
+
+CREATE MACRO tax(price DECIMAL) AS (price * 1.07);
+SELECT name, tax(price) FROM products;
+
+
+CREATE SEQUENCE seq_example START 1 INCREMENT 2;
+SELECT nextval('seq_example');
+
+COPY products FROM 'products.csv' ( DELIMITER ',', HEADER ); -- Simulate file load, even though file doesn't exist initially.  This tests error handling.
+
+SELECT quantile_cont(0.5) WITHIN GROUP (ORDER BY price) FROM products;
+
+CREATE TABLE time_series (
+  ts TIMESTAMP,
+  value DOUBLE
+);
+
+INSERT INTO time_series VALUES
+('2024-01-01 00:00:00', 10.0),
+('2024-01-01 00:01:00', 12.0),
+('2024-01-01 00:02:00', 15.0);
+
+SELECT
+  time_bucket('1 minute', ts) AS one_min,
+  avg(value)
+FROM time_series
+GROUP BY one_min
+ORDER BY one_min;

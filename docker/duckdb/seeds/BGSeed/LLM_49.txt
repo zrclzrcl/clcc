@@ -1,0 +1,56 @@
+CREATE TABLE test_numeric (
+    id INTEGER PRIMARY KEY,
+    val TINYINT,
+    val2 SMALLINT,
+    val3 INTEGER,
+    val4 BIGINT,
+    val5 HUGEINT,
+    val6 UTINYINT,
+    val7 USMALLINT,
+    val8 UINTEGER,
+    val9 UBIGINT
+);
+
+INSERT INTO test_numeric (val, val2, val3, val4, val5, val6, val7, val8, val9) VALUES
+(127, 32767, 2147483647, 9223372036854775807, 170141183460469231731687303715884105727, 255, 65535, 4294967295, 18446744073709551615);
+INSERT INTO test_numeric (val, val2, val3, val4, val5, val6, val7, val8, val9) VALUES
+(-128, -32768, -2147483648, -9223372036854775808, -170141183460469231731687303715884105728, 0, 0, 0, 0);
+INSERT INTO test_numeric (val, val2, val3, val4, val5, val6, val7, val8, val9) VALUES
+(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+SELECT typeof(val), typeof(val2), typeof(val3), typeof(val4), typeof(val5), typeof(val6), typeof(val7), typeof(val8), typeof(val9) FROM test_numeric LIMIT 1;
+
+SELECT * FROM test_numeric WHERE val > 0;
+SELECT * FROM test_numeric WHERE val2 < 0;
+SELECT * FROM test_numeric ORDER BY val5 DESC NULLS LAST;
+
+CREATE TABLE test_date (
+    id INTEGER PRIMARY KEY,
+    d DATE,
+    ts TIMESTAMP,
+    t TIME
+);
+
+INSERT INTO test_date (d, ts, t) VALUES
+('2023-10-27', '2023-10-27 10:30:00', '10:30:00');
+INSERT INTO test_date (d, ts, t) VALUES
+('1970-01-01', '1970-01-01 00:00:00', '00:00:00');
+INSERT INTO test_date (d, ts, t) VALUES
+(NULL, NULL, NULL);
+
+SELECT d + INTERVAL '1 day', ts - INTERVAL '1 hour', t + INTERVAL '30 minutes' FROM test_date;
+SELECT date_trunc('month', d), date_part('year', ts), strftime('%H', t) FROM test_date;
+
+-- STRING functions testing
+CREATE TABLE test_string (
+    id INTEGER PRIMARY KEY,
+    s VARCHAR
+);
+
+INSERT INTO test_string (s) VALUES ('DuckDB');
+INSERT INTO test_string (s) VALUES ('');
+INSERT INTO test_string (s) VALUES (NULL);
+
+SELECT upper(s), lower(s), length(s), substr(s, 2, 3) FROM test_string;
+SELECT replace(s, 'Duck', 'Goose'), instr(s, 'ck') FROM test_string;
+SELECT concat(s, ' is cool!'), trim(s) FROM test_string;

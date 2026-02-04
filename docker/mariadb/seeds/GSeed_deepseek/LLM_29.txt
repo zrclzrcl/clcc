@@ -1,0 +1,70 @@
+SET GLOBAL storage_engine = 'Aria';
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    data JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    UNIQUE INDEX idx_name (name),
+    PARTITION BY RANGE(YEAR(created_at)) (
+        PARTITION p0 VALUES LESS THAN (2020),
+        PARTITION p1 VALUES LESS THAN (2023),
+        PARTITION p2 VALUES LESS THAN MAXVALUE
+    )
+) ENGINE = Aria;
+
+INSERT INTO test_table (name, data, status)
+VALUES ('Test Record 1', '{"key": "value"}', 'active');
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+ALTER TABLE test_table DROP INDEX idx_name;
+ALTER TABLE test_table ADD UNIQUE KEY idx_description (description(255));
+
+PREPARE stmt FROM 'SELECT JSON_EXTRACT(data, "$.key") AS value FROM test_table WHERE status = ?';
+EXECUTE stmt USING 'active';
+DEALLOCATE PREPARE stmt;
+
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    SELECT COUNT(*) INTO var FROM test_table WHERE status = 'active';
+    IF var > 5 THEN
+        INSERT INTO test_table (name, data, status) VALUES ('New Record', '{"count": 1}', 'active');
+    END IF;
+END$$
+DELIMITER ;
+
+SET @var = 'test_value';
+PREPARE stmt FROM 'SELECT ? AS variable_value';
+EXECUTE stmt USING @var;
+DEALLOCATE PREPARE stmt;
+
+CREATE EVENT IF NOT EXISTS ev_test
+ON SCHEDULE EVERY 1 HOUR
+DO
+BEGIN
+    TRUNCATE TABLE test_table PARTITION p0;
+END$$
+
+SET GLOBAL optimizer_switch = 'index_merge=on';
+
+START TRANSACTION;
+INSERT INTO test_table (name, data, status) VALUES ('Transaction Test', '{"tx": true}', 'active');
+SAVEPOINT sp_test;
+ROLLBACK TO SAVEPOINT sp_test;
+COMMIT;
+
+CREATE TABLE test_partitions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value INT NOT NULL,
+    KEY idx_value (value)
+) ENGINE = Aria
+PARTITION BY HASH(id)
+PARTITIONS 4;
+
+INSERT INTO test_partitions (value) VALUES (1), (2), (3), (4), (5);
+
+ALTER TABLE test_partitions COALESCE PARTITION 2;
+ANALYZE TABLE test_table;
+SHOW INDEX FROM test_table;

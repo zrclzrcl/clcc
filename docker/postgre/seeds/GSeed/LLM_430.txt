@@ -1,0 +1,85 @@
+CREATE SCHEMA IF NOT EXISTS fuzz_schema;
+
+CREATE TABLE fuzz_schema.products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE UNLOGGED TABLE fuzz_schema.orders (
+    order_id BIGSERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2),
+    status VARCHAR(50) CHECK (status IN ('pending', 'shipped', 'delivered', 'canceled'))
+);
+
+ALTER TABLE fuzz_schema.orders ADD COLUMN notes JSONB;
+
+CREATE TABLE fuzz_schema.customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100),
+    email VARCHAR(200) UNIQUE,
+    phone VARCHAR(20),
+    address TEXT
+);
+
+ALTER TABLE fuzz_schema.orders ADD CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES fuzz_schema.customers(customer_id);
+
+INSERT INTO fuzz_schema.customers (first_name, last_name, email, phone, address) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '555-1234', '123 Main St'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '555-5678', '456 Oak Ave'),
+('Charlie', 'Brown', 'charlie.brown@example.com', '555-9012', '789 Pine Ln');
+
+INSERT INTO fuzz_schema.products (product_name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00),
+('Keyboard', 'Ergonomic keyboard', 75.00);
+
+INSERT INTO fuzz_schema.orders (customer_id, total_amount, status, notes) VALUES
+(1, 1225.00, 'pending', '{"shipping_address": "Different address"}'),
+(2, 75.00, 'shipped', '{}'),
+(3, 25.00, 'delivered', 'null');
+
+SELECT * FROM fuzz_schema.customers WHERE last_name LIKE 'S%';
+
+SELECT product_name, price FROM fuzz_schema.products ORDER BY price DESC;
+
+UPDATE fuzz_schema.products SET price = price * 1.1 WHERE product_name = 'Laptop';
+
+DELETE FROM fuzz_schema.products WHERE product_name = 'Mouse';
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM fuzz_schema.customers c
+JOIN fuzz_schema.orders o ON c.customer_id = o.customer_id;
+
+CREATE INDEX idx_customer_email ON fuzz_schema.customers (email);
+
+CREATE OR REPLACE VIEW fuzz_schema.customer_order_summary AS
+SELECT c.first_name, c.last_name, COUNT(o.order_id) AS total_orders, SUM(o.total_amount) AS total_spent
+FROM fuzz_schema.customers c
+LEFT JOIN fuzz_schema.orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name;
+
+SELECT * FROM fuzz_schema.customer_order_summary;
+
+ALTER TABLE fuzz_schema.customers ADD COLUMN full_name VARCHAR(201) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED;
+
+SELECT * FROM fuzz_schema.customers WHERE full_name LIKE '%Smith%';
+
+CREATE STATISTICS fuzz_stats_products ON product_name, price FROM fuzz_schema.products;
+
+EXPLAIN SELECT * FROM fuzz_schema.products WHERE product_name = 'Laptop';
+
+DROP VIEW fuzz_schema.customer_order_summary;
+
+DROP TABLE fuzz_schema.orders;
+
+DROP TABLE fuzz_schema.products CASCADE;
+
+DROP TABLE fuzz_schema.customers;
+
+DROP SCHEMA fuzz_schema CASCADE;

@@ -1,0 +1,86 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, department) VALUES
+('Alice Smith', 60000.00, 'Sales'),
+('Bob Johnson', 75000.00, 'Marketing'),
+('Charlie Brown', 90000.00, 'Engineering');
+
+ALTER TABLE employees ADD COLUMN data JSONB;
+
+UPDATE employees SET data = '{"age": 30, "city": "New York"}' WHERE name = 'Alice Smith';
+UPDATE employees SET data = '{"age": 35, "city": "London"}' WHERE name = 'Bob Johnson';
+UPDATE employees SET data = '{"age": 40, "city": "San Francisco"}' WHERE name = 'Charlie Brown';
+
+SELECT id, name, salary FROM employees WHERE salary > 70000.00;
+
+SELECT d.name AS department_name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.name = e.department
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+CREATE INDEX idx_employee_department ON employees (department);
+
+--Example using generate_series
+CREATE TABLE generate_series_example (value int);
+INSERT INTO generate_series_example (value) SELECT generate_series(1, 10);
+SELECT * FROM generate_series_example;
+
+--Example using WITH clause (Common Table Expression)
+WITH AvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.salary, a.avg_salary
+FROM employees e
+JOIN AvgSalaries a ON e.department = a.department
+WHERE e.salary > a.avg_salary;
+
+CREATE VIEW employee_summary AS
+SELECT e.name, e.salary, d.name AS department_name, d.location AS department_location
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+SELECT * FROM employee_summary WHERE salary > 65000;
+
+-- Example using array agg
+SELECT department, array_agg(name) FROM employees GROUP BY department;
+
+-- Example using DISTINCT
+SELECT DISTINCT department FROM employees;
+
+-- Example using LIKE
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+-- Example using ILIKE (case-insensitive LIKE)
+SELECT name FROM employees WHERE name ILIKE 'a%';
+
+-- Example using NULLIF
+SELECT NULLIF(10,10);
+SELECT NULLIF(10,5);
+
+-- Example using COALESCE
+SELECT COALESCE(NULL, 'default_value');
+SELECT COALESCE('value', 'default_value');
+
+--Example using RANGE type
+CREATE TABLE ranges (val int4range);
+INSERT INTO ranges VALUES (int4range(10, 20));
+SELECT * FROM ranges WHERE val @> 15;

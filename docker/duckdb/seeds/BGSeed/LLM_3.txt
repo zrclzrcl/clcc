@@ -1,0 +1,73 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR
+);
+
+INSERT INTO products (name, price, category) VALUES
+    ('Laptop', 1200.50, 'Electronics'),
+    ('Smartphone', 800.00, 'Electronics'),
+    ('T-shirt', 25.00, 'Clothing'),
+    ('Coffee Maker', 50.00, 'Appliances');
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    city VARCHAR
+);
+
+INSERT INTO customers (name, city) VALUES
+    ('Alice', 'New York'),
+    ('Bob', 'Los Angeles'),
+    ('Charlie', 'Chicago');
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    order_date DATE
+);
+
+INSERT INTO orders (customer_id, product_id, quantity, order_date) VALUES
+    (1, 1, 1, '2023-01-15'),
+    (2, 2, 2, '2023-02-20'),
+    (3, 3, 3, '2023-03-10');
+
+-- DuckDB specific feature: Using APPROX_COUNT_DISTINCT
+SELECT APPROX_COUNT_DISTINCT(customer_id) FROM orders;
+
+-- Testing aggregate functions and grouping
+SELECT category, AVG(price) FROM products GROUP BY category;
+
+-- Testing window functions (DuckDB supports these)
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM products;
+
+-- Testing string functions
+SELECT name, UPPER(name) FROM products;
+
+-- Testing date functions
+SELECT order_date, STRFTIME('%Y', order_date) AS order_year FROM orders;
+
+-- Create a VIEW
+CREATE VIEW product_summary AS
+SELECT category, COUNT(*) AS product_count, AVG(price) AS avg_price
+FROM products
+GROUP BY category;
+
+SELECT * FROM product_summary;
+
+--DuckDB support for JSON.
+CREATE TABLE jsontable (id INTEGER, data JSON);
+INSERT INTO jsontable VALUES (1, '{"a": 1, "b": "test"}');
+SELECT data['a'] FROM jsontable;
+
+-- DuckDB support for lists
+CREATE TABLE listtable (id INTEGER, mylist INTEGER[]);
+INSERT INTO listtable VALUES (1, [1,2,3,4]);
+SELECT mylist[1] FROM listtable;

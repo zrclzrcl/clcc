@@ -1,0 +1,116 @@
+-- Create tables with various data types and constraints
+CREATE TABLE IF NOT EXISTS products (
+    product_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    price DECIMAL(10, 2),
+    category TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sales (
+    sale_id INTEGER PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+);
+
+-- Create an index on a frequently queried column
+CREATE INDEX idx_product_category ON products(category);
+
+-- Insert sample data
+INSERT INTO products VALUES 
+(1, 'Laptop', 999.99, 'Electronics', CURRENT_TIMESTAMP),
+(2, 'Smartphone', 699.99, 'Electronics', CURRENT_TIMESTAMP),
+(3, 'Tablet', 499.99, 'Electronics', CURRENT_TIMESTAMP);
+
+INSERT INTO sales VALUES 
+(1, 1, 5, '2023-01-01', 4999.95),
+(2, 2, 10, '2023-01-01', 6999.90),
+(3, 3, 8, '2023-01-01', 3999.92);
+
+-- Create a view for aggregated sales data
+CREATE VIEW IF NOT EXISTS sales_summary AS 
+SELECT 
+    p.name AS product_name,
+    s.quantity,
+    s.amount,
+    s.sale_date
+FROM 
+    sales s
+JOIN 
+    products p ON s.product_id = p.product_id;
+
+-- Use window functions to calculate running totals
+SELECT 
+    sale_date,
+    amount,
+    SUM(amount) OVER (ORDER BY sale_date) AS running_total
+FROM 
+    sales
+ORDER BY 
+    sale_date;
+
+-- Test complex aggregate functions with grouping
+SELECT 
+    category,
+    COUNT(*) AS total_products,
+    AVG(price) AS avg_price,
+    MAX(price) AS max_price,
+    MIN(price) AS min_price
+FROM 
+    products
+GROUP BY 
+    category
+HAVING 
+    COUNT(*) > 2;
+
+-- Test join operations with different conditions
+SELECT 
+    p.name,
+    s.quantity,
+    s.amount
+FROM 
+    products p
+INNER JOIN 
+    sales s ON p.product_id = s.product_id
+WHERE 
+    s.sale_date >= '2023-01-01'
+ORDER BY 
+    p.price DESC;
+
+-- Test union all operation
+SELECT 
+    name AS item_name,
+    price
+FROM 
+    products
+UNION ALL
+SELECT 
+    product_name AS item_name,
+    amount AS price
+FROM 
+    sales_summary;
+
+-- Test common table expressions (CTEs)
+WITH 
+    top_sales AS (
+        SELECT 
+            p.name,
+            SUM(s.amount) AS total_amount
+        FROM 
+            sales s
+        JOIN 
+            products p ON s.product_id = p.product_id
+        GROUP BY 
+            p.name
+        ORDER BY 
+            total_amount DESC
+        LIMIT 2
+    )
+SELECT 
+    rank() OVER (ORDER BY total_amount DESC) AS ranking,
+    name,
+    total_amount
+FROM 
+    top_sales;

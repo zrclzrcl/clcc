@@ -1,0 +1,54 @@
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET optimizer_switch = 'semijoin=on,materialization=on,firstmatch=on,loosescan=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=off';
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    age INT UNSIGNED,
+    email VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSON,
+    point GEOMETRY
+);
+
+-- Insert some sample data
+INSERT INTO test_table (name, age, email, data, point) VALUES
+('Alice', 30, 'alice@example.com', '{"city": "New York", "country": "USA"}', ST_GeomFromText('POINT(1 1)')),
+('Bob', 25, 'bob@example.com', '{"city": "London", "country": "UK"}', ST_GeomFromText('POINT(2 2)')),
+('Charlie', NULL, 'charlie@example.com', '{"city": "Paris", "country": "France"}', ST_GeomFromText('POINT(3 3)'));
+
+-- Test spatial functions
+SELECT id, ST_AsText(point) FROM test_table WHERE ST_Contains(ST_Buffer(ST_GeomFromText('POINT(1.5 1.5)'), 1), point);
+
+-- Test JSON functions
+SELECT id, JSON_EXTRACT(data, '$.city') AS city FROM test_table WHERE JSON_CONTAINS(data, '{"country": "USA"}');
+
+-- Test generated columns (MySQL 5.7+)
+ALTER TABLE test_table ADD COLUMN full_name VARCHAR(512) GENERATED ALWAYS AS (concat(name, ' (', age, ')')) VIRTUAL;
+
+-- Test partitioning (range partitioning on the 'age' column)
+CREATE TABLE partitioned_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    age INT UNSIGNED
+)
+PARTITION BY RANGE (age) (
+    PARTITION p0 VALUES LESS THAN (25),
+    PARTITION p1 VALUES LESS THAN (30),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO partitioned_table (name, age) VALUES ('David', 24), ('Eve', 28), ('Frank', 32);
+
+-- Check partition data
+SELECT * FROM partitioned_table PARTITION (p0);
+
+-- Trigger creation and test
+CREATE TRIGGER age_check BEFORE INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    IF NEW.age < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Age cannot be negative';
+    END IF;
+END;

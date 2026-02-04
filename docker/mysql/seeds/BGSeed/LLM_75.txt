@@ -1,0 +1,70 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY,
+    department_name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (department_id, department_name, location) VALUES
+(1, 'Sales', 'New York'),
+(2, 'Marketing', 'London'),
+(3, 'Engineering', 'San Francisco');
+
+INSERT INTO employees (emp_id, first_name, last_name, hire_date, salary, department_id) VALUES
+(101, 'John', 'Doe', '2022-01-15', 60000.00, 1),
+(102, 'Jane', 'Smith', '2022-03-01', 65000.00, 2),
+(103, 'Peter', 'Jones', '2022-05-10', 70000.00, 3);
+
+-- Test INSERT IGNORE, unique to MySQL. Demonstrates duplicate key handling.
+INSERT IGNORE INTO departments (department_id, department_name, location) VALUES (1, 'Sales', 'New York');
+
+-- Test REPLACE, unique to MySQL. Demonstrates upsert functionality
+REPLACE INTO departments (department_id, department_name, location) VALUES (4, 'HR', 'Chicago');
+REPLACE INTO departments (department_id, department_name, location) VALUES (1, 'Global Sales', 'New York');
+
+-- Test ON DUPLICATE KEY UPDATE, a common upsert approach in MySQL
+INSERT INTO employees (emp_id, first_name, last_name, hire_date, salary, department_id) VALUES (101, 'John', 'NewName', '2022-01-15', 62000.00, 1) ON DUPLICATE KEY UPDATE salary = VALUES(salary);
+
+-- Test stored procedure creation and execution. This is a common but potentially vulnerable operation.
+DELIMITER //
+CREATE PROCEDURE `UpdateSalary`(IN empId INT, IN newSalary DECIMAL(10,2))
+BEGIN
+    UPDATE employees SET salary = newSalary WHERE emp_id = empId;
+END //
+DELIMITER ;
+
+CALL UpdateSalary(101, 65000.00);
+
+-- Test user-defined variables. These can sometimes be abused.
+SET @my_emp_id = 102;
+SELECT first_name FROM employees WHERE emp_id = @my_emp_id;
+
+-- Test FULLTEXT index and search.
+ALTER TABLE employees ADD FULLTEXT(first_name, last_name);
+SELECT * FROM employees WHERE MATCH (first_name, last_name) AGAINST ('John Doe');
+
+-- Test partitioning.  This tests a complex feature for data management.
+ALTER TABLE employees PARTITION BY RANGE (emp_id) (
+    PARTITION p0 VALUES LESS THAN (102),
+    PARTITION p1 VALUES LESS THAN (104),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+-- Test GIS functionality. Needs spatial data types and functions.
+CREATE TABLE places (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO places (id, name, location) VALUES (1, 'Office', ST_GeomFromText('POINT(37.7749 122.4194)'));
+
+SELECT ST_AsText(location) FROM places;

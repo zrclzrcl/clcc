@@ -1,0 +1,30 @@
+CREATE TABLE dates (
+    id INTEGER PRIMARY KEY,
+    event_date DATE,
+    event_time TIME,
+    event_timestamp TIMESTAMP,
+    event_interval INTERVAL
+);
+
+INSERT INTO dates (event_date, event_time, event_timestamp, event_interval) VALUES
+('2023-10-27', '10:30:00', '2023-10-27 10:30:00', '3 days 2 hours');
+
+SELECT event_date + INTERVAL '1 day' FROM dates;
+
+CREATE VIEW date_view AS SELECT * FROM dates WHERE event_date > '2023-10-20';
+
+ALTER TABLE dates ADD COLUMN description VARCHAR;
+
+UPDATE dates SET description = 'Sample event' WHERE id = 1;
+
+CREATE MACRO increment(val INTEGER) AS (val + 1);
+SELECT increment(5);
+
+CREATE TABLE blobs (id INTEGER, data BLOB);
+INSERT INTO blobs VALUES (1, 'This is a binary string'::BLOB);
+SELECT typeof(data) FROM blobs;
+
+CREATE SEQUENCE seq_example START 1 INCREMENT 2;
+SELECT nextval('seq_example');
+
+COPY dates FROM 'dates.csv' (HEADER, DELIMITER ','); -- This will fail, but tests file I/O.

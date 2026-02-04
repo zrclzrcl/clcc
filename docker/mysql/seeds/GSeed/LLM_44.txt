@@ -1,0 +1,114 @@
+DROP TABLE IF EXISTS `test`.`fuzz_table`;
+CREATE TABLE `test`.`fuzz_table` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `data` VARCHAR(255) NULL,
+  `num` INT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FULLTEXT INDEX `data_index` (`data`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `test`.`fuzz_table` (`data`, `num`) VALUES
+('This is a test string', 10),
+('Another test string with more words', 20),
+('A short string', 5),
+('A very long string to test limits', 100);
+
+-- Test JSON functionality (MySQL 5.7+)
+DROP TABLE IF EXISTS `test`.`fuzz_json`;
+CREATE TABLE `test`.`fuzz_json` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `data` JSON
+);
+
+INSERT INTO `test`.`fuzz_json` (`data`) VALUES
+('{"name": "Test User", "age": 30, "city": "New York"}'),
+('{"items": [1, 2, 3, 4, 5]}'),
+('{"address": {"street": "123 Main St", "zip": "10001"}}');
+
+-- Test generated columns (MySQL 5.7+)
+DROP TABLE IF EXISTS `test`.`fuzz_generated`;
+CREATE TABLE `test`.`fuzz_generated` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `a` INT,
+  `b` INT,
+  `sum` INT GENERATED ALWAYS AS (`a` + `b`) STORED
+);
+
+INSERT INTO `test`.`fuzz_generated` (`a`, `b`) VALUES (1, 2), (3, 4), (5, 6);
+
+-- Test spatial data types
+DROP TABLE IF EXISTS `test`.`fuzz_spatial`;
+CREATE TABLE `test`.`fuzz_spatial` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `point` POINT SRID 0
+);
+
+INSERT INTO `test`.`fuzz_spatial` (`point`) VALUES (ST_GeomFromText('POINT(1 1)')), (ST_GeomFromText('POINT(2 2)'));
+
+-- Test temporary table
+CREATE TEMPORARY TABLE `temp_table` (
+    `id` INT
+);
+
+INSERT INTO `temp_table` VALUES (1), (2), (3);
+
+SELECT * FROM `temp_table`;
+
+-- Test window functions (MySQL 8.0+)
+SELECT
+    `id`,
+    `data`,
+    `num`,
+    ROW_NUMBER() OVER (ORDER BY `num` DESC) as row_num
+FROM
+    `test`.`fuzz_table`;
+
+-- Test common table expression (CTE)
+WITH
+    HighNums AS (
+        SELECT `id`, `data`, `num`
+        FROM `test`.`fuzz_table`
+        WHERE `num` > 15
+    )
+SELECT * FROM HighNums;
+
+-- Test stored procedure with error handling
+DROP PROCEDURE IF EXISTS `test`.`my_proc`;
+CREATE PROCEDURE `test`.`my_proc`()
+BEGIN
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    SELECT 'An error occurred';
+    RESIGNAL;
+  END;
+
+  SELECT 1 / 0; -- Force an error
+END;
+
+-- Testing user defined function (UDF) that always returns NULL (Useful for mutation)
+DROP FUNCTION IF EXISTS `test`.`null_func`;
+CREATE FUNCTION `test`.`null_func`() RETURNS INTEGER DETERMINISTIC RETURN NULL;
+
+SELECT test.null_func();
+
+-- Test ALTER TABLE with different options
+ALTER TABLE `test`.`fuzz_table` ADD COLUMN `new_col` INT AFTER `num`;
+ALTER TABLE `test`.`fuzz_table` MODIFY COLUMN `data` TEXT;
+ALTER TABLE `test`.`fuzz_table` DROP COLUMN `new_col`;
+ALTER TABLE `test`.`fuzz_table` RENAME COLUMN `num` TO `number`;
+
+-- Test LOCK TABLES and UNLOCK TABLES
+LOCK TABLES `test`.`fuzz_table` READ;
+SELECT * FROM `test`.`fuzz_table`;
+UNLOCK TABLES;
+
+-- Test setting session variables
+SET @myvar = 100;
+SELECT @myvar;
+
+-- Test Full Text Search (requires InnoDB or MyISAM. Using InnoDB now.)
+SELECT * FROM `test`.`fuzz_table` WHERE MATCH (`data`) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test UNION ALL
+SELECT id, data FROM `test`.`fuzz_table` UNION ALL SELECT id, CAST(data AS CHAR) FROM `test`.`fuzz_table`;

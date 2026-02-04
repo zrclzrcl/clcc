@@ -1,0 +1,47 @@
+CREATE TABLE users (
+  id integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  username varchar(50) NOT NULL UNIQUE,
+  email varchar(100) NOT NULL UNIQUE,
+  created_at datetime DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+  id integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  title varchar(255) NOT NULL,
+  content text,
+  user_id integer REFERENCES users(id),
+  published_at datetime DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE comments (
+  id integer NOT NULL PRIMARY KEY AUTOINCREMENT,
+  post_id integer REFERENCES posts(id),
+  user_id integer REFERENCES users(id),
+  content text NOT NULL,
+  created_at datetime DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email) VALUES ('testuser1', 'testuser1@example.com');
+INSERT INTO users (username, email) VALUES ('testuser2', 'testuser2@example.com');
+INSERT INTO posts (title, content, user_id) VALUES ('First Post', 'This is the content of the first post.', 1);
+INSERT INTO posts (title, content, user_id) VALUES ('Second Post', 'Content of the second post.', 2);
+INSERT INTO comments (post_id, user_id, content) VALUES (1, 2, 'Nice post!');
+INSERT INTO comments (post_id, user_id, content) VALUES (1, 1, 'Thank you!');
+INSERT INTO comments (post_id, user_id, content) VALUES (2, 1, 'Great job!');
+
+SELECT u.username, p.title, c.content
+FROM users AS u
+INNER JOIN posts AS p ON u.id = p.user_id
+INNER JOIN comments AS c ON p.id = c.post_id
+WHERE c.created_at > (SELECT datetime('now', '-1 day'))
+ORDER BY c.created_at DESC;
+
+SELECT COUNT(*) AS total_comments, p.title
+FROM posts AS p
+LEFT JOIN comments AS c ON p.id = c.post_id
+GROUP BY p.id
+HAVING total_comments > 0;
+
+DELETE FROM comments
+WHERE created_at < datetime('now', '-30 days')
+AND post_id = (SELECT id FROM posts WHERE title = 'First Post' LIMIT 1);

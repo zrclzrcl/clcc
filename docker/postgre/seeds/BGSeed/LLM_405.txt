@@ -1,0 +1,116 @@
+CREATE TABLE Employees (
+    EmployeeID SERIAL PRIMARY KEY,
+    FirstName VARCHAR(50) NOT NULL,
+    LastName VARCHAR(50) NOT NULL,
+    Email VARCHAR(100) UNIQUE,
+    PhoneNumber VARCHAR(20),
+    HireDate DATE,
+    JobID INT,
+    Salary DECIMAL(10, 2),
+    CommissionPCT DECIMAL(4, 2),
+    ManagerID INT,
+    DepartmentID INT
+);
+
+CREATE TABLE Departments (
+    DepartmentID SERIAL PRIMARY KEY,
+    DepartmentName VARCHAR(50) NOT NULL,
+    ManagerID INT,
+    LocationID INT
+);
+
+CREATE TABLE Jobs (
+    JobID SERIAL PRIMARY KEY,
+    JobTitle VARCHAR(50) NOT NULL,
+    MinSalary DECIMAL(10, 2),
+    MaxSalary DECIMAL(10, 2)
+);
+
+CREATE TABLE Locations (
+    LocationID SERIAL PRIMARY KEY,
+    Address VARCHAR(100),
+    PostalCode VARCHAR(20),
+    City VARCHAR(50),
+    StateProvince VARCHAR(50),
+    CountryID CHAR(2)
+);
+
+CREATE TABLE Countries (
+    CountryID CHAR(2) PRIMARY KEY,
+    CountryName VARCHAR(50),
+    RegionID INT
+);
+
+CREATE TABLE Regions (
+    RegionID SERIAL PRIMARY KEY,
+    RegionName VARCHAR(50)
+);
+
+ALTER TABLE Employees ADD CONSTRAINT FK_Employees_Departments FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID);
+ALTER TABLE Employees ADD CONSTRAINT FK_Employees_Jobs FOREIGN KEY (JobID) REFERENCES Jobs(JobID);
+ALTER TABLE Departments ADD CONSTRAINT FK_Departments_Locations FOREIGN KEY (LocationID) REFERENCES Locations(LocationID);
+ALTER TABLE Locations ADD CONSTRAINT FK_Locations_Countries FOREIGN KEY (CountryID) REFERENCES Countries(CountryID);
+ALTER TABLE Countries ADD CONSTRAINT FK_Countries_Regions FOREIGN KEY (RegionID) REFERENCES Regions(RegionID);
+ALTER TABLE Departments ADD CONSTRAINT FK_Departments_Employees FOREIGN KEY (ManagerID) REFERENCES Employees(EmployeeID);
+ALTER TABLE Employees ADD CONSTRAINT FK_Employees_Employees FOREIGN KEY (ManagerID) REFERENCES Employees(EmployeeID);
+
+INSERT INTO Regions (RegionName) VALUES ('Europe');
+INSERT INTO Countries (CountryID, CountryName, RegionID) VALUES ('DE', 'Germany', 1);
+INSERT INTO Locations (Address, PostalCode, City, StateProvince, CountryID) VALUES ('Test Address', '12345', 'Test City', 'Test State', 'DE');
+INSERT INTO Departments (DepartmentName, LocationID) VALUES ('Test Department', 1);
+INSERT INTO Jobs (JobTitle, MinSalary, MaxSalary) VALUES ('Test Job', 50000.00, 100000.00);
+INSERT INTO Employees (FirstName, LastName, Email, HireDate, JobID, Salary, DepartmentID) VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-01', 1, 60000.00, 1);
+
+SELECT * FROM Employees WHERE Salary > 50000;
+UPDATE Employees SET Salary = 65000.00 WHERE FirstName = 'John';
+DELETE FROM Employees WHERE FirstName = 'John';
+
+CREATE INDEX IX_Employees_LastName ON Employees (LastName);
+
+SELECT e.FirstName, d.DepartmentName FROM Employees e JOIN Departments d ON e.DepartmentID = d.DepartmentID;
+
+CREATE VIEW EmployeeDetails AS
+SELECT e.FirstName, e.LastName, d.DepartmentName, j.JobTitle FROM Employees e
+JOIN Departments d ON e.DepartmentID = d.DepartmentID
+JOIN Jobs j ON e.JobID = j.JobID;
+
+SELECT * FROM EmployeeDetails;
+
+CREATE OR REPLACE FUNCTION increment_salary(emp_id INT, amount DECIMAL)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE Employees SET Salary = Salary + amount WHERE EmployeeID = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000);
+
+CREATE TEMP TABLE temp_employees AS SELECT * FROM Employees;
+
+SELECT * FROM temp_employees;
+
+ANALYZE Employees;
+
+SELECT pg_typeof(EmployeeID) FROM Employees LIMIT 1;
+
+-- Demonstrate usage of window functions
+SELECT
+    EmployeeID,
+    FirstName,
+    Salary,
+    RANK() OVER (ORDER BY Salary DESC) as SalaryRank
+FROM
+    Employees;
+
+-- Example of using generate_series
+SELECT generate_series(1, 5);
+
+-- Testing JSON functions (requires a JSON column)
+ALTER TABLE Employees ADD COLUMN AdditionalInfo JSONB;
+UPDATE Employees SET AdditionalInfo = '{"age": 30, "city": "New York"}'::jsonb WHERE EmployeeID = 1;
+SELECT AdditionalInfo ->> 'city' FROM Employees WHERE EmployeeID = 1;
+
+-- Testing array functions.
+ALTER TABLE Employees ADD COLUMN Skills TEXT[];
+UPDATE Employees SET Skills = ARRAY['SQL', 'Python'] WHERE EmployeeID = 1;
+SELECT Skills[1] FROM Employees WHERE EmployeeID = 1;

@@ -1,0 +1,78 @@
+-- Test table with various data types
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN,
+    data BLOB,
+    UNIQUE(name)
+);
+
+-- Indexes for testing query optimization
+CREATE INDEX idx_status_value ON test_table(status, value);
+CREATE INDEX idx_name ON test_table(name);
+
+-- Testing ALTER TABLE functionality
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+-- Inserting sample data with edge cases
+INSERT INTO test_table (name, status) VALUES ('test1', 1);
+INSERT INTO test_table (name, status, value) VALUES ('test2', 0, NULL);
+INSERT INTO test_table (name, status, value, created_at)
+    VALUES ('test3', 1, 100.5, '2023-01-01 00:00:01');
+INSERT INTO test_table
+    VALUES (4, 'test4', NULL, '2023-01-01 00:00:02', 1, NULL, 'Test description');
+
+-- Testing UPDATE and DELETE operations
+UPDATE test_table SET status = 0 WHERE name LIKE 'test%';
+DELETE FROM test_table WHERE status = 0;
+
+-- Complex SELECT queries with joins and subqueries
+SELECT t1.name, t2.description
+FROM test_table AS t1
+LEFT JOIN (
+    SELECT id, description FROM test_table WHERE status = 1
+) AS t2 ON t1.id = t2.id
+WHERE t1.value > (SELECT AVG(value) FROM test_table);
+
+-- Testing aggregate functions and window functions
+SELECT name, value,
+       RANK() OVER (ORDER BY value DESC) as rank_value,
+       NTILE(4) OVER () as quartile
+FROM test_table
+GROUP BY status;
+
+-- Testing common table expressions (CTE)
+WITH cte AS (
+    SELECT id, name, value FROM test_table WHERE status = 1
+),
+cte2 AS (
+    SELECT id, description FROM test_table WHERE status = 0
+)
+SELECT * FROM cte UNION ALL SELECT * FROM cte2;
+
+-- Testing transactions
+BEGIN;
+INSERT INTO test_table (name, status) VALUES ('tx_test', 1);
+SAVEPOINT sp1;
+UPDATE test_table SET status = 0 WHERE name = 'tx_test';
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Testing triggers
+CREATE TRIGGER after_update_trigger
+AFTER UPDATE ON test_table
+FOR EACH ROW
+WHEN NEW.status != OLD.status
+BEGIN
+    INSERT INTO audit_table (id, old_status, new_status)
+    VALUES (OLD.id, OLD.status, NEW.status);
+END;
+
+-- Testing edge cases and SQLite-specific features
+CREATE TABLE without_rowid(a PRIMARY KEY) WITHOUT ROWID;
+INSERT INTO without_rowid VALUES(1), (2), (3);
+SELECT * FROM without_rowid WHERE a = 0;
+
+VACUUM;

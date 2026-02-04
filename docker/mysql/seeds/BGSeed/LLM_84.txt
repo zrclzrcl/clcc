@@ -1,0 +1,105 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+SET autocommit=0;
+CREATE TABLE `products` (
+  `product_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `product_name` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `price` DECIMAL(10, 2) NOT NULL,
+  `stock_quantity` INT UNSIGNED NOT NULL DEFAULT 0,
+  `category` ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `customers` (
+  `customer_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `first_name` VARCHAR(255) NOT NULL,
+  `last_name` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(255) UNIQUE NOT NULL,
+  `phone_number` VARCHAR(20),
+  `address` VARCHAR(255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `orders` (
+  `order_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `customer_id` INT NOT NULL,
+  `order_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `total_amount` DECIMAL(10, 2) NOT NULL,
+  `status` ENUM('Pending', 'Shipped', 'Delivered', 'Cancelled') DEFAULT 'Pending',
+  FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `order_items` (
+  `order_item_id` INT PRIMARY KEY AUTO_INCREMENT,
+  `order_id` INT NOT NULL,
+  `product_id` INT NOT NULL,
+  `quantity` INT UNSIGNED NOT NULL,
+  `price_per_unit` DECIMAL(10, 2) NOT NULL,
+  FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`),
+  FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `products` (`product_name`, `description`, `price`, `stock_quantity`, `category`) VALUES
+('Wireless Mouse', 'Ergonomic wireless mouse for comfortable use.', 25.99, 100, 'Electronics'),
+('Cotton T-Shirt', 'Soft and breathable cotton t-shirt.', 15.50, 500, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker with programmable timer.', 79.99, 50, 'Home Goods'),
+('The Hitchhiker\'s Guide to the Galaxy', 'A humorous science fiction novel.', 12.75, 200, 'Books');
+
+INSERT INTO `customers` (`first_name`, `last_name`, `email`, `phone_number`, `address`) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', '456 Oak Ave');
+
+INSERT INTO `orders` (`customer_id`, `total_amount`, `status`) VALUES
+(1, 101.98, 'Pending'),
+(2, 31.00, 'Shipped');
+
+INSERT INTO `order_items` (`order_id`, `product_id`, `quantity`, `price_per_unit`) VALUES
+(1, 1, 1, 25.99),
+(1, 3, 1, 75.99),
+(2, 2, 2, 15.50);
+
+-- Test case with ON DUPLICATE KEY UPDATE
+INSERT INTO products (product_name, description, price, stock_quantity, category) VALUES ('Wireless Mouse', 'Updated Description', 27.99, 110, 'Electronics') ON DUPLICATE KEY UPDATE description='Updated Description', price=27.99, stock_quantity=stock_quantity + 10;
+
+-- Test case with REPLACE
+REPLACE INTO products (product_id, product_name, description, price, stock_quantity, category) VALUES (4, 'The Hitchhiker\'s Guide to the Galaxy', 'A slightly different edition.', 13.00, 205, 'Books');
+
+-- Test case with a complex SELECT query using JOIN and GROUP BY
+SELECT c.first_name, c.last_name, SUM(oi.quantity * oi.price_per_unit) AS total_spent FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id GROUP BY c.customer_id ORDER BY total_spent DESC;
+
+-- Test case for a stored procedure (create a simple one)
+DELIMITER //
+CREATE PROCEDURE GetCustomerOrders(IN customerId INT)
+BEGIN
+  SELECT * FROM orders WHERE customer_id = customerId;
+END //
+DELIMITER ;
+
+CALL GetCustomerOrders(1);
+
+-- Test case using window functions
+SELECT
+    product_name,
+    price,
+    category,
+    AVG(price) OVER (PARTITION BY category) AS avg_category_price
+FROM
+    products;
+
+-- Test Fulltext Index and Search
+ALTER TABLE products ADD FULLTEXT(product_name, description);
+SELECT product_name, description FROM products WHERE MATCH (product_name, description) AGAINST ('mouse' IN NATURAL LANGUAGE MODE);
+
+-- Test spatial data (requires enabling spatial support)
+CREATE TABLE cities (
+    city_id INT PRIMARY KEY,
+    city_name VARCHAR(255),
+    location POINT
+);
+INSERT INTO cities (city_id, city_name, location) VALUES (1, 'New York', ST_GeomFromText('POINT(-74.0060 40.7128)'));
+SELECT city_name, ST_AsText(location) FROM cities;
+
+-- Test Generated column
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10, 2) GENERATED ALWAYS AS (price * 0.9) VIRTUAL;
+
+SELECT * FROM products;
+
+COMMIT;

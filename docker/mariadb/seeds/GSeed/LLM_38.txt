@@ -1,0 +1,18 @@
+SHOW GLOBAL STATUS LIKE 'wsrep_cluster_status';
+CREATE TABLE `geo_data` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `latitude` decimal(10,8) NOT NULL,
+  `longitude` decimal(11,8) NOT NULL,
+  `city` varchar(255) DEFAULT NULL,
+  `country_code` char(2) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  SPATIAL INDEX(latitude,longitude)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `geo_data` (`latitude`, `longitude`, `city`, `country_code`) VALUES
+(40.7128, -74.0060, 'New York', 'US'),
+(34.0522, -118.2437, 'Los Angeles', 'US');
+
+SELECT ST_Distance(POINT(latitude, longitude), POINT(37.7749, -122.4194)) AS distance FROM geo_data ORDER BY distance LIMIT 1;
+
+SET GLOBAL binlog_expire_logs_seconds = 2592000;

@@ -1,0 +1,119 @@
+SET optimizer_switch='index_condition_pushdown=on,mrr=on,mrr_cost_based=on';
+SET @save_storage_engine= @@default_storage_engine;
+SET default_storage_engine=InnoDB;
+
+-- Test table creation with various data types and constraints
+CREATE TABLE `test_table` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `age` TINYINT UNSIGNED NULL,
+  `salary` DECIMAL(10,2) DEFAULT '0.00',
+  `hire_date` DATE NULL,
+  `update_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `status` ENUM('active', 'inactive', 'pending') DEFAULT 'pending',
+  `json_data` JSON NULL,
+  `blob_data` BLOB NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`),
+  INDEX `age` (`age`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert some initial data
+INSERT INTO `test_table` (`name`, `age`, `salary`, `hire_date`, `status`, `json_data`) VALUES
+('Alice', 30, 50000.00, '2022-01-15', 'active', '{"city": "New York", "country": "USA"}'),
+('Bob', 25, 40000.50, '2023-05-20', 'inactive', '{"city": "London", "country": "UK"}'),
+('Charlie', 40, 60000.75, '2021-11-01', 'active', '{"city": "Paris", "country": "France"}'),
+('David', NULL, 35000.00, '2024-02-10', 'pending', NULL);
+
+-- Test update operations
+UPDATE `test_table` SET `salary` = `salary` * 1.1 WHERE `status` = 'active';
+UPDATE `test_table` SET `age` = 35 WHERE `name` = 'Bob';
+
+-- Test delete operations
+DELETE FROM `test_table` WHERE `age` IS NULL;
+
+-- Test select queries with various clauses
+SELECT * FROM `test_table` WHERE `age` > 27 ORDER BY `name` DESC LIMIT 2;
+SELECT AVG(`salary`) FROM `test_table`;
+SELECT `status`, COUNT(*) FROM `test_table` GROUP BY `status`;
+
+-- Test ALTER TABLE operations - adding a new column
+ALTER TABLE `test_table` ADD COLUMN `notes` TEXT NULL AFTER `blob_data`;
+
+-- Test partitioning - creates table with range partitioning
+CREATE TABLE `sales` (
+    `sale_id` INT,
+    `sale_date` DATE,
+    `amount` DECIMAL(10,2)
+)
+PARTITION BY RANGE ( YEAR(`sale_date`) ) (
+    PARTITION `p2020` VALUES LESS THAN (2021),
+    PARTITION `p2021` VALUES LESS THAN (2022),
+    PARTITION `p2022` VALUES LESS THAN (2023),
+    PARTITION `p2023` VALUES LESS THAN (2024)
+);
+
+INSERT INTO `sales` (`sale_id`, `sale_date`, `amount`) VALUES
+(1, '2020-05-10', 100.00),
+(2, '2021-07-15', 150.50),
+(3, '2022-09-20', 200.75),
+(4, '2023-12-01', 250.00);
+
+-- Test view creation
+CREATE VIEW `active_users` AS SELECT `id`, `name`, `age` FROM `test_table` WHERE `status` = 'active';
+
+SELECT * FROM `active_users`;
+
+-- Test Stored Procedure - create one, call one
+DELIMITER //
+CREATE PROCEDURE GetUserCount(IN status_param VARCHAR(20), OUT user_count INT)
+BEGIN
+    SELECT COUNT(*) INTO user_count FROM test_table WHERE status = status_param;
+END //
+DELIMITER ;
+
+CALL GetUserCount('active', @active_count);
+SELECT @active_count;
+
+-- Test index creation - create FULLTEXT index
+ALTER TABLE `test_table` ADD FULLTEXT INDEX `notes_fulltext` (`notes`);
+
+SELECT * FROM `test_table` WHERE MATCH (`notes`) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test Triggers - AFTER INSERT
+DELIMITER //
+CREATE TRIGGER `test_table_after_insert`
+AFTER INSERT ON `test_table`
+FOR EACH ROW
+BEGIN
+    INSERT INTO `audit_log` (`table_name`, `record_id`, `action`, `timestamp`) VALUES ('test_table', NEW.id, 'INSERT', NOW());
+END //
+DELIMITER ;
+
+-- Create an audit log table (required for the trigger above)
+CREATE TABLE `audit_log` (
+  `log_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `table_name` VARCHAR(255) NOT NULL,
+  `record_id` INT UNSIGNED NOT NULL,
+  `action` VARCHAR(50) NOT NULL,
+  `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `test_table` (`name`, `age`, `salary`) VALUES ('Eve', 28, 45000.00);
+
+-- Test EXPLAIN statement
+EXPLAIN SELECT * FROM `test_table` WHERE `age` > 25;
+
+-- Test user-defined functions (UDF) - This is database-specific and often needs extra setup, but including a commented-out example demonstrates the possibility.  Requires the UDF to be installed separately.
+-- CREATE FUNCTION my_udf(input_string VARCHAR(255)) RETURNS VARCHAR(255) SONAME 'my_udf.so';
+-- SELECT my_udf('test string');
+
+-- Test spatial data types - requires appropriate spatial functions to be enabled and is MySQL-specific.
+CREATE TABLE `spatial_data` (
+    `id` INT PRIMARY KEY,
+    `location` POINT
+);
+
+INSERT INTO `spatial_data` (`id`, `location`) VALUES (1, ST_GeomFromText('POINT(10 10)'));
+SELECT ST_AsText(`location`) FROM `spatial_data`;

@@ -1,0 +1,122 @@
+SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET autocommit=0;
+
+-- Test various data types and constraints
+CREATE TABLE test_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_num FLOAT,
+    double_num DOUBLE,
+    decimal_num DECIMAL(10, 2),
+    bit_field BIT(8),
+    bool_field BOOLEAN,
+    serial_field SERIAL,
+    date_field DATE,
+    datetime_field DATETIME,
+    timestamp_field TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_field TIME,
+    year_field YEAR,
+    char_field CHAR(10),
+    varchar_field VARCHAR(50),
+    binary_field BINARY(10),
+    varbinary_field VARBINARY(50),
+    tinyblob_field TINYBLOB,
+    blob_field BLOB,
+    mediumblob_field MEDIUMBLOB,
+    longblob_field LONGBLOB,
+    tinytext_field TINYTEXT,
+    text_field TEXT,
+    mediumtext_field MEDIUMTEXT,
+    longtext_field LONGTEXT,
+    enum_field ENUM('value1', 'value2', 'value3'),
+    set_field SET('option1', 'option2', 'option3'),
+    geometry_field GEOMETRY,
+    json_field JSON,
+    generated_col VARCHAR(20) GENERATED ALWAYS AS (concat(varchar_field, ' suffix')) VIRTUAL
+);
+
+-- Test indexes and foreign keys
+CREATE TABLE test_index (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    value INT,
+    UNIQUE INDEX value_idx (value)
+);
+
+CREATE TABLE test_foreign_key (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    test_index_id INT,
+    FOREIGN KEY (test_index_id) REFERENCES test_index(id) ON DELETE CASCADE
+);
+
+-- Insert some data
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_num, double_num, decimal_num, bit_field, bool_field, date_field, datetime_field, time_field, year_field, char_field, varchar_field, binary_field, varbinary_field, tinyblob_field, blob_field, mediumblob_field, longblob_field, tinytext_field, text_field, mediumtext_field, longtext_field, enum_field, set_field, geometry_field, json_field) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, b'10101010', TRUE, '2023-10-26', '2023-10-26 10:30:00', '10:30:00', 2023, 'test', 'test varchar', 'binarydata', 'varbinarydata', 'tinyblobdata', 'blobdata', 'mediumblobdata', 'longblobdata', 'tinytextdata', 'textdata', 'mediumtextdata', 'longtextdata', 'value2', 'option1,option3', ST_GeomFromText('POINT(1 1)'), '{"key": "value"}');
+
+INSERT INTO test_index (value) VALUES (1), (2), (3);
+
+INSERT INTO test_foreign_key (test_index_id) VALUES (1), (2), (3);
+
+-- Test SELECT statements with various clauses
+SELECT * FROM test_types WHERE normal_int > 1000 ORDER BY id DESC LIMIT 10;
+SELECT COUNT(*) FROM test_types;
+SELECT enum_field, COUNT(*) FROM test_types GROUP BY enum_field;
+SELECT AVG(decimal_num) FROM test_types;
+
+-- Test UPDATE statements
+UPDATE test_types SET varchar_field = 'updated value' WHERE id = 1;
+
+-- Test DELETE statements
+DELETE FROM test_foreign_key WHERE test_index_id = 1;
+
+-- Test REPLACE statement
+REPLACE INTO test_types (id, varchar_field) VALUES (1, 'replaced value');
+
+-- Test INSERT ... ON DUPLICATE KEY UPDATE
+INSERT INTO test_index (id, value) VALUES (1, 4) ON DUPLICATE KEY UPDATE value = 4;
+
+-- Test stored procedures (minimal example, requires more setup for real usage)
+-- DELIMITER //
+-- CREATE PROCEDURE simpleproc (IN param1 INT) BEGIN SELECT * FROM test_types WHERE id = param1; END //
+-- DELIMITER ;
+-- CALL simpleproc(1);
+
+-- Test Triggers (minimal example, requires more setup for real usage)
+-- CREATE TRIGGER test_trigger BEFORE INSERT ON test_types FOR EACH ROW SET NEW.varchar_field = 'trigger fired';
+
+-- Test ALTER TABLE
+ALTER TABLE test_types ADD COLUMN new_column INT;
+
+-- Test RENAME TABLE
+RENAME TABLE test_types TO test_types_renamed;
+
+-- Test complex query using window functions
+SELECT
+    id,
+    normal_int,
+    ROW_NUMBER() OVER (ORDER BY normal_int) AS row_num,
+    RANK() OVER (ORDER BY normal_int) AS rank_num
+FROM
+    test_types_renamed;
+
+-- Test partitioning (if supported) - this might need adjustment for different MySQL versions
+-- CREATE TABLE test_partition (id INT, value INT) PARTITION BY RANGE (id) (PARTITION p0 VALUES LESS THAN (10), PARTITION p1 VALUES LESS THAN (20));
+-- INSERT INTO test_partition VALUES (5, 10), (15, 20);
+-- SELECT * FROM test_partition PARTITION (p0);
+
+-- Test spatial functions
+UPDATE test_types_renamed SET geometry_field = ST_GeomFromText('POINT(2 2)') WHERE id = 1;
+SELECT ST_Distance(geometry_field, ST_GeomFromText('POINT(0 0)')) FROM test_types_renamed;
+
+-- Add a fulltext index and test it
+ALTER TABLE test_types_renamed ADD FULLTEXT INDEX text_index (text_field);
+SELECT * FROM test_types_renamed WHERE MATCH (text_field) AGAINST ('textdata');
+
+-- Cleanup for next iteration - truncate the table
+TRUNCATE TABLE test_types_renamed;
+
+-- Rollback transaction. This leaves the table structure in place for subsequent fuzzing, but clears the data.
+ROLLBACK;

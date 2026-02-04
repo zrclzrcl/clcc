@@ -1,0 +1,187 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+INSERT INTO employee (name, salary, department) VALUES
+('Alice', 60000.00, 'Sales'),
+('Bob', 75000.00, 'Marketing'),
+('Charlie', 50000.00, 'Sales'),
+('David', 90000.00, 'Engineering'),
+('Eve', 80000.00, 'Marketing');
+
+CREATE INDEX idx_employee_department ON employee (department);
+
+SELECT department, AVG(salary) AS avg_salary FROM employee GROUP BY department;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employee WHERE salary < 55000.00;
+
+CREATE VIEW marketing_employees AS SELECT name, salary FROM employee WHERE department = 'Marketing';
+
+SELECT * FROM marketing_employees;
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50),
+    operation VARCHAR(10),
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION log_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'INSERT');
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'UPDATE');
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'DELETE');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employee
+FOR EACH ROW
+EXECUTE FUNCTION log_changes();
+
+UPDATE employee SET salary = 85000 WHERE name = 'Bob';
+
+DELETE FROM employee WHERE name = 'Charlie';
+
+SELECT * FROM audit_log;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Alice', 'happy');
+INSERT INTO person VALUES ('Bob', 'sad');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10, 2) CHECK (price > 0),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Ergonomic mouse', 25.00),
+('Keyboard', 'Mechanical keyboard', 100.00);
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 1500;
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+INSERT INTO orders (customer_id) VALUES (1), (2), (1);
+
+SELECT * FROM orders WHERE order_date = CURRENT_DATE;
+
+-- Window function example
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM
+    employee;
+
+-- Common Table Expression (CTE) example
+WITH high_earners AS (
+    SELECT name, salary
+    FROM employee
+    WHERE salary > 70000
+)
+SELECT * FROM high_earners;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW high_earning_employees AS
+SELECT name, salary, department
+FROM employee
+WHERE salary > 70000;
+
+REFRESH MATERIALIZED VIEW high_earning_employees;
+SELECT * FROM high_earning_employees;
+
+-- Table Partitioning
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    sale_date DATE NOT NULL,
+    amount DECIMAL(10, 2)
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_y2023 PARTITION OF sales
+FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+INSERT INTO sales (sale_date, amount) VALUES ('2023-05-10', 150.00);
+SELECT * FROM sales;
+
+-- JSON functionality
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}'),
+('{"name": "Jane", "age": 25, "city": "London"}');
+
+SELECT data ->> 'name' AS name FROM json_test;
+
+-- Full Text Search
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    content TEXT,
+    tsv tsvector
+);
+
+CREATE INDEX idx_articles_tsv ON articles USING GIN (tsv);
+
+UPDATE articles SET tsv = to_tsvector('english', title || ' ' || content);
+
+SELECT * FROM articles WHERE tsv @@ to_tsquery('english', 'laptop & high');
+
+-- Trigram Index
+CREATE EXTENSION pg_trgm;
+CREATE INDEX trgm_idx_employee_name ON employee USING GIN (name gin_trgm_ops);
+
+SELECT * FROM employee WHERE name LIKE '%Al%';
+
+-- Stored Procedure
+CREATE OR REPLACE PROCEDURE transfer_funds(sender_id INT, receiver_id INT, amount DECIMAL)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Assuming you have an accounts table
+    UPDATE accounts SET balance = balance - amount WHERE id = sender_id;
+    UPDATE accounts SET balance = balance + amount WHERE id = receiver_id;
+    COMMIT;
+END;
+$$;
+
+-- Call stored procedure (example, requires an accounts table)
+-- CALL transfer_funds(1, 2, 100.00);
+
+-- Security definer function
+CREATE FUNCTION current_user_is_admin() RETURNS BOOLEAN AS $$
+  SELECT EXISTS (SELECT 1 FROM pg_auth_members WHERE roleid = (SELECT oid FROM pg_roles WHERE rolname = 'pg_read_all_data') AND member = (SELECT oid FROM pg_roles WHERE rolname = current_user));
+$$ LANGUAGE SQL SECURITY DEFINER;
+
+SELECT current_user_is_admin();

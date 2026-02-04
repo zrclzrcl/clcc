@@ -1,0 +1,192 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department) REFERENCES departments(name);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('John Doe', 'Sales', 60000.00, '2022-01-15'),
+('Jane Smith', 'Marketing', 75000.00, '2021-05-20'),
+('Peter Jones', 'Engineering', 90000.00, '2020-11-01');
+
+CREATE INDEX idx_employee_name ON employees (name);
+CREATE INDEX idx_department_location ON departments (location);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT name, salary FROM employees ORDER BY salary DESC;
+
+SELECT d.name AS department_name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.name = e.department
+GROUP BY d.name;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = 1;
+
+-- PostgreSQL-specific features
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE MATERIALIZED VIEW high_salary_employees AS
+SELECT id, name, salary FROM employees WHERE salary > 80000;
+
+REFRESH MATERIALIZED VIEW high_salary_employees;
+
+SELECT * FROM high_salary_employees;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00),
+('Keyboard', 'Mechanical keyboard', 100.00);
+
+SELECT name, description FROM products WHERE description LIKE '%laptop%';
+
+SELECT AVG(price) FROM products;
+
+-- Using window functions
+SELECT name, salary, AVG(salary) OVER () AS avg_salary FROM employees;
+
+-- More complex queries with joins and aggregations
+SELECT
+    e.name AS employee_name,
+    d.name AS department_name,
+    e.salary
+FROM
+    employees e
+JOIN
+    departments d ON e.department = d.name
+WHERE
+    d.location = 'San Francisco'
+ORDER BY
+    e.salary DESC;
+
+-- Common Table Expression (CTE)
+WITH EmployeeSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT d.name, es.avg_salary
+FROM departments d
+JOIN EmployeeSalaries es ON d.name = es.department;
+
+-- Adding constraints after table creation
+ALTER TABLE products ADD CONSTRAINT unique_product_name UNIQUE (name);
+
+-- Using GENERATE_SERIES function
+SELECT generate_series(1, 10);
+
+-- JSON functions
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "Product A", "price": 50.00}'),
+('{"name": "Product B", "price": 75.00}');
+
+SELECT data ->> 'name' FROM json_test;
+
+-- Array functions
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES
+(ARRAY['tag1', 'tag2', 'tag3']),
+(ARRAY['tag2', 'tag4']);
+
+SELECT tags FROM array_test WHERE 'tag2' = ANY(tags);
+
+-- Check Constraint
+ALTER TABLE employees ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+-- trigger example
+CREATE OR REPLACE FUNCTION prevent_negative_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_salary_before_insert
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION prevent_negative_salary();
+
+-- Test the trigger (this will throw an error)
+-- INSERT INTO employees (name, department, salary, hire_date) VALUES ('Test Employee', 'Sales', -100, '2023-01-01');
+
+-- Subquery example
+SELECT name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Create view example
+CREATE VIEW employee_department_view AS
+SELECT e.name AS employee_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+SELECT * FROM employee_department_view;
+
+-- Aggregate functions with grouping
+SELECT department, SUM(salary) AS total_salary FROM employees GROUP BY department;
+
+-- DISTINCT keyword
+SELECT DISTINCT department FROM employees;
+
+-- INTERSECT and EXCEPT
+CREATE TABLE temp_table1 (col1 INTEGER);
+CREATE TABLE temp_table2 (col1 INTEGER);
+INSERT INTO temp_table1 VALUES (1), (2), (3);
+INSERT INTO temp_table2 VALUES (2), (3), (4);
+
+SELECT col1 FROM temp_table1 INTERSECT SELECT col1 FROM temp_table2;
+SELECT col1 FROM temp_table1 EXCEPT SELECT col1 FROM temp_table2;
+
+DROP TABLE temp_table1;
+DROP TABLE temp_table2;
+
+DROP VIEW employee_department_view;
+DROP TRIGGER check_salary_before_insert ON employees;
+DROP FUNCTION prevent_negative_salary();
+DROP TABLE array_test;
+DROP TABLE json_test;
+DROP MATERIALIZED VIEW high_salary_employees;
+DROP FUNCTION increment(INTEGER);
+DROP TABLE products;
+DROP TABLE employees;
+DROP TABLE departments;

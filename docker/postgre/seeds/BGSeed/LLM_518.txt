@@ -1,0 +1,138 @@
+-- Initial seed for PostgreSQL fuzz testing (REL_18_RC1)
+
+-- Create a table with various data types
+CREATE TABLE fuzz_table (
+    id SERIAL PRIMARY KEY,
+    int_col INTEGER,
+    bigint_col BIGINT,
+    smallint_col SMALLINT,
+    numeric_col NUMERIC(10, 2),
+    real_col REAL,
+    double_col DOUBLE PRECISION,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    text_col TEXT,
+    date_col DATE,
+    time_col TIME,
+    timestamp_col TIMESTAMP,
+    timestamptz_col TIMESTAMPTZ,
+    boolean_col BOOLEAN,
+    bytea_col BYTEA,
+    json_col JSON,
+    jsonb_col JSONB,
+    uuid_col UUID,
+    inet_col INET,
+    cidr_col CIDR,
+    macaddr_col MACADDR,
+    macaddr8_col MACADDR8,
+    tsvector_col TSVECTOR,
+    tsquery_col TSQUERY
+);
+
+-- Insert some sample data
+INSERT INTO fuzz_table (int_col, bigint_col, smallint_col, numeric_col, real_col, double_col, char_col, varchar_col, text_col, date_col, time_col, timestamp_col, timestamptz_col, boolean_col, bytea_col, json_col, jsonb_col, uuid_col, inet_col, cidr_col, macaddr_col, macaddr8_col, tsvector_col, tsquery_col) VALUES
+(1, 1234567890, 10, 1234.56, 1.23, 1.23456789, 'a', 'test', 'long text', '2024-01-01', '10:00:00', '2024-01-01 10:00:00', '2024-01-01 10:00:00+00', TRUE, '\xdeadbeef', '{"key": "value"}', '{"key": "value"}', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '192.168.1.1', '192.168.1.0/24', '08:00:2b:01:02:03', '08:00:2b:01:02:03:04:05', to_tsvector('english', 'The quick brown fox jumps over the lazy dog'), to_tsquery('english', 'fox & dog')),
+(2, 9876543210, 20, 6543.21, 3.14, 9.87654321, 'b', 'another test', 'another long text', '2024-02-15', '14:30:00', '2024-02-15 14:30:00', '2024-02-15 14:30:00+00', FALSE, '\x00ff00ff', '{"another_key": "another_value"}', '{"another_key": "another_value"}', 'b1eeca99-9c0b-4ef8-bb6d-6bb9bd380a11', '10.0.0.1', '10.0.0.0/16', '00:00:00:00:00:00', '00:00:00:00:00:00:00:00', to_tsvector('english', 'A sample document for testing'), to_tsquery('english', 'testing'));
+
+-- Select data with various conditions
+SELECT * FROM fuzz_table WHERE int_col > 0;
+SELECT varchar_col, text_col FROM fuzz_table WHERE boolean_col = TRUE;
+SELECT date_col, time_col, timestamp_col FROM fuzz_table WHERE date_col BETWEEN '2024-01-01' AND '2024-02-01';
+SELECT json_col FROM fuzz_table WHERE json_col @> '{"key": "value"}';
+SELECT * FROM fuzz_table WHERE tsvector_col @@ to_tsquery('english', 'fox');
+
+-- Update data
+UPDATE fuzz_table SET int_col = 100 WHERE id = 1;
+UPDATE fuzz_table SET varchar_col = 'updated value' WHERE boolean_col = FALSE;
+
+-- Delete data
+DELETE FROM fuzz_table WHERE id = 2;
+
+-- Aggregate functions
+SELECT COUNT(*) FROM fuzz_table;
+SELECT AVG(int_col) FROM fuzz_table;
+SELECT MAX(numeric_col) FROM fuzz_table;
+
+-- Grouping and ordering
+SELECT boolean_col, COUNT(*) FROM fuzz_table GROUP BY boolean_col ORDER BY COUNT(*) DESC;
+
+-- Joins (requires another table)
+CREATE TABLE another_table (
+    another_id SERIAL PRIMARY KEY,
+    fuzz_table_id INTEGER REFERENCES fuzz_table(id),
+    value VARCHAR(255)
+);
+INSERT INTO another_table (fuzz_table_id, value) VALUES (1, 'related value'), (1, 'another related value');
+
+SELECT * FROM fuzz_table JOIN another_table ON fuzz_table.id = another_table.fuzz_table_id;
+
+-- Subqueries
+SELECT * FROM fuzz_table WHERE int_col IN (SELECT int_col FROM fuzz_table WHERE boolean_col = TRUE);
+
+-- Using window functions
+SELECT
+    *,
+    ROW_NUMBER() OVER (ORDER BY int_col) as row_num
+FROM
+    fuzz_table;
+
+-- Using generate_series
+SELECT generate_series(1, 10);
+
+-- Create an index
+CREATE INDEX idx_fuzz_table_varchar_col ON fuzz_table (varchar_col);
+
+-- Alter table
+ALTER TABLE fuzz_table ADD COLUMN new_col INTEGER;
+
+-- Explain query
+EXPLAIN SELECT * FROM fuzz_table WHERE varchar_col = 'test';
+
+-- Vacuum table
+VACUUM fuzz_table;
+
+-- Analyze table
+ANALYZE fuzz_table;
+
+-- Using common table expressions (CTEs)
+WITH cte AS (
+  SELECT * FROM fuzz_table WHERE int_col > 50
+)
+SELECT * FROM cte WHERE boolean_col = TRUE;
+
+-- Using unnest
+SELECT unnest(ARRAY[1,2,3,4,5]);
+
+-- Triggers (Example - simple trigger)
+CREATE OR REPLACE FUNCTION trigger_function()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.varchar_col := 'triggered';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER example_trigger
+BEFORE INSERT ON fuzz_table
+FOR EACH ROW
+EXECUTE FUNCTION trigger_function();
+
+INSERT INTO fuzz_table (int_col) VALUES (5);
+
+-- Checks
+ALTER TABLE fuzz_table ADD CONSTRAINT check_positive CHECK (int_col >= 0);
+
+-- Functions (simple function)
+CREATE OR REPLACE FUNCTION add_one(i INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN i + 1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_one(10);
+
+-- Materialized views
+CREATE MATERIALIZED VIEW my_mv AS SELECT int_col, varchar_col FROM fuzz_table WHERE int_col > 0;
+REFRESH MATERIALIZED VIEW my_mv;
+SELECT * FROM my_mv;

@@ -1,0 +1,48 @@
+BEGIN;
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, age INTEGER, email TEXT);
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL CHECK(price >= 0));
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product_id INTEGER, order_date TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(product_id) REFERENCES products(id));
+
+INSERT INTO users(username, age, email) VALUES('alice', 30, 'alice@example.com');
+INSERT INTO users(username, age, email) VALUES('bob', 25, 'bob@example.com');
+INSERT INTO users(username, age, email) VALUES('charlie', 35, 'charlie@example.com');
+INSERT INTO products(name, price) VALUES('Laptop', 999.99);
+INSERT INTO products(name, price) VALUES('Smartphone', 499.99);
+INSERT INTO products(name, price) VALUES('Tablet', 299.99);
+INSERT INTO orders(user_id, product_id) VALUES(1, 1);
+INSERT INTO orders(user_id, product_id) VALUES(2, 2);
+INSERT INTO orders(user_id, product_id) VALUES(3, 3);
+INSERT INTO orders(user_id, product_id) VALUES(1, 2);
+COMMIT;
+
+SELECT username, COUNT(orders.order_id) AS total_orders 
+FROM users 
+LEFT JOIN orders ON users.id = orders.user_id 
+GROUP BY users.id 
+HAVING total_orders > 0;
+
+SELECT products.name, AVG(price) AS average_price 
+FROM products 
+GROUP BY products.name 
+HAVING AVG(price) > 200;
+
+SELECT * 
+FROM (SELECT * FROM users WHERE age < 30) AS young_users 
+UNION 
+SELECT * FROM (SELECT * FROM users WHERE age >= 30) AS mature_users;
+
+SELECT json_group_array(json_object('username', username, 'email', email)) 
+FROM users;
+
+WITH recent_orders AS (
+    SELECT user_id, COUNT(*) AS order_count 
+    FROM orders 
+    WHERE order_date >= date('now', '-7 days') 
+    GROUP BY user_id
+) 
+SELECT u.username, ro.order_count 
+FROM users u 
+JOIN recent_orders ro ON u.id = ro.user_id;
+
+VALUES(1),(2),(3) INTERSECT VALUES(2),(3),(4);
+VALUES(1),(2),(3),(4) EXCEPT VALUES(2),(3);

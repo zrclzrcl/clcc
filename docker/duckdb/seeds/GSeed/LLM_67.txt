@@ -1,0 +1,39 @@
+DROP TABLE IF EXISTS test_types;
+CREATE TABLE test_types (
+  id INTEGER PRIMARY KEY,
+  bool_col BOOLEAN,
+  int_col INTEGER,
+  bigint_col BIGINT,
+  float_col FLOAT,
+  double_col DOUBLE,
+  varchar_col VARCHAR,
+  date_col DATE,
+  time_col TIME,
+  timestamp_col TIMESTAMP,
+  blob_col BLOB
+);
+
+INSERT INTO test_types (bool_col, int_col, bigint_col, float_col, double_col, varchar_col, date_col, time_col, timestamp_col, blob_col) VALUES
+(TRUE, 10, 1000000000, 3.14, 6.28, 'hello', '2023-01-01', '12:34:56', '2023-01-01 12:34:56', 'thisisblob'),
+(FALSE, -5, -2000000000, -2.71, -5.42, 'world', '2023-02-15', '08:00:00', '2023-02-15 08:00:00', 'anotherblob');
+
+SELECT * FROM test_types WHERE int_col > 0;
+
+-- Test DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT approx_count_distinct(int_col) FROM test_types;
+
+-- Test DuckDB specific feature: UUID generation
+SELECT uuid();
+
+-- Test DuckDB's date/time functions
+SELECT date_trunc('month', timestamp_col) FROM test_types;
+
+-- Test DuckDB list functionality
+CREATE TABLE list_table (id INTEGER, my_list INTEGER[]);
+INSERT INTO list_table VALUES (1, [1,2,3]), (2, [4,5,6]);
+SELECT list_extract(my_list, 2) FROM list_table;
+
+--Test JSON functions
+CREATE TABLE json_table(id INTEGER, json_data JSON);
+INSERT INTO json_table VALUES (1, '{"name": "John", "age": 30}');
+SELECT json_extract_string(json_data, '$.name') from json_table;

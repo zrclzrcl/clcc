@@ -1,0 +1,92 @@
+CREATE TABLE employees (
+    emp_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    salary REAL CHECK (salary >= 0),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    department_id INTEGER REFERENCES departments(dept_id)
+);
+
+INSERT INTO employees VALUES 
+(1, 'John Doe', 50000.0, '2023-01-01', 1),
+(2, 'Jane Smith', 60000.0, '2023-02-15', 2),
+(3, 'Bob Johnson', NULL, '2023-03-10', 3),
+(4, 'Alice Brown', 70000.0, DEFAULT, 1);
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name TEXT UNIQUE NOT NULL,
+    manager_id INTEGER REFERENCES employees(emp_id)
+);
+
+INSERT INTO departments VALUES 
+(1, 'Engineering', 1),
+(2, 'Sales', 2),
+(3, 'Marketing', 3);
+
+CREATE INDEX idx_employee_salary ON employees(salary);
+
+SELECT e.name AS employee_name, d.dept_name, e.salary,
+       (e.salary * 0.1) AS bonus
+FROM employees e
+JOIN departments d ON e.department_id = d.dept_id
+WHERE e.salary > (SELECT AVG(salary) FROM employees)
+ORDER BY e.salary DESC;
+
+WITH salary_stats AS (
+    SELECT 
+        COUNT(*) AS total_employees,
+        SUM(salary) AS total_salary,
+        AVG(salary) AS avg_salary
+    FROM employees
+)
+SELECT * FROM salary_stats;
+
+CREATE TRIGGER after_insert_employee
+AFTER INSERT ON employees
+BEGIN
+    UPDATE departments
+    SET manager_id = new.emp_id
+    WHERE dept_id = (SELECT department_id FROM employees WHERE emp_id = new.emp_id);
+END;
+
+SELECT DISTINCT e.department_id, COUNT(e.emp_id) AS employee_count
+FROM employees e
+GROUP BY e.department_id
+HAVING COUNT(e.emp_id) > 1;
+
+SELECT 
+    CASE 
+        WHEN salary >= 60000 THEN 'High'
+        WHEN salary >= 40000 THEN 'Medium'
+        ELSE 'Low'
+    END AS salary_band,
+    COUNT(*) AS count
+FROM employees
+GROUP BY salary_band;
+
+SELECT e.name, d.dept_name 
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.dept_id
+UNION
+SELECT e.name, 'No Department' FROM employees e
+WHERE department_id NOT IN (SELECT dept_id FROM departments);
+
+SELECT i.emp_id, i.name, s.salary
+FROM (
+    SELECT emp_id, name, salary 
+    FROM employees 
+    WHERE salary > 50000
+) AS i
+INTERSECT
+SELECT emp_id, name, salary 
+FROM employees 
+WHERE department_id = 1;
+
+SELECT * FROM employees WHERE salary IS NULL OR hire_date >= '2023-01-01';
+
+SELECT COUNT(*) as total_employees,
+       SUM(CASE WHEN department_id = 1 THEN 1 ELSE 0 END) AS eng_count,
+       SUM(CASE WHEN department_id = 2 THEN 1 ELSE 0 END) AS sales_count
+FROM employees;
+
+SELECT * FROM departments ORDER BY dept_name DESC LIMIT 2 OFFSET 1;

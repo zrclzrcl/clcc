@@ -1,0 +1,45 @@
+CREATE TABLE test_fuzz (
+    id INT PRIMARY KEY,
+    value FLOAT UNIQUE CHECK(value >= 0),
+    name VARCHAR(50) NOT NULL,
+    status BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_fuzz (id, value, name, status)
+VALUES 
+(1, 9223372036854775807, 'max_int', TRUE),
+(2, NULL, 'null_value', FALSE),
+(3, 1e200, 'large_float', TRUE),
+(4, 0.0000001, 'small_float', FALSE);
+
+UPDATE test_fuzz
+SET status = TRUE
+WHERE value < 1;
+
+DELETE FROM test_fuzz
+WHERE id IN (
+    SELECT id 
+    FROM (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY value DESC) AS rn
+        FROM test_fuzz
+    ) t
+    WHERE rn > 2
+);
+
+WITH cte_data AS (
+    SELECT 
+        id,
+        name,
+        status,
+        created_at,
+        RANK() OVER (ORDER BY value) as rank_value
+    FROM test_fuzz
+)
+SELECT * FROM cte_data;
+
+SELECT 
+    SUM(value) as total_sum,
+    COUNT(*) as row_count,
+    MAX(created_at) as last_created
+FROM test_fuzz;

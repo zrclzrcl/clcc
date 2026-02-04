@@ -1,0 +1,34 @@
+CREATE TABLE "users" (
+    "id" INTEGER PRIMARY KEY,
+    "username" TEXT NOT NULL UNIQUE,
+    "email" TEXT NOT NULL UNIQUE,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "posts" (
+    "post_id" INTEGER PRIMARY KEY,
+    "user_id" INTEGER,
+    "content" TEXT NOT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, email) VALUES 
+('test_user', 'test@example.com'),
+('sample_user', 'sample@example.com');
+
+INSERT INTO posts (user_id, content) VALUES 
+(1, 'Hello World!'),
+(1, 'This is a user post.'),
+(2, 'Sample post by another user.');
+
+SELECT u.username, p.content 
+FROM users AS u 
+JOIN posts AS p ON u.id = p.user_id 
+WHERE p.created_at >= datetime('now', '-1 day');
+
+UPDATE users SET email = 'updated_email@example.com' WHERE username = 'test_user';
+
+DELETE FROM posts WHERE post_id = 1;
+
+SELECT * FROM users WHERE id IN (SELECT user_id FROM posts GROUP BY user_id HAVING COUNT(post_id) > 1);

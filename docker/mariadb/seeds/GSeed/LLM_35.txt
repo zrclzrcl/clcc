@@ -1,0 +1,103 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_ALL_TABLES';
+SET @old_wait_timeout=@@wait_timeout;
+SET wait_timeout=2147483;
+SET @old_net_write_timeout=@@net_write_timeout;
+SET net_write_timeout=3600;
+SET @old_net_read_timeout=@@net_read_timeout;
+SET net_read_timeout=3600;
+SET @old_interactive_timeout=@@interactive_timeout;
+SET interactive_timeout=2147483;
+SET @timestamp=unix_timestamp();
+
+CREATE TABLE t1 (a INT, b VARCHAR(255), c ENUM('x', 'y', 'z'));
+INSERT INTO t1 VALUES (1, 'abc', 'x'), (2, 'def', 'y'), (3, 'ghi', 'z');
+
+CREATE TABLE t2 (d INT PRIMARY KEY, e VARCHAR(255));
+INSERT INTO t2 VALUES (10, 'jkl'), (20, 'mno'), (30, 'pqr');
+
+CREATE TABLE t3 (f INT, g JSON);
+INSERT INTO t3 VALUES (100, '{"name": "Alice", "age": 30}'), (200, '{"name": "Bob", "age": 25}');
+
+-- Test various SELECT statements
+SELECT * FROM t1 WHERE a > 1;
+SELECT b, c FROM t1 WHERE c != 'x';
+SELECT d, e FROM t2 WHERE d BETWEEN 15 AND 25;
+SELECT f, g->>'$.name' FROM t3 WHERE f = 100;
+
+-- Test UPDATE statements
+UPDATE t1 SET b = 'new_value' WHERE a = 2;
+UPDATE t2 SET e = 'another_value' WHERE d = 30;
+UPDATE t3 SET g = JSON_SET(g, '$.age', 35) WHERE f = 200;
+
+-- Test DELETE statements
+DELETE FROM t1 WHERE c = 'z';
+DELETE FROM t2 WHERE d = 10;
+
+-- Test INSERT statement with different syntax
+INSERT INTO t1 (a, b, c) VALUES (4, 'pqr', 'x');
+INSERT INTO t2 VALUES (40, 'stu');
+
+-- Test JOIN operations
+SELECT t1.a, t2.e FROM t1 INNER JOIN t2 ON t1.a = t2.d;
+SELECT t1.b, t3.g FROM t1, t3 WHERE t1.a = t3.f;
+
+-- Test aggregate functions
+SELECT COUNT(*) FROM t1;
+SELECT AVG(a) FROM t1;
+SELECT MAX(d) FROM t2;
+
+-- Test subqueries
+SELECT * FROM t2 WHERE d IN (SELECT a FROM t1 WHERE c = 'y');
+
+-- Test stored procedure (create and call)
+DELIMITER //
+CREATE PROCEDURE my_proc (IN param1 INT)
+BEGIN
+  SELECT * FROM t1 WHERE a > param1;
+END //
+DELIMITER ;
+
+CALL my_proc(1);
+
+-- Test user-defined function (UDF, if available and configured)
+-- Note: UDFs need to be properly configured in MariaDB for this to work
+-- CREATE FUNCTION my_udf (input_str VARCHAR(255)) RETURNS VARCHAR(255)
+-- SONAME 'my_udf.so'; -- Replace with actual library name and configuration
+
+-- SELECT my_udf('test'); -- Uncomment after UDF is properly configured
+-- Test some MariaDB specific features (example: sequence)
+CREATE SEQUENCE my_seq;
+SELECT next value for my_seq;
+SELECT current value for my_seq;
+
+-- Test triggers
+
+CREATE TABLE trigger_test (id INT, val INT);
+CREATE TABLE trigger_log (id INT, old_val INT, new_val INT);
+
+DELIMITER //
+CREATE TRIGGER test_trigger BEFORE UPDATE ON trigger_test
+FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log VALUES (OLD.id, OLD.val, NEW.val);
+END;//
+DELIMITER ;
+
+INSERT INTO trigger_test VALUES (1, 10);
+UPDATE trigger_test SET val = 20 WHERE id = 1;
+SELECT * FROM trigger_log;
+
+
+SET sql_mode=@old_sql_mode;
+SET wait_timeout=@old_wait_timeout;
+SET net_write_timeout=@old_net_write_timeout;
+SET net_read_timeout=@old_net_read_timeout;
+SET interactive_timeout=@old_interactive_timeout;
+DROP SEQUENCE IF EXISTS my_seq;
+DROP PROCEDURE IF EXISTS my_proc;
+DROP TRIGGER IF EXISTS test_trigger;
+DROP TABLE IF EXISTS trigger_test;
+DROP TABLE IF EXISTS trigger_log;
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t3;

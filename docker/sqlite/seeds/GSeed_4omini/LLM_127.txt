@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, password) VALUES ('user1', 'pass1');
+INSERT INTO users (username, password) VALUES ('user2', 'pass2');
+
+INSERT INTO posts (user_id, content) VALUES (1, 'This is the first post by user1');
+INSERT INTO posts (user_id, content) VALUES (2, 'This is a post by user2');
+INSERT INTO posts (user_id, content) VALUES (1, 'Another post by user1');
+
+SELECT u.username, COUNT(p.id) AS post_count
+FROM users u
+LEFT JOIN posts p ON u.id = p.user_id
+GROUP BY u.id
+HAVING post_count > 0;
+
+SELECT p.*, u.username
+FROM posts p
+JOIN users u ON p.user_id = u.id
+WHERE u.username = 'user1' OR u.username = 'user2'
+ORDER BY p.created_at DESC;

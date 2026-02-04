@@ -1,0 +1,31 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
+);
+
+CREATE INDEX idx_username ON users (username);
+
+INSERT INTO users (username, password) VALUES ('test_user', 'secure_password');
+
+CREATE TABLE posts (
+    post_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO posts (user_id, title, content) 
+VALUES 
+    (1, 'First Post', 'This is the content of the first post.'),
+    (1, 'Second Post', 'This is the content of the second post.');
+
+UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE username = 'test_user';
+
+SELECT * FROM users WHERE last_login IS NOT NULL ORDER BY last_login DESC;
+
+DELETE FROM posts WHERE post_id = 1;

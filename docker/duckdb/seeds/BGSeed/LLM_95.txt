@@ -1,0 +1,49 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, price) VALUES ('Laptop', 1200.00);
+INSERT INTO products (name, price) VALUES ('Mouse', 25.00);
+INSERT INTO products (name, price) VALUES ('Keyboard', 75.00);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    product_id INTEGER,
+    quantity INTEGER,
+    order_date DATE,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (product_id, quantity, order_date) VALUES (1, 1, '2023-01-15');
+INSERT INTO orders (product_id, quantity, order_date) VALUES (2, 5, '2023-02-20');
+INSERT INTO orders (product_id, quantity, order_date) VALUES (3, 2, '2023-03-10');
+
+-- DuckDB specific feature: Install and Load extension
+INSTALL 'json';
+LOAD 'json';
+
+SELECT JSON_GROUP_ARRAY(name) FROM products;
+
+-- DuckDB specific feature: Table-valued functions
+SELECT * FROM read_csv_auto('data.csv'); -- This assumes data.csv exists (can be an empty file to avoid errors initially) and tests the file reading functionality. Can be removed or changed if no external file access is desired.
+
+CREATE VIEW expensive_products AS
+SELECT name, price FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+SELECT * FROM expensive_products;
+
+-- Complex query with aggregation and window function
+SELECT
+    p.name,
+    SUM(o.quantity) AS total_quantity,
+    RANK() OVER (ORDER BY SUM(o.quantity) DESC) AS sales_rank
+FROM
+    products p
+JOIN
+    orders o ON p.id = o.product_id
+GROUP BY
+    p.name
+ORDER BY
+    total_quantity DESC;

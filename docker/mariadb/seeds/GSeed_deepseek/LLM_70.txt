@@ -1,0 +1,76 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    value DECIMAL(10, 2),
+    status ENUM('active', 'inactive') NOT NULL,
+    data BLOB
+);
+
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    password_hash CHAR(64)
+);
+
+ALTER TABLE t1 ADD INDEX idx_age (age);
+ALTER TABLE t2 ADD INDEX idx_status (status);
+ALTER TABLE t3 ADD INDEX idx_email (email);
+
+DELIMITER $$
+CREATE PROCEDURE insert_data(IN param INT)
+BEGIN
+    IF param > 0 THEN
+        INSERT INTO t1 (name, age) VALUES ('TestName', param);
+    END IF;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER after_update_t3 AFTER UPDATE ON t3
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (id, value, status) VALUES (OLD.id, 100.5, 'active');
+END$$
+DELIMITER ;
+
+CREATE EVENT cleanup_event
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t2 WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 DAY);
+
+INSERT INTO t3 (id, name, email, password_hash) VALUES 
+(1, 'John Doe', 'john@example.com', 'hash1'),
+(2, 'Jane Smith', 'jane@example.com', 'hash2');
+
+INSERT INTO t1 (name, age) VALUES
+('Alice Johnson', 30),
+('Bob Wilson', 45);
+
+INSERT INTO t2 (id, value, status, data) VALUES 
+(1, 100.0, 'active', BINARY_CHECKSUM('test'));
+
+ANALYZE TABLE t1, t2, t3;
+
+SET GLOBAL max_connections = 100;
+
+SELECT t1.name, t2.value, t3.email FROM t1
+JOIN t2 ON t1.id = t2.id
+LEFT JOIN t3 ON t1.id = t3.id
+WHERE t2.status = 'active'
+GROUP BY t1.name
+HAVING COUNT(*) > 1
+ORDER BY t1.age DESC;
+
+START TRANSACTION;
+LOCK TABLES t1 WRITE, t2 READ;
+UPDATE t1 SET age = age + 1 WHERE id = 1;
+COMMIT;
+
+SHOW STATUS LIKE 'Uptime';

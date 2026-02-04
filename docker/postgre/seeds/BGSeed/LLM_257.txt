@@ -1,0 +1,154 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INT REFERENCES products(product_id),
+    category_id INT REFERENCES categories(category_id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO products (product_name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00),
+('Keyboard', 'Ergonomic keyboard', 75.00);
+
+INSERT INTO categories (category_name) VALUES
+('Electronics'),
+('Accessories');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 2);
+
+SELECT product_name, price FROM products WHERE price > 50;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+SELECT p.product_name, c.category_name
+FROM products p
+JOIN product_categories pc ON p.product_id = pc.product_id
+JOIN categories c ON pc.category_id = c.category_id;
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+EXPLAIN SELECT * FROM products WHERE product_name = 'Laptop';
+
+SELECT version();
+
+-- Using a PostgreSQL-specific feature: JSONB
+ALTER TABLE products ADD COLUMN details JSONB;
+
+UPDATE products SET details = '{"color": "silver", "weight": "2.5 lbs"}'::jsonb WHERE product_name = 'Laptop';
+
+SELECT product_name, details ->> 'color' AS color FROM products WHERE product_name = 'Laptop';
+
+-- Test WITH ORDINALITY
+SELECT category_name, row_number() OVER () AS row_num
+FROM categories
+ORDER BY category_name;
+
+-- Test Window Functions
+SELECT product_name, price, AVG(price) OVER () FROM products;
+
+-- Test Common Table Expressions (CTEs)
+WITH expensive_products AS (
+    SELECT product_name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT product_name FROM expensive_products;
+
+-- Test pg_locks
+SELECT * FROM pg_locks;
+
+-- Test pg_stat_activity
+SELECT * FROM pg_stat_activity;
+
+-- Test generate_series
+SELECT generate_series(1, 10);
+
+-- Check constraints
+ALTER TABLE products ADD CONSTRAINT positive_price CHECK (price > 0);
+
+-- Test triggers
+CREATE OR REPLACE FUNCTION update_products_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Product % updated', NEW.product_name;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER products_update_trigger
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION update_products_trigger();
+
+UPDATE products SET price = 1400.00 WHERE product_name = 'Laptop';
+
+-- Materialized views
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT category_name, COUNT(*) AS product_count
+FROM categories c
+JOIN product_categories pc ON c.category_id = pc.category_id
+GROUP BY category_name;
+
+REFRESH MATERIALIZED VIEW product_summary;
+SELECT * FROM product_summary;
+
+-- Recursive Queries
+CREATE TABLE employee (
+    employee_id SERIAL PRIMARY KEY,
+    employee_name VARCHAR(255),
+    manager_id INT REFERENCES employee(employee_id)
+);
+
+INSERT INTO employee (employee_name, manager_id) VALUES
+('John', NULL),
+('Alice', 1),
+('Bob', 1),
+('Charlie', 2);
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT employee_id, employee_name, manager_id, 1 AS level
+    FROM employee
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.employee_id, e.employee_name, e.manager_id, eh.level + 1
+    FROM employee e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.employee_id
+)
+SELECT employee_name, level FROM employee_hierarchy;
+
+-- Enum Type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+SELECT * FROM person;
+
+-- Unaccent function
+CREATE EXTENSION IF NOT EXISTS unaccent;
+SELECT unaccent('Héllo');
+
+-- pg_sleep
+SELECT pg_sleep(0.001);
+
+-- uuid
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+SELECT uuid_generate_v4();

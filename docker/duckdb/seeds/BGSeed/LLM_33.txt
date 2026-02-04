@@ -1,0 +1,70 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    location VARCHAR
+);
+
+-- Create an index to speed up department lookups
+CREATE INDEX idx_department_name ON departments (name);
+
+-- Populate the tables with some initial data
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 60000.00, '2022-01-15'),
+('Bob', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie', 'Sales', 65000.00, '2023-03-10'),
+('David', 'Engineering', 90000.00, '2020-11-01');
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+-- DuckDB specific feature: Create a view
+CREATE VIEW sales_employees AS
+SELECT * FROM employees WHERE department = 'Sales';
+
+-- DuckDB specific feature: Use a window function
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Example query demonstrating a join and aggregation
+SELECT d.name, AVG(e.salary)
+FROM employees e
+JOIN departments d ON e.department = d.name
+GROUP BY d.name;
+
+-- Example using a string function
+SELECT name, UPPER(department) FROM employees;
+
+-- Example using a date function
+SELECT name, DATE_PART('year', hire_date) FROM employees;
+
+-- Example using a CASE statement
+SELECT name,
+       CASE
+           WHEN salary > 70000 THEN 'High'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+-- DuckDB specific feature: Using UNNEST with a list
+SELECT value FROM UNNEST(['a', 'b', 'c']);
+
+-- Example using a UNION ALL
+SELECT name FROM employees WHERE department = 'Sales'
+UNION ALL
+SELECT name FROM departments WHERE location = 'New York';
+
+-- DuckDB specific feature:  Try a read_csv_auto
+--  (This may need to be commented out depending on the test setup)
+-- SELECT * FROM read_csv_auto('test.csv'); -- Requires test.csv
+
+-- Example using a subquery
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);

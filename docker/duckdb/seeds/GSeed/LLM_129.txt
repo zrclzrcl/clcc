@@ -1,0 +1,11 @@
+-- DuckDB-specific aggregate filter pushdown optimization check.  The HAVING clause is optimized in DuckDB.
+    SELECT i, sum(j) FROM (SELECT i, j FROM generate_series(1, 10) AS i, generate_series(1, 10) AS j) GROUP BY i HAVING sum(j) > 5;
+
+    -- DuckDB supports UNNEST with multiple arrays.  This tests edge cases for NULL handling and array bounds.
+    SELECT * FROM UNNEST([1, 2, 3], [4, NULL, 6]);
+
+    -- Test DuckDB's date/time handling with unusual formats.
+    SELECT strftime('%Y-%m-%dT%H:%M:%S.%f', 'now');
+
+    -- Demonstrate DuckDB's support for JSON operations
+    SELECT json_extract_string('{"a": 1, "b": "test"}', '$.b');

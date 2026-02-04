@@ -1,0 +1,172 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE USER testuser PASSWORD 'password';
+CREATE SCHEMA test_schema;
+
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+CREATE INDEX test_index ON test_table (name);
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+INSERT INTO test_table (name, value, description) VALUES
+('Test 1', 10, 'This is a test entry.'),
+('Test 2', 20, 'Another test entry.'),
+('Test 3', 30, NULL);
+
+UPDATE test_table SET value = 40 WHERE name = 'Test 1';
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT * FROM test_table WHERE value > 15;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+CREATE VIEW test_view AS SELECT name, value FROM test_table;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Moe', 'happy');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+DROP TABLE person;
+DROP TYPE mood;
+
+CREATE SEQUENCE test_sequence START 101;
+
+SELECT nextval('test_sequence');
+SELECT currval('test_sequence');
+SELECT setval('test_sequence', 200);
+
+DROP SEQUENCE test_sequence;
+
+CREATE TEMPORARY TABLE temp_table (
+    id INTEGER
+);
+
+INSERT INTO temp_table VALUES (1), (2), (3);
+
+SELECT * FROM temp_table;
+
+DROP TABLE temp_table;
+
+CREATE TABLE parent_table (
+    id SERIAL PRIMARY KEY,
+    parent_name VARCHAR(255)
+);
+
+CREATE TABLE child_table (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent_table(id),
+    child_name VARCHAR(255)
+);
+
+INSERT INTO parent_table (parent_name) VALUES ('Parent 1'), ('Parent 2');
+INSERT INTO child_table (parent_id, child_name) VALUES (1, 'Child 1'), (1, 'Child 2'), (2, 'Child 3');
+
+SELECT * FROM parent_table JOIN child_table ON parent_table.id = child_table.parent_id;
+
+DROP TABLE child_table;
+DROP TABLE parent_table;
+
+CREATE TABLE json_table (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_table (data) VALUES ('{"name": "John", "age": 30}');
+
+SELECT data -> 'name' FROM json_table;
+SELECT data ->> 'name' FROM json_table;
+
+DROP TABLE json_table;
+
+-- Test some PL/pgSQL control structures
+CREATE OR REPLACE FUNCTION test_plpgsql()
+RETURNS VOID AS $$
+DECLARE
+  x INTEGER := 0;
+BEGIN
+  FOR i IN 1..10 LOOP
+    x := x + i;
+  END LOOP;
+  RAISE NOTICE 'Sum is %', x;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT test_plpgsql();
+
+DROP FUNCTION test_plpgsql();
+
+-- Test some aggregate functions
+CREATE TABLE aggregate_test (
+  id INTEGER,
+  value INTEGER
+);
+
+INSERT INTO aggregate_test VALUES (1, 10), (1, 20), (2, 30), (2, 40), (3, NULL);
+
+SELECT id, SUM(value) FROM aggregate_test GROUP BY id;
+SELECT id, AVG(value) FROM aggregate_test GROUP BY id;
+SELECT id, COUNT(value) FROM aggregate_test GROUP BY id;
+SELECT id, MAX(value) FROM aggregate_test GROUP BY id;
+SELECT id, MIN(value) FROM aggregate_test GROUP BY id;
+
+DROP TABLE aggregate_test;
+
+-- Test window functions
+CREATE TABLE window_test (
+  id INTEGER,
+  value INTEGER
+);
+
+INSERT INTO window_test VALUES (1, 10), (1, 20), (2, 30), (2, 40);
+
+SELECT id, value, ROW_NUMBER() OVER (PARTITION BY id ORDER BY value) FROM window_test;
+
+DROP TABLE window_test;
+
+-- Test array functions
+CREATE TABLE array_test (
+  id SERIAL PRIMARY KEY,
+  values INTEGER[]
+);
+
+INSERT INTO array_test (values) VALUES ('{1, 2, 3}');
+
+SELECT values[1] FROM array_test;
+SELECT array_length(values, 1) FROM array_test;
+
+DROP TABLE array_test;
+
+REVOKE ALL ON TABLE test_table FROM testuser;
+
+DROP TABLE test_table;
+DROP SCHEMA test_schema;
+DROP USER testuser;
+DROP TABLESPACE test_tablespace;

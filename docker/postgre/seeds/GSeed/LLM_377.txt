@@ -1,0 +1,96 @@
+DROP TABLE IF EXISTS test_table;
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    data JSONB
+);
+
+INSERT INTO test_table (name, age, salary, data) VALUES
+('Alice', 30, 50000.00, '{"city": "New York", "occupation": "Engineer"}'),
+('Bob', 25, 60000.50, '{"city": "Los Angeles", "occupation": "Designer"}'),
+('Charlie', 40, 75000.75, '{"city": "Chicago", "occupation": "Manager"}');
+
+SELECT * FROM test_table WHERE age > 28;
+SELECT name, salary FROM test_table ORDER BY salary DESC;
+UPDATE test_table SET salary = salary * 1.10 WHERE age > 35;
+DELETE FROM test_table WHERE id = 1;
+
+CREATE INDEX idx_name ON test_table (name);
+DROP INDEX idx_name;
+
+CREATE OR REPLACE FUNCTION increment_age(emp_id INTEGER, inc INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE test_table SET age = age + inc WHERE id = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_age(2, 5);
+SELECT * FROM test_table WHERE id = 2;
+
+CREATE VIEW employee_view AS
+SELECT name, age FROM test_table WHERE salary > 55000;
+
+SELECT * FROM employee_view;
+DROP VIEW employee_view;
+
+-- Partitioned table example
+DROP TABLE IF EXISTS sales;
+CREATE TABLE sales (
+    sale_date DATE NOT NULL,
+    region TEXT NOT NULL,
+    amount DECIMAL(10,2)
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_y2023m01 PARTITION OF sales
+    FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+
+INSERT INTO sales (sale_date, region, amount) VALUES
+('2023-01-15', 'North', 150.00),
+('2023-02-10', 'South', 200.50);
+
+SELECT * FROM sales WHERE sale_date BETWEEN '2023-01-01' AND '2023-01-31';
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 5);
+SELECT generate_series('2024-01-01'::date, '2024-01-05'::date, '1 day');
+
+-- Example using WITH RECURSIVE
+WITH RECURSIVE countdown(n) AS (
+    SELECT 5
+    UNION ALL
+    SELECT n - 1 FROM countdown WHERE n > 1
+)
+SELECT * FROM countdown;
+
+-- Test JSONB functions
+SELECT data ->> 'city' FROM test_table WHERE name = 'Bob';
+SELECT data -> 'occupation' FROM test_table WHERE name = 'Alice';
+UPDATE test_table SET data = jsonb_set(data, '{country}', '"USA"') WHERE name = 'Charlie';
+
+-- Testing aggregates
+SELECT AVG(age) FROM test_table;
+SELECT MAX(salary) FROM test_table;
+
+-- Testing window functions
+SELECT name, age, salary, RANK() OVER (ORDER BY salary DESC) FROM test_table;
+
+-- Testing DISTINCT ON
+SELECT DISTINCT ON (age) name, age, salary FROM test_table ORDER BY age, salary DESC;
+
+-- Testing string functions
+SELECT UPPER(name) FROM test_table;
+SELECT SUBSTRING(name, 1, 3) FROM test_table;
+
+-- Testing date/time functions
+SELECT NOW();
+SELECT CURRENT_DATE;
+
+-- Testing pg_sleep
+SELECT pg_sleep(0.1);
+
+-- Vacuum and analyze
+VACUUM test_table;
+ANALYZE test_table;

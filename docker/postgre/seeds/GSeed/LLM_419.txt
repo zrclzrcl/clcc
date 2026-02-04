@@ -1,0 +1,61 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary NUMERIC(10, 2),
+    hire_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO test_table (name, age, salary, hire_date) VALUES
+('Alice', 30, 50000.00, '2022-01-15'),
+('Bob', 25, 60000.50, '2023-03-20'),
+('Charlie', 35, 75000.75, '2021-11-01');
+
+SELECT * FROM test_table WHERE age > 28;
+
+UPDATE test_table SET salary = salary * 1.10 WHERE age < 30;
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT AVG(age) AS average_age FROM test_table;
+
+SELECT MAX(salary) AS max_salary FROM test_table;
+
+SELECT name, EXTRACT(YEAR FROM hire_date) AS hire_year FROM test_table;
+
+CREATE INDEX idx_name ON test_table (name);
+
+ALTER TABLE test_table ADD COLUMN address VARCHAR(255);
+
+UPDATE test_table SET address = '123 Main St' WHERE name = 'Alice';
+
+SELECT * FROM test_table WHERE address IS NOT NULL;
+
+-- Using a PostgreSQL-specific feature: UPSERT (ON CONFLICT)
+INSERT INTO test_table (id, name, age, salary, hire_date) VALUES (1, 'Alice', 31, 55000.00, '2022-01-15')
+ON CONFLICT (id) DO UPDATE SET age = EXCLUDED.age, salary = EXCLUDED.salary;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 5);
+
+-- Using LATERAL JOIN
+SELECT t1.name, t2.series_value
+FROM test_table t1
+LEFT JOIN LATERAL (SELECT generate_series(1, t1.age) AS series_value) t2 ON TRUE;
+
+-- Using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM test_table;
+
+-- Using Common Table Expression (CTE)
+WITH RankedSalaries AS (
+    SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM test_table
+)
+SELECT name, salary FROM RankedSalaries WHERE salary_rank <= 2;
+
+-- Try some unusual operators and casts
+SELECT name::text || ' is ' || age::text || ' years old' FROM test_table;
+SELECT name LIKE '%li%' FROM test_table;
+SELECT name ILIKE '%LI%' FROM test_table;
+
+DROP TABLE test_table;

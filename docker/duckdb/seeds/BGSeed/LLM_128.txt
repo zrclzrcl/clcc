@@ -1,0 +1,57 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email) VALUES
+('alice', 'alice@example.com'),
+('bob', 'bob@example.com'),
+('charlie', 'charlie@example.com');
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    order_date DATE,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO orders (user_id, product_id, quantity, order_date) VALUES
+(1, 1, 1, '2023-10-26'),
+(2, 2, 2, '2023-10-27'),
+(3, 3, 1, '2023-10-28');
+
+-- DuckDB specific: Using UNNEST and sequence generation
+SELECT i, i*2 FROM UNNEST(SEQUENCE(1, 5)) AS t(i);
+
+-- Testing date/time functions
+SELECT order_date, DATE_TRUNC('month', order_date) AS month_start FROM orders;
+
+-- Testing window functions
+SELECT
+    user_id,
+    COUNT(*) OVER (PARTITION BY user_id) AS order_count
+FROM
+    orders;
+
+-- Testing LIKE operator with escape character
+CREATE TABLE test_like (
+    value VARCHAR
+);
+INSERT INTO test_like VALUES ('abc%def'), ('abc_def'), ('abc\\def');
+SELECT value FROM test_like WHERE value LIKE 'abc\\%def' ESCAPE '\\';

@@ -1,0 +1,127 @@
+-- Initial seed for PostgreSQL 18 RC1
+
+-- Create a simple table
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+-- Insert some data
+INSERT INTO employee (name, salary, department) VALUES
+('Alice', 60000.00, 'Sales'),
+('Bob', 75000.00, 'Engineering'),
+('Charlie', 55000.00, 'Sales');
+
+-- Select all employees
+SELECT * FROM employee;
+
+-- Select employees in the Sales department
+SELECT name, salary FROM employee WHERE department = 'Sales';
+
+-- Update an employee's salary
+UPDATE employee SET salary = 80000.00 WHERE name = 'Bob';
+
+-- Delete an employee
+DELETE FROM employee WHERE name = 'Charlie';
+
+-- Create another table with foreign key
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO department (name) VALUES ('Sales'), ('Engineering'), ('Marketing');
+
+ALTER TABLE employee ADD COLUMN department_id INTEGER REFERENCES department(id);
+
+UPDATE employee SET department_id = (SELECT id FROM department WHERE name = 'Sales') WHERE department = 'Sales';
+UPDATE employee SET department_id = (SELECT id FROM department WHERE name = 'Engineering') WHERE department = 'Engineering';
+ALTER TABLE employee DROP COLUMN department;
+
+-- Demonstrate JOIN
+SELECT e.name, e.salary, d.name AS department
+FROM employee e
+JOIN department d ON e.department_id = d.id;
+
+-- Demonstrate GROUP BY and HAVING
+SELECT d.name, AVG(e.salary) AS average_salary
+FROM employee e
+JOIN department d ON e.department_id = d.id
+GROUP BY d.name
+HAVING AVG(e.salary) > 60000.00;
+
+-- Demonstrate ORDER BY
+SELECT name, salary FROM employee ORDER BY salary DESC;
+
+-- Demonstrate LIMIT and OFFSET
+SELECT name, salary FROM employee ORDER BY salary DESC LIMIT 2 OFFSET 1;
+
+-- Create a view
+CREATE VIEW sales_employees AS
+SELECT name, salary FROM employee WHERE department_id = (SELECT id FROM department WHERE name = 'Sales');
+
+-- Select from the view
+SELECT * FROM sales_employees;
+
+-- Create an index
+CREATE INDEX idx_employee_name ON employee (name);
+
+-- Create a function
+CREATE OR REPLACE FUNCTION get_employee_count(dept_name VARCHAR)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employee e JOIN department d ON e.department_id = d.id WHERE d.name = dept_name);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Use the function
+SELECT get_employee_count('Sales');
+
+-- Create an unlogged table
+CREATE UNLOGGED TABLE temp_data (
+    id SERIAL PRIMARY KEY,
+    value TEXT
+);
+
+-- Insert some data into the unlogged table
+INSERT INTO temp_data (value) SELECT md5(random()::text) FROM generate_series(1, 1000);
+
+-- Demonstrate WITH RECURSIVE (simple example - factorial)
+WITH RECURSIVE factorial(n, f) AS (
+    SELECT 1, 1
+    UNION ALL
+    SELECT n + 1, (n + 1) * f
+    FROM factorial
+    WHERE n < 5
+)
+SELECT n, f FROM factorial;
+
+-- Demonstrate JSONB functionality
+CREATE TABLE json_table (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_table (data) VALUES
+('{"name": "John Doe", "age": 30, "city": "New York"}'),
+('{"name": "Jane Smith", "age": 25, "city": "London"}');
+
+SELECT data ->> 'name' AS name FROM json_table;
+
+-- Example using GENERATED ALWAYS AS
+CREATE TABLE measurement (
+    logdate date NOT NULL,
+    peaktemp int,
+    unitsales int,
+    peaktemp_c int GENERATED ALWAYS AS ((peaktemp - 32) * 5 / 9) STORED
+);
+
+INSERT INTO measurement (logdate, peaktemp, unitsales) VALUES ('2024-01-01', 50, 100);
+
+SELECT * FROM measurement;
+
+--CREATE EXTENSION pg_trgm; -- Useful extension, but let's stick with core features for initial seed
+
+--CREATE DOMAIN zip_code AS TEXT CHECK (VALUE ~ '^\d{5}$'); -- Example of domain constraint but not creating because pg_trgm creates access method.

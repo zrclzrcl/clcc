@@ -1,0 +1,62 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000),
+('Bob', 'Marketing', 60000),
+('Charlie', 'Sales', 55000),
+('David', 'Engineering', 70000),
+('Eve', 'Marketing', 62000);
+
+CREATE TABLE departments (
+    department_name VARCHAR PRIMARY KEY,
+    location VARCHAR
+);
+
+INSERT INTO departments VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+-- DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT department, APPROXIMATE COUNT DISTINCT(name) FROM employees GROUP BY department;
+
+-- Complex query with joins and aggregation
+SELECT e.department, AVG(e.salary), d.location
+FROM employees e
+JOIN departments d ON e.department = d.department_name
+WHERE e.salary > 50000
+GROUP BY e.department, d.location
+ORDER BY AVG(e.salary) DESC;
+
+-- Test window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Using UNNEST to split a string into rows (DuckDB feature)
+SELECT value FROM UNNEST(['a,b,c', 'd,e,f']) AS t(value);
+
+-- Test NULL handling and COALESCE
+SELECT name, COALESCE(department, 'Unknown') FROM employees;
+
+-- Test correlation
+SELECT CORR(salary, id) FROM employees;
+
+-- Test string functions specific to duckdb (e.g., string_split)
+
+SELECT string_split('hello,world', ',');
+
+-- Test date functions
+
+SELECT CURRENT_DATE;
+
+-- Test exception handling
+
+SELECT CASE WHEN 1=0 THEN 1/0 ELSE 1 END; --This will return null due to division by zero, it is not handled as an error for initial test.

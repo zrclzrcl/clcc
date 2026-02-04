@@ -1,0 +1,59 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(100)
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+('Alice Smith', 60000.00, 'Sales'),
+('Bob Johnson', 75000.00, 'Marketing'),
+('Charlie Brown', 50000.00, 'Sales'),
+('David Lee', 80000.00, 'Engineering');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 55000 ORDER BY name;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, SUM(salary) FROM employees GROUP BY department;
+
+SELECT e1.name, e2.name
+FROM employees e1
+JOIN employees e2 ON e1.department = e2.department
+WHERE e1.id != e2.id;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '1 year' WHERE id = 1;
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '2 years' WHERE id = 2;
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '3 years' WHERE id = 4;
+
+SELECT name, AGE(CURRENT_DATE, hire_date) FROM employees;
+
+CREATE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN (SELECT salary FROM employees WHERE id = emp_id) * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, calculate_bonus(id, 0.05) AS bonus FROM employees;
+
+DROP FUNCTION calculate_bonus(INTEGER, DECIMAL);
+
+ALTER TABLE employees DROP COLUMN hire_date;
+DROP INDEX idx_department;
+DROP TABLE employees;

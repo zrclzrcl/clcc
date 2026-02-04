@@ -1,0 +1,17 @@
+create table user_account (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+insert into user_account (username, password) values ('user1', 'password1');
+insert into user_account (username, password) values ('user2', 'password2');
+insert into user_account (username, password) values ('user3', 'password3');
+insert into user_account (username, password) values ('user4', 'password1');  -- testing unique constraint
+insert into user_account (username, password) values ('user5', 'password4');
+
+create table user_profile (user_id INTEGER, bio TEXT, FOREIGN KEY (user_id) REFERENCES user_account(id));
+insert into user_profile (user_id, bio) values (1, 'Hello, I am user1!');
+insert into user_profile (user_id, bio) values (2, 'Hello, I am user2!');
+insert into user_profile (user_id, bio) values (3, 'Hello, I am user3!');
+
+select username, (select count(*) from user_profile where user_id = id) as profile_count from user_account;
+select username, (bio || ' Welcome!') as personalized_bio from user_profile 
+inner join user_account on user_profile.user_id = user_account.id;
+select * from user_account where username like 'user%';  -- testing pattern matching
+select username, case when (select count(*) from user_profile where user_id = id) = 0 then 'No Profile' else 'Has Profile' end as profile_status from user_account;

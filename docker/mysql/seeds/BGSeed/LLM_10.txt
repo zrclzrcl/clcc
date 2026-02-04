@@ -1,0 +1,47 @@
+CREATE TABLE fuzz_test_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data VARCHAR(255)
+);
+
+INSERT INTO fuzz_test_table (data) VALUES ('Initial Value 1'), ('Initial Value 2');
+
+-- Test specific MySQL features
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 0;
+
+-- Trigger a stored procedure call
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN input_value VARCHAR(255))
+BEGIN
+    INSERT INTO fuzz_test_table (data) VALUES (input_value);
+END //
+DELIMITER ;
+
+CALL test_procedure('Procedure Call Value');
+
+-- Attempt to exploit type conversions and casting
+SELECT CAST(123.45 AS CHAR);
+
+-- Test JSON functions
+SELECT JSON_OBJECT('key1', 1, 'key2', 'value');
+
+-- Test GIS functions
+CREATE TABLE gis_test (g GEOMETRY);
+INSERT INTO gis_test VALUES (ST_GeomFromText('POINT(1 1)'));
+
+-- Test generated column feature
+ALTER TABLE fuzz_test_table ADD COLUMN generated_column VARCHAR(255) GENERATED ALWAYS AS (UPPER(data)) STORED;
+
+-- Test partitioning
+CREATE TABLE partition_test (
+    id INT,
+    event_date DATE
+)
+PARTITION BY RANGE ( YEAR(event_date) ) (
+    PARTITION p0 VALUES LESS THAN (2023),
+    PARTITION p1 VALUES LESS THAN (2024),
+    PARTITION p2 VALUES LESS THAN (2025),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO partition_test VALUES(1, '2022-01-01'), (2, '2023-05-15'), (3, '2024-12-31');

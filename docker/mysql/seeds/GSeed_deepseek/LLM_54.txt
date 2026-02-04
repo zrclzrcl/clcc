@@ -1,0 +1,53 @@
+-- Step 1: Set configuration variables to influence query execution
+SET optimizer_switch='block_nested_loop=on';
+SET join_buffer_size = 2048;
+
+-- Step 2: Create tables with appropriate columns and constraints
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50),
+    manager_id INT
+);
+
+-- Step 3: Insert sample data with edge cases and functions
+INSERT INTO employees VALUES 
+(1, 'John Doe', 70000.00, '2023-01-01'),
+(2, NULL, 50000.00, NULL);
+
+INSERT INTO departments VALUES 
+(1, 'HR', 1),
+(2, 'Engineering', NULL);
+
+-- Step 4: Update records with conditions and subqueries
+UPDATE employees 
+SET salary = salary * 1.1 
+WHERE id IN (SELECT id FROM employees WHERE hire_date < '2023-01-01');
+
+-- Step 5: Alter table to modify schema
+ALTER TABLE departments ADD COLUMN budget DECIMAL(15,2) DEFAULT 0;
+
+-- Step 6: Create a trigger to handle events
+CREATE TRIGGER after_insert 
+AFTER INSERT ON employees 
+FOR EACH ROW 
+SET @last_id = NEW.id;
+
+-- Step 7: Analyze tables for query optimization
+ANALYZE TABLE employees, departments;
+
+-- Step 8: Delete records with complex conditions
+DELETE FROM departments 
+WHERE dept_id NOT IN (SELECT dept_id FROM employees);
+
+-- Step 9: Add an index on a column for faster queries
+CREATE INDEX idx_name ON employees(name(50));
+
+-- Optional: Use stored variables or functions if needed
+SET @func_result = (SELECT COUNT(*) FROM employees WHERE salary > 60000);

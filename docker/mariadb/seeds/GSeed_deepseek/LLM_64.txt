@@ -1,0 +1,73 @@
+CREATE DATABASE test_db;
+USE test_db;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL,
+    password_hash CHAR(64) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL
+);
+
+ALTER TABLE users ADD COLUMN active BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD CONSTRAINT uc_username UNIQUE (username);
+ALTER TABLE users ADD INDEX idx_email (email);
+
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    order_date DATETIME NOT NULL,
+    total DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE orders ADD INDEX idx_order_date (order_date);
+ALTER TABLE orders ADD COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';
+
+CREATE TRIGGER trg_users_after_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO user_activity (user_id, action, timestamp)
+    VALUES (NEW.id, 'created_account', NOW());
+END;
+
+DELIMITER $$
+CREATE PROCEDURE sp_get_user_orders(IN p_username VARCHAR(50))
+BEGIN
+    SELECT o.id, o.order_date, o.total, o.status
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    WHERE u.username = p_username
+    ORDER BY o.order_date DESC;
+END$$
+DELIMITER ;
+
+CREATE EVENT evt_cleanup_old_orders
+ON SCHEDULE EVERY 1 MONTH
+DO
+BEGIN
+    DELETE FROM orders WHERE order_date < DATE_SUB(NOW(), INTERVAL 6 MONTH);
+END;
+
+INSERT INTO users (username, email, password_hash) VALUES
+('user1', 'user1@example.com', 'hash123'),
+('user2', 'user2@example.com', 'hash456'),
+('admin', 'admin@example.com', 'adminhash');
+
+INSERT INTO orders (user_id, order_date, total, status) VALUES
+(1, '2023-01-01 09:00:00', 100.00, 'completed'),
+(2, '2023-02-15 14:30:00', 75.50, 'pending');
+
+SELECT u.username, o.order_date, o.total
+FROM users u
+JOIN orders o ON u.id = o.user_id
+WHERE o.status = 'completed'
+GROUP BY u.username
+HAVING COUNT(o.id) > 1;
+
+UPDATE users SET active = FALSE WHERE username = 'user2';
+DELETE FROM orders WHERE status = 'cancelled';
+
+SELECT * FROM users;

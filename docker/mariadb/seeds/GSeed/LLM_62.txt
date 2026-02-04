@@ -1,0 +1,77 @@
+SET NAMES utf8mb4;
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    category ENUM('Electronics', 'Clothing', 'Books', 'Home')
+);
+
+-- Insert some sample data, including edge cases like NULL descriptions and zero quantities
+INSERT INTO products (name, description, price, quantity, category) VALUES
+('Laptop', 'Powerful laptop for professionals', 1200.50, 10, 'Electronics'),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 50, 'Clothing'),
+('The Hitchhiker\'s Guide to the Galaxy', NULL, 15.75, 100, 'Books'),
+('Desk Lamp', 'Adjustable desk lamp', 35.20, 5, 'Home'),
+('Smartphone', 'Latest smartphone model', 999.99, 20, 'Electronics'),
+('Jeans', 'Classic blue jeans', 49.99, 30, 'Clothing'),
+('To Kill a Mockingbird', 'A timeless classic', 12.50, 75, 'Books'),
+('Sofa', 'Comfortable sofa for your living room', 500.00, 2, 'Home'),
+('Tablet', 'Portable tablet for entertainment', 300.00, 15, 'Electronics'),
+('Jacket', 'Warm winter jacket', 75.00, 25, 'Clothing'),
+('1984', 'A dystopian novel', 10.00, 60, 'Books'),
+('Coffee Table', 'Stylish coffee table', 150.00, 3, 'Home'),
+('Headphones', 'Noise-cancelling headphones', 150.00, 12, 'Electronics');
+
+-- Perform some common operations
+SELECT * FROM products WHERE price > 100;
+UPDATE products SET quantity = quantity + 5 WHERE category = 'Books';
+DELETE FROM products WHERE quantity = 0;
+
+-- Use a MariaDB-specific feature: Virtual Columns
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10, 2) AS (price * 0.9) VIRTUAL;
+
+-- Add an index for faster searching
+CREATE INDEX idx_category ON products (category);
+
+-- Show table status for understanding storage engine and row count.
+SHOW TABLE STATUS LIKE 'products';
+
+-- Test fulltext search functionality (requires MyISAM or InnoDB with specific settings)
+ALTER TABLE products ADD FULLTEXT INDEX idx_name_description (name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('laptop powerful');
+
+-- Stored procedure to demonstrate procedural SQL
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN category_name VARCHAR(255))
+BEGIN
+    SELECT * FROM products WHERE category = category_name;
+END //
+DELIMITER ;
+CALL GetProductsByCategory('Electronics');
+
+-- User-defined function to demonstrate scalar function usage.
+CREATE FUNCTION calculate_discount(price DECIMAL(10, 2), discount DECIMAL(3,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+RETURN price * (1 - discount);
+
+SELECT name, price, calculate_discount(price, 0.1) AS discounted_price FROM products;
+
+-- Demonstrating JSON functionalities specific to MariaDB.
+ALTER TABLE products ADD COLUMN metadata JSON;
+UPDATE products SET metadata = JSON_OBJECT('color', 'black', 'size', 'medium') WHERE name = 'T-Shirt';
+SELECT name, metadata->>'$.color' AS color FROM products WHERE name = 'T-Shirt';
+
+-- Test spatial data types (requires SRID definition and spatial index).  Commented out due to complexity, can be added if appropriate.
+-- CREATE TABLE places (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), location POINT SRID 0);
+-- INSERT INTO places (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 10)'));
+-- CREATE SPATIAL INDEX idx_location ON places (location);
+-- SELECT name FROM places WHERE ST_Distance_Sphere(location, ST_GeomFromText('POINT(12 12)')) < 1000;
+
+ANALYZE TABLE products;
+SHOW CREATE TABLE products;

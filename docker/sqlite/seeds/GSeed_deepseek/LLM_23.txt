@@ -1,0 +1,52 @@
+CREATE TABLE Table1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK (age >= 0),
+    data BLOB,
+    UNIQUE (name)
+);
+
+INSERT INTO Table1 VALUES 
+(1, 'Alice', 30, zeroblob(10)),
+(2, 'Bob', 45, randomblob(5)),
+(3, 'Charlie', NULL, NULL);
+
+CREATE TABLE Table2 (
+    id INTEGER PRIMARY KEY,
+    value TEXT
+) WITHOUT ROWID;
+
+INSERT INTO Table2 VALUES 
+(1, 'A'),
+(2, 'B'),
+(3, 'C');
+
+ALTER TABLE Table1 ADD COLUMN email TEXT UNIQUE;
+
+CREATE INDEX idx_name ON Table1 (name);
+CREATE INDEX idx_age ON Table1 (age DESC);
+
+CREATE VIEW MyView AS
+WITH Numbers AS (
+    SELECT 1 AS num UNION ALL
+    SELECT num + 1 FROM Numbers WHERE num < 10
+)
+SELECT 
+    n.num,
+    ROW_NUMBER() OVER (ORDER BY n.num) AS row_num,
+    RANK() OVER (ORDER BY n.num) AS rank
+FROM Numbers n;
+
+INSERT INTO Table1 VALUES 
+(4, 'David', 50, zeroblob(8), 'david@example.com'),
+(5, 'Eve', 25, randomblob(3), 'eve@example.com');
+
+CREATE TRIGGER AfterInsertTrigger AFTER INSERT ON Table1
+BEGIN
+    INSERT INTO Table2 (id, value)
+    VALUES (NEW.id, NEW.name);
+END;
+
+DROP TABLE IF EXISTS Table2;
+DROP VIEW IF EXISTS MyView;
+DROP TABLE IF EXISTS Table1;

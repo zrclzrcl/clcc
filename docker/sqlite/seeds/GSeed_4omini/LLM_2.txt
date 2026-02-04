@@ -1,0 +1,14 @@
+CREATE TABLE employee (emp_id INTEGER PRIMARY KEY, name TEXT, department_id INTEGER);
+CREATE TABLE department (dept_id INTEGER PRIMARY KEY, dept_name TEXT);
+CREATE TABLE salary (emp_id INTEGER, amount REAL, FOREIGN KEY(emp_id) REFERENCES employee(emp_id));
+CREATE VIEW emp_dept AS SELECT e.emp_id, e.name, d.dept_name FROM employee e LEFT JOIN department d ON e.department_id = d.dept_id;
+CREATE VIEW dept_avg_salary AS SELECT d.dept_name, AVG(s.amount) AS avg_salary FROM department d LEFT JOIN salary s ON d.dept_id = (SELECT department_id FROM employee WHERE emp_id = s.emp_id) GROUP BY d.dept_id;
+CREATE VIEW emp_salary_details AS SELECT e.emp_id, e.name, s.amount FROM employee e LEFT JOIN salary s ON e.emp_id = s.emp_id;
+INSERT INTO employee (emp_id, name, department_id) VALUES (1, 'Alice', 1);
+INSERT INTO employee (emp_id, name, department_id) VALUES (2, 'Bob', 1);
+INSERT INTO department (dept_id, dept_name) VALUES (1, 'Engineering');
+INSERT INTO salary (emp_id, amount) VALUES (1, 75000);
+INSERT INTO salary (emp_id, amount) VALUES (2, 65000);
+PRAGMA foreign_keys=ON;
+SELECT e.emp_id, e.name, d.dept_name, s.amount FROM emp_dept e JOIN salary s ON e.emp_id = s.emp_id ORDER BY s.amount DESC;
+SELECT dept_name, COUNT(emp_id) AS employee_count FROM emp_dept GROUP BY dept_name HAVING employee_count > 1;

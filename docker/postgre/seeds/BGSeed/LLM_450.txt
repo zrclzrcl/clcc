@@ -1,0 +1,171 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+('Eve Wilson', 65000.00, 'Marketing', '2022-09-05');
+
+CREATE INDEX idx_department ON employees (department);
+
+CREATE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+DECLARE
+    base_salary DECIMAL;
+    bonus_amount DECIMAL;
+BEGIN
+    SELECT salary INTO base_salary FROM employees WHERE id = emp_id;
+    IF base_salary IS NULL THEN
+        RAISE EXCEPTION 'Employee with ID % not found.', emp_id;
+    END IF;
+    bonus_amount := base_salary * bonus_percentage / 100;
+    RETURN bonus_amount;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1, 10.0);
+SELECT calculate_bonus(5, 15.0);
+
+CREATE TYPE employee_info AS (
+    employee_name VARCHAR(100),
+    employee_department VARCHAR(50),
+    employee_salary DECIMAL(10, 2)
+);
+
+CREATE FUNCTION get_employee_info(dept_name VARCHAR(50))
+RETURNS SETOF employee_info AS $$
+BEGIN
+    RETURN QUERY SELECT name, department, salary
+    FROM employees
+    WHERE department = dept_name;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_employee_info('Sales');
+SELECT * FROM get_employee_info('Marketing');
+
+CREATE TABLE audit_log (
+    event_id SERIAL PRIMARY KEY,
+    event_type VARCHAR(50),
+    event_timestamp TIMESTAMP,
+    table_name VARCHAR(50),
+    record_id INTEGER,
+    event_data TEXT
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (event_type, event_timestamp, table_name, record_id, event_data)
+        VALUES (TG_OP, NOW(), TG_TABLE_NAME, NEW.id, row_to_json(NEW)::TEXT);
+        RETURN NEW;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (event_type, event_timestamp, table_name, record_id, event_data)
+        VALUES (TG_OP, NOW(), TG_TABLE_NAME, OLD.id, row_to_json(OLD)::TEXT || ' -> ' || row_to_json(NEW)::TEXT);
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (event_type, event_timestamp, table_name, record_id, event_data)
+        VALUES (TG_OP, NOW(), TG_TABLE_NAME, OLD.id, row_to_json(OLD)::TEXT);
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+UPDATE employees SET salary = 85000.00 WHERE id = 4;
+DELETE FROM employees WHERE id = 3;
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Fiona Green', 70000.00, 'Engineering', '2023-07-01');
+
+SELECT * FROM audit_log;
+
+CREATE VIEW high_earning_employees AS
+SELECT id, name, salary, department
+FROM employees
+WHERE salary > 70000.00;
+
+SELECT * FROM high_earning_employees;
+
+-- Using WITH RECURSIVE to generate a sequence of numbers
+WITH RECURSIVE number_series AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM number_series WHERE n < 10
+)
+SELECT n FROM number_series;
+
+-- Window function example
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Try some error handling:
+DO $$
+BEGIN
+  RAISE NOTICE 'About to raise an exception';
+  RAISE EXCEPTION 'Something went wrong';
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Caught exception: %', SQLERRM;
+END $$;
+
+-- Trigger to prevent salary from going below a threshold
+CREATE OR REPLACE FUNCTION check_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.salary < 0 THEN
+    RAISE EXCEPTION 'Salary cannot be negative';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_check BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW EXECUTE FUNCTION check_salary();
+
+-- The following statement will fail:
+-- INSERT INTO employees (name, salary, department, hire_date) VALUES ('Bad Salary', -100, 'HR', '2024-01-01');
+
+-- Lateral join example
+SELECT e.name, d.dept_avg
+FROM employees e
+LEFT JOIN LATERAL (
+    SELECT AVG(salary) AS dept_avg
+    FROM employees
+    WHERE department = e.department
+) d ON TRUE;
+
+-- Foreign data wrapper example (assuming you have postgres_fdw installed and configured)
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+
+-- This assumes you have a server named "remote_server" already configured using CREATE SERVER
+-- CREATE SERVER remote_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host 'remote_host', port '5432', dbname 'remote_db');
+-- CREATE USER MAPPING FOR current_user SERVER remote_server OPTIONS (user 'remote_user', password 'remote_password');
+-- CREATE FOREIGN TABLE remote_employees (id integer, name varchar) SERVER remote_server OPTIONS (schema_name 'public', table_name 'employees');
+-- SELECT * FROM remote_employees;
+-- DROP FOREIGN TABLE IF EXISTS remote_employees;
+
+-- Example of Row level security.
+CREATE POLICY employee_policy ON employees FOR ALL TO public USING (department = current_user);
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employees FORCE ROW LEVEL SECURITY;
+
+-- Example use of generate_series to create date ranges:
+SELECT dt
+FROM generate_series('2024-01-01'::date, '2024-01-10'::date, '1 day'::interval) dt;

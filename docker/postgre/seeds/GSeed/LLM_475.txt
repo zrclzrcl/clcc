@@ -1,0 +1,170 @@
+CREATE TABLE account (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL
+);
+
+CREATE TABLE transaction (
+    id SERIAL PRIMARY KEY,
+    account_id INTEGER REFERENCES account(id),
+    amount DECIMAL(15, 2) NOT NULL,
+    transaction_date TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION transfer_funds(
+    sender_id INTEGER,
+    receiver_id INTEGER,
+    amount DECIMAL(15, 2)
+) RETURNS VOID AS $$
+DECLARE
+    sender_balance DECIMAL(15, 2);
+BEGIN
+    SELECT balance INTO sender_balance FROM account WHERE id = sender_id;
+
+    IF sender_balance < amount THEN
+        RAISE EXCEPTION 'Insufficient funds';
+    END IF;
+
+    UPDATE account SET balance = balance - amount WHERE id = sender_id;
+    UPDATE account SET balance = balance + amount WHERE id = receiver_id;
+
+    INSERT INTO transaction (account_id, amount) VALUES (sender_id, -amount);
+    INSERT INTO transaction (account_id, amount) VALUES (receiver_id, amount);
+END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO account (name, balance) VALUES ('Alice', 1000.00);
+INSERT INTO account (name, balance) VALUES ('Bob', 500.00);
+
+SELECT * FROM account;
+SELECT transfer_funds(1, 2, 200.00);
+SELECT * FROM account;
+SELECT * FROM transaction;
+
+CREATE TABLE product (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE discount (
+    product_id INTEGER REFERENCES product(id),
+    discount_percentage INTEGER NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_to DATE NOT NULL,
+    PRIMARY KEY (product_id, valid_from, valid_to)
+);
+
+INSERT INTO product (name, price) VALUES ('Laptop', 1200.00);
+INSERT INTO product (name, price) VALUES ('Mouse', 25.00);
+
+INSERT INTO discount (product_id, discount_percentage, valid_from, valid_to)
+VALUES (1, 10, '2024-01-01', '2024-12-31');
+
+SELECT p.name, p.price,
+    CASE
+        WHEN EXISTS (SELECT 1 FROM discount d
+                     WHERE d.product_id = p.id
+                     AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to)
+        THEN p.price * (1 - (SELECT d.discount_percentage::DECIMAL / 100
+                             FROM discount d
+                             WHERE d.product_id = p.id
+                             AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to))
+        ELSE p.price
+    END AS discounted_price
+FROM product p;
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    record_id INTEGER NOT NULL,
+    column_name VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    modified_by VARCHAR(50) NOT NULL,
+    modified_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION audit_trigger_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        FOR i IN 1..array_length(TG_ARGV, 1) LOOP
+            IF OLD.(TG_ARGV[i])::TEXT != NEW.(TG_ARGV[i])::TEXT THEN
+                INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, modified_by)
+                VALUES (TG_TABLE_NAME::TEXT, OLD.id, TG_ARGV[i], OLD.(TG_ARGV[i])::TEXT, NEW.(TG_ARGV[i])::TEXT, current_user);
+            END IF;
+        END LOOP;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, modified_by)
+        VALUES (TG_TABLE_NAME::TEXT, OLD.id, 'row', OLD::TEXT, NULL, current_user);
+        RETURN OLD;
+    ELSIF TG_OP = 'INSERT' THEN
+        INSERT INTO audit_log (table_name, record_id, column_name, old_value, new_value, modified_by)
+        VALUES (TG_TABLE_NAME::TEXT, NEW.id, 'row', NULL, NEW::TEXT, current_user);
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_audit
+AFTER UPDATE OR DELETE OR INSERT ON product
+FOR EACH ROW
+EXECUTE FUNCTION audit_trigger_func('name', 'price');
+
+UPDATE product SET price = 1300.00 WHERE id = 1;
+DELETE FROM product WHERE id = 2;
+INSERT INTO product (name, price) VALUES ('Keyboard', 75.00);
+
+SELECT * FROM audit_log;
+
+CREATE TABLE test_range (
+    tsrange_col TSRANGE,
+    tstzrange_col TSTZRANGE,
+    daterange_col DATERANGE,
+    int4range_col INT4RANGE,
+    int8range_col INT8RANGE,
+    numrange_col NUMRANGE
+);
+
+INSERT INTO test_range (tsrange_col, tstzrange_col, daterange_col, int4range_col, int8range_col, numrange_col)
+VALUES (
+    '[2024-01-01 00:00:00, 2024-01-07 00:00:00]',
+    '[2024-01-01 00:00:00+00, 2024-01-07 00:00:00+00]',
+    '[2024-01-01, 2024-01-07]',
+    '[10, 20]',
+    '[100, 200]',
+    '[10.5, 20.5]'
+);
+
+SELECT * FROM test_range WHERE tsrange_col && '[2024-01-05 00:00:00, 2024-01-10 00:00:00]';
+
+CREATE TABLE test_jsonb (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO test_jsonb (data) VALUES ('{"name": "John", "age": 30, "city": "New York"}');
+
+SELECT data ->> 'name' FROM test_jsonb WHERE id = 1;
+
+CREATE TABLE search_example (
+    id SERIAL PRIMARY KEY,
+    content TEXT
+);
+
+INSERT INTO search_example (content) VALUES ('This is a sample document about PostgreSQL.');
+
+SELECT * FROM search_example WHERE to_tsvector('english', content) @@ to_tsquery('english', 'PostgreSQL');
+
+CREATE TABLE products_with_generated_column (
+  id SERIAL PRIMARY KEY,
+  name TEXT,
+  price NUMERIC,
+  discount NUMERIC,
+  net_price NUMERIC GENERATED ALWAYS AS (price - price * discount) STORED
+);
+INSERT INTO products_with_generated_column (name, price, discount) VALUES ('Item1', 100, 0.1);
+SELECT * FROM products_with_generated_column;

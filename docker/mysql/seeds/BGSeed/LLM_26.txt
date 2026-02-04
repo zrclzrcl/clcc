@@ -1,0 +1,43 @@
+SET @old_sql_mode=@@SQL_MODE;
+SET SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @SESSION.sql_require_primary_key = 1;
+
+CREATE TABLE `test_types` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `tinyint_col` TINYINT,
+  `smallint_col` SMALLINT,
+  `mediumint_col` MEDIUMINT,
+  `int_col` INT,
+  `bigint_col` BIGINT,
+  `float_col` FLOAT,
+  `double_col` DOUBLE,
+  `decimal_col` DECIMAL(10,2),
+  `date_col` DATE,
+  `datetime_col` DATETIME,
+  `timestamp_col` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `time_col` TIME,
+  `year_col` YEAR,
+  `char_col` CHAR(10),
+  `varchar_col` VARCHAR(255),
+  `tinytext_col` TINYTEXT,
+  `text_col` TEXT,
+  `mediumtext_col` MEDIUMTEXT,
+  `longtext_col` LONGTEXT,
+  `tinyblob_col` TINYBLOB,
+  `blob_col` BLOB,
+  `mediumblob_col` MEDIUMBLOB,
+  `longblob_col` LONGBLOB,
+  `enum_col` ENUM('value1', 'value2', 'value3'),
+  `set_col` SET('option1', 'option2', 'option3'),
+  `json_col` JSON
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `test_types` (`tinyint_col`, `smallint_col`, `mediumint_col`, `int_col`, `bigint_col`, `float_col`, `double_col`, `decimal_col`, `date_col`, `datetime_col`, `time_col`, `year_col`, `char_col`, `varchar_col`, `tinytext_col`, `text_col`, `mediumtext_col`, `longtext_col`, `tinyblob_col`, `blob_col`, `mediumblob_col`, `longblob_col`, `enum_col`, `set_col`, `json_col`) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 1234.56, '2023-10-26', '2023-10-26 10:30:00', '10:30:00', 2023, 'charval', 'varcharval', 'tinytextval', 'textval', 'mediumtextval', 'longtextval', 'tinyblobval', 'blobval', 'mediumblobval', 'longblobval', 'value2', 'option1,option3', '{"key1": "value1", "key2": 123}');
+
+ALTER TABLE `test_types` ADD COLUMN `geometry_col` GEOMETRY;
+UPDATE `test_types` SET `geometry_col` = ST_GeomFromText('POINT(1 1)');
+CREATE INDEX idx_varchar ON `test_types` (`varchar_col`(10));
+
+SET SQL_MODE=@old_sql_mode;
+SET @SESSION.sql_require_primary_key = 0;

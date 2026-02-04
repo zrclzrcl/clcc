@@ -1,0 +1,101 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE USER test_user PASSWORD 'password';
+CREATE SCHEMA test_schema AUTHORIZATION test_user;
+
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+CREATE INDEX test_index ON test_schema.test_table (name);
+
+INSERT INTO test_schema.test_table (name, value) VALUES
+('test1', 10),
+('test2', 20),
+('test3', 30);
+
+SELECT * FROM test_schema.test_table WHERE value > 15;
+
+UPDATE test_schema.test_table SET value = 40 WHERE name = 'test1';
+
+DELETE FROM test_schema.test_table WHERE id = 3;
+
+CREATE VIEW test_view AS
+SELECT name, value FROM test_schema.test_table WHERE value > 20;
+
+SELECT * FROM test_view;
+
+CREATE FUNCTION test_function(input_value INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN input_value * 2;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT test_function(5);
+
+CREATE TRIGGER test_trigger
+BEFORE INSERT ON test_schema.test_table
+FOR EACH ROW
+EXECUTE FUNCTION test_function(NEW.value);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+ALTER TABLE test_schema.test_table ADD COLUMN description TEXT;
+UPDATE test_schema.test_table SET description = 'some description';
+SELECT * FROM test_schema.test_table;
+ALTER TABLE test_schema.test_table DROP COLUMN description;
+
+CREATE SEQUENCE test_sequence START 101;
+SELECT nextval('test_sequence');
+
+CREATE OR REPLACE FUNCTION increment_and_return(inout num integer) AS $$
+BEGIN
+  num := num + 1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_and_return(42);
+
+CREATE AGGREGATE myavg (numeric)
+(
+    sfunc = numeric_add,
+    stype = numeric,
+    finalfunc = numeric_avg
+);
+
+SELECT myavg(value) FROM test_schema.test_table;
+
+CREATE DOMAIN posint AS integer CHECK (VALUE > 0);
+
+CREATE TABLE measurement (
+    logdate         date,
+    peaktemp        posint,
+    unitsales       integer
+);
+INSERT INTO measurement VALUES (current_date, 42, 100);
+SELECT * FROM measurement;
+DROP TABLE measurement;
+DROP DOMAIN posint;
+
+DROP AGGREGATE myavg (numeric);
+DROP FUNCTION increment_and_return(inout integer);
+DROP SEQUENCE test_sequence;
+DROP TRIGGER test_trigger ON test_schema.test_table;
+DROP FUNCTION test_function(INTEGER);
+DROP VIEW test_view;
+DROP TABLE test_schema.test_table;
+DROP TYPE mood;
+DROP TABLE person;
+DROP SCHEMA test_schema CASCADE;
+DROP USER test_user;
+DROP TABLESPACE test_tablespace;

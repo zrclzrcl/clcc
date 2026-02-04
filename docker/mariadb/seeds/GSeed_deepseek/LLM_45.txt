@@ -1,0 +1,63 @@
+CREATE TABLE t0 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    data BLOB,
+    status ENUM('active', 'inactive')
+);
+
+CREATE TABLE t1 (
+    id INT,
+    value DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=Aria;
+
+INSERT INTO t0 (name, data, status)
+VALUES ('Test1', 'dGVzdA==', 'active'),
+       ('Test2', NULL, 'inactive');
+
+INSERT INTO t1 (id, value)
+VALUES (1, 100.5),
+       (2, 200.75);
+
+SET @p1 = 'test_string';
+SET @p2 = 5;
+
+DELIMITER //
+CREATE PROCEDURE sp_test()
+BEGIN
+    SELECT * FROM t0;
+END//
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION fn_test(s VARCHAR(100))
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    IF s LIKE 'A%' THEN
+        RETURN 1;
+    ELSE
+        RETURN 0;
+    END IF;
+END//
+DELIMITER ;
+
+CREATE TRIGGER trg_after_insert
+AFTER INSERT ON t0
+FOR EACH ROW
+BEGIN
+    INSERT INTO t_log (action, timestamp)
+    VALUES ('insert', NOW());
+END;
+
+SET GLOBAL event_scheduler = 1;
+CREATE EVENT ev_cleanup
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t1 WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 DAY);
+
+PREPARE stmt FROM 'SELECT id, name FROM t0 WHERE status = ?';
+EXECUTE stmt USING 'active';
+
+CALL sp_test();
+SELECT fn_test('Apple') AS result;

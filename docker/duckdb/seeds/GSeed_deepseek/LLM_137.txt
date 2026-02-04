@@ -1,0 +1,45 @@
+-- Create table with various data types to test different scenarios
+CREATE TABLE test_types (
+    id INTEGER,
+    text_col TEXT,
+    float_col FLOAT,
+    blob_col BLOB,
+    date_col DATE,
+    time_col TIME,
+    timestamp_col TIMESTAMP,
+    interval_col INTERVAL
+);
+
+-- Insert edge-case and NULL values into the table
+INSERT INTO test_types VALUES 
+(0, 'test', 123.456, x'010203', '2023-01-01', '12:34:56', '2023-01-01 12:34:56', INTERVAL '1 day'),
+(1, NULL, -9223372036854775808.0, x'FEFF', '2023-12-31', '23:59:59', '2023-12-31 23:59:59', INTERVAL '-1 day');
+
+-- Create indexes to test query optimization paths
+CREATE INDEX idx_id ON test_types (id);
+
+-- Create a view that combines data and uses complex expressions
+CREATE VIEW test_view AS 
+SELECT 
+    id,
+    text_col || ' appended' as concatenated_text,
+    float_col * 2 as doubled_float,
+    blob_col::TEXT as blob_as_text,
+    date_col + INTERVAL '1 month' as future_date,
+    timestamp_col - INTERVAL '1 hour' as past_timestamp
+FROM test_types;
+
+-- Complex SELECT statement with joins, aggregations, and window functions
+SELECT 
+    t.id,
+    v.concatenated_text,
+    SUM(t.float_col) OVER (PARTITION BY t.text_col) as sum_float_partitioned,
+    COUNT(*) OVER () as total_rows,
+    AVG(t.doubled_float) as average_doubled_float,
+    ROW_NUMBER() OVER (ORDER BY t.id DESC) as row_number_desc
+FROM test_types t
+JOIN test_view v ON t.id = v.id
+WHERE t.text_col IS NOT NULL
+GROUP BY t.id, v.concatenated_text
+HAVING COUNT(*) > 0
+LIMIT 10;

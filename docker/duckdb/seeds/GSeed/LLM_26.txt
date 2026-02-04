@@ -1,0 +1,25 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (value) VALUES (1), (2), (3), (NULL);
+
+CREATE VIEW even_integers AS
+SELECT value FROM integers WHERE value % 2 = 0;
+
+CREATE MACRO double(x) AS (x * 2);
+
+SELECT double(value) FROM integers;
+
+-- DuckDB specific feature: APPROXIMATE PERCENTILE
+SELECT approx_percentile(value, 0.5) FROM integers;
+
+-- Test JSON functionality
+CREATE TABLE json_data (data JSON);
+INSERT INTO json_data VALUES ('{"a": 1, "b": "hello"}');
+SELECT data['a'] FROM json_data;
+
+-- UDF example (though this is simplified and doesn't *actually* create a persistent UDF)
+CREATE FUNCTION my_upper(str VARCHAR) RETURNS VARCHAR AS 'upper';
+SELECT my_upper('test');

@@ -1,0 +1,47 @@
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+SET SQL_MODE='ALLOW_INVALID_DATES';
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INT NOT NULL,
+    category_id INT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    UNIQUE KEY product_category (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Home Goods');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.50),
+('The Lord of the Rings', 'A classic fantasy novel', 25.99),
+('Coffee Maker', 'Makes delicious coffee every morning', 75.00);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1), (2, 2), (3, 3);
+
+-- Test a spatial function
+CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY NOT NULL);
+INSERT INTO spatial_data VALUES (1, ST_GeomFromText('POINT(1 1)'));
+SELECT ST_Distance(geom, ST_GeomFromText('POINT(2 2)')) FROM spatial_data;
+
+-- Test JSON functionality
+CREATE TABLE json_data (id INT PRIMARY KEY, data JSON);
+INSERT INTO json_data (id, data) VALUES (1, '{"name": "John Doe", "age": 30}');
+SELECT data->>'$.name' FROM json_data;
+
+-- Test a fulltext index
+ALTER TABLE products ADD FULLTEXT INDEX name_description_fulltext (name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('laptop');

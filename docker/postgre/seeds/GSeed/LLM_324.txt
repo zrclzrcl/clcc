@@ -1,0 +1,97 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1225.00),
+(2, 25.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 1, 25.00);
+
+UPDATE products SET price = 1250.00 WHERE product_id = 1;
+
+DELETE FROM order_items WHERE order_item_id = 2;
+
+SELECT * FROM users WHERE username = 'john_doe';
+
+SELECT o.order_id, u.username, p.name, oi.quantity
+FROM orders o
+JOIN users u ON o.user_id = u.id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON oi.product_id = p.product_id;
+
+CREATE INDEX idx_username ON users (username);
+
+ALTER TABLE products ADD COLUMN category VARCHAR(50);
+
+UPDATE products SET category = 'Electronics' WHERE product_id IN (1,2);
+
+-- PostgreSQL Specific features
+CREATE TABLE json_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_data (data) VALUES
+('{"name": "Test", "value": 123}');
+
+SELECT data->>'name' FROM json_data;
+
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+SELECT generate_series(1, 5);
+
+-- Example using crypto extension
+CREATE TABLE secrets (
+    id SERIAL PRIMARY KEY,
+    encrypted_data BYTEA
+);
+
+INSERT INTO secrets (encrypted_data) VALUES (pgp_sym_encrypt('MySecret', 'key'));
+
+SELECT pgp_sym_decrypt(encrypted_data, 'key') FROM secrets;

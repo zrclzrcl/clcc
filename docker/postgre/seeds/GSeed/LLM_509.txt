@@ -1,0 +1,182 @@
+-- Initial seed for PostgreSQL 18 RC1 fuzzing
+
+-- Create an extension (for extension-related fuzzing)
+CREATE EXTENSION IF NOT EXISTS citext;
+
+-- Create a simple table
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+-- Create an unlogged table
+CREATE UNLOGGED TABLE fuzz_unlogged_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT
+);
+
+-- Insert some data
+INSERT INTO fuzz_test_table (name, value) VALUES
+('test1', 10),
+('test2', 20),
+('test3', 30);
+
+-- Update data
+UPDATE fuzz_test_table SET value = 40 WHERE name = 'test1';
+
+-- Delete data
+DELETE FROM fuzz_test_table WHERE value = 20;
+
+-- Select data
+SELECT * FROM fuzz_test_table WHERE value > 25;
+
+-- Select with a join
+CREATE TABLE fuzz_related_table (
+    related_id SERIAL PRIMARY KEY,
+    fuzz_test_table_id INTEGER REFERENCES fuzz_test_table(id),
+    description TEXT
+);
+
+INSERT INTO fuzz_related_table (fuzz_test_table_id, description) VALUES
+(1, 'related to test1'),
+(3, 'related to test3');
+
+SELECT * FROM fuzz_test_table JOIN fuzz_related_table ON fuzz_test_table.id = fuzz_related_table.fuzz_test_table_id;
+
+-- Create an index
+CREATE INDEX idx_fuzz_test_table_name ON fuzz_test_table (name);
+
+-- Create an index concurrently
+CREATE INDEX CONCURRENTLY idx_fuzz_test_table_value ON fuzz_test_table (value);
+
+-- Create a table with generated column
+CREATE TABLE fuzz_generated_table (
+    id SERIAL PRIMARY KEY,
+    a INTEGER,
+    b INTEGER,
+    c INTEGER GENERATED ALWAYS AS (a + b) STORED
+);
+
+INSERT INTO fuzz_generated_table (a, b) VALUES (1, 2), (3, 4);
+
+-- Recursive query
+CREATE TABLE fuzz_tree (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES fuzz_tree(id),
+    name VARCHAR(255)
+);
+
+INSERT INTO fuzz_tree (parent_id, name) VALUES
+(NULL, 'root'),
+(1, 'child1'),
+(1, 'child2'),
+(2, 'grandchild1');
+
+WITH RECURSIVE tree_path AS (
+    SELECT id, name, parent_id, ARRAY[name] AS path
+    FROM fuzz_tree
+    WHERE parent_id IS NULL
+
+    UNION ALL
+
+    SELECT t.id, t.name, t.parent_id, tp.path || t.name
+    FROM fuzz_tree t
+    JOIN tree_path tp ON t.parent_id = tp.id
+)
+SELECT * FROM tree_path;
+
+-- JSONB operations
+CREATE TABLE fuzz_json_table (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO fuzz_json_table (data) VALUES
+('{"name": "item1", "value": 100}'),
+('{"name": "item2", "value": 200}');
+
+SELECT data ->> 'name' FROM fuzz_json_table WHERE data ->> 'value' = '100';
+SELECT * FROM fuzz_json_table WHERE data @> '{"value": 200}';
+
+-- Enum type
+CREATE TYPE fuzz_status AS ENUM ('open', 'closed', 'pending');
+
+CREATE TABLE fuzz_enum_table (
+    id SERIAL PRIMARY KEY,
+    status fuzz_status
+);
+
+INSERT INTO fuzz_enum_table (status) VALUES ('open'), ('closed'), ('pending');
+
+SELECT * FROM fuzz_enum_table WHERE status = 'open';
+
+-- Check constraint with function
+
+CREATE FUNCTION check_value(val integer) RETURNS boolean AS $$
+BEGIN
+    RETURN val > 0;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TABLE fuzz_check_table (
+    id SERIAL PRIMARY KEY,
+    value INTEGER CHECK (check_value(value))
+);
+
+INSERT INTO fuzz_check_table (value) VALUES (1);
+-- INSERT INTO fuzz_check_table (value) VALUES (-1); -- This will fail
+
+-- Full text search
+
+CREATE TABLE fuzz_fts_table (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    body TEXT,
+    tsv tsvector
+);
+
+CREATE INDEX idx_fts_tsv ON fuzz_fts_table USING GIN (tsv);
+
+UPDATE fuzz_fts_table SET tsv = to_tsvector('english', title || ' ' || body);
+
+INSERT INTO fuzz_fts_table (title, body) VALUES ('PostgreSQL Fuzzing', 'This is a test of full text search');
+
+SELECT * FROM fuzz_fts_table WHERE tsv @@ to_tsquery('english', 'fuzzing');
+
+-- uuid support
+
+CREATE TABLE fuzz_uuid_table (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    data TEXT
+);
+
+INSERT INTO fuzz_uuid_table (data) VALUES ('test uuid');
+
+SELECT * FROM fuzz_uuid_table;
+
+-- Aggregates and Group By
+SELECT COUNT(*), name FROM fuzz_test_table GROUP BY name;
+
+-- Window Functions
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value) FROM fuzz_test_table;
+
+-- Materialized View
+CREATE MATERIALIZED VIEW fuzz_materialized_view AS SELECT name, value FROM fuzz_test_table WHERE value > 10;
+REFRESH MATERIALIZED VIEW fuzz_materialized_view;
+SELECT * FROM fuzz_materialized_view;
+
+-- Drop table
+DROP TABLE fuzz_check_table;
+DROP TABLE fuzz_enum_table;
+DROP TABLE fuzz_fts_table;
+DROP TABLE fuzz_generated_table;
+DROP TABLE fuzz_json_table;
+DROP TABLE fuzz_related_table;
+DROP TABLE fuzz_test_table;
+DROP TABLE fuzz_tree;
+DROP TABLE fuzz_unlogged_table;
+DROP TABLE fuzz_uuid_table;
+
+-- Drop materialized view
+DROP MATERIALIZED VIEW fuzz_materialized_view;

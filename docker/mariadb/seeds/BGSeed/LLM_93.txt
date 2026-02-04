@@ -1,0 +1,30 @@
+SET @orig_log_state = @@global.general_log;
+SET GLOBAL general_log = 'OFF';
+CREATE TABLE t1 (a INT, b INT, c VARCHAR(20));
+INSERT INTO t1 VALUES (1, 2, 'abc'), (3, 4, 'def');
+CREATE TABLE t2 (x INT, y INT);
+INSERT INTO t2 VALUES (1, 5), (3, 7);
+-- Test JOINs and subqueries
+SELECT * FROM t1 JOIN t2 ON t1.a = t2.x WHERE t1.b > (SELECT AVG(y) FROM t2);
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE my_proc(IN val INT)
+BEGIN
+    SELECT * FROM t1 WHERE a = val;
+END //
+DELIMITER ;
+CALL my_proc(1);
+-- Test user-defined functions (UDFs). Note: This assumes a UDF named `my_udf` is installed.
+-- Installation of UDFs is beyond the scope of this seed, but crucial for real-world fuzzing.
+-- SELECT my_udf(a) FROM t1; -- Uncomment and adapt if a UDF is available
+-- Test window functions
+SELECT a, b, ROW_NUMBER() OVER (ORDER BY b) AS row_num FROM t1;
+-- Test temporary tables
+CREATE TEMPORARY TABLE tmp_t1 AS SELECT * FROM t1;
+SELECT * FROM tmp_t1;
+DROP TEMPORARY TABLE IF EXISTS tmp_t1;
+-- Test JSON functions
+SELECT JSON_OBJECT('a', 1, 'b', 'c') AS json_data;
+-- Test spatial functions (requires spatial extensions to be enabled, which might not be by default)
+-- CREATE TABLE t3 (g GEOMETRY); -- Uncomment if spatial extensions are enabled.  Example beyond seed scope
+SET GLOBAL general_log = @orig_log_state;

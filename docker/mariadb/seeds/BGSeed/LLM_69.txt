@@ -1,0 +1,43 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES
+('John', 'Doe', 60000.00, 1),
+('Jane', 'Smith', 75000.00, 2),
+('Peter', 'Jones', 90000.00, 3);
+
+-- MariaDB specific feature: Virtual columns
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(101) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) VIRTUAL;
+
+-- MariaDB specific feature: Sequence
+CREATE SEQUENCE employee_seq START WITH 4 INCREMENT BY 1;
+
+-- Insert using the sequence
+INSERT INTO employees (emp_id, first_name, last_name, salary, department_id) VALUES
+(next value for employee_seq, 'Alice', 'Brown', 80000.00, 1);
+
+-- Test some basic queries.
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT department_name FROM departments WHERE location = 'London';
+
+-- Optimize tables
+OPTIMIZE TABLE employees, departments;

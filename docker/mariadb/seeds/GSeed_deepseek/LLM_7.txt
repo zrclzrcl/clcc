@@ -1,0 +1,71 @@
+-- Step 1: Create Table t1 (users)
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    age TINYINT NOT NULL,
+    balance DECIMAL(10,2) DEFAULT 0.00,
+    joined_date DATE NOT NULL
+);
+
+-- Step 2: Insert sample data into t1
+INSERT INTO t1 (name, age, balance, joined_date)
+VALUES
+('Alice Smith', 30, 5000.00, '2023-01-15'),
+('Bob Johnson', 25, 3000.00, '2023-02-20'),
+('Charlie Brown', 45, 8000.00, '2023-03-01');
+
+-- Step 3: Create Table t2 (transactions)
+CREATE TABLE t2 (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    transaction_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES t1(id)
+);
+
+-- Step 4: Insert sample transactions into t2
+INSERT INTO t2 (user_id, amount)
+VALUES
+(1, 500.00),
+(2, -200.00),
+(3, 1000.00),
+(1, 750.00);
+
+-- Step 5: Create View v1 to show user details and total transactions
+CREATE VIEW v1 AS
+SELECT 
+    t1.id,
+    name,
+    age,
+    balance,
+    joined_date,
+    COALESCE(SUM(amount), 0) AS total_transactions
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.user_id
+GROUP BY t1.id;
+
+-- Step 6: Create Stored Procedure sp1 to update balance if user is over 25
+DELIMITER $$
+CREATE PROCEDURE sp1(IN user_id INT)
+BEGIN
+    DECLARE current_age TINYINT;
+    
+    -- Retrieve the user's age
+    SELECT age INTO current_age FROM t1 WHERE id = user_id;
+    
+    -- Check if age is greater than 25
+    IF current_age > 25 THEN
+        UPDATE t1 SET balance = balance + 100.00 WHERE id = user_id;
+    END IF;
+END$$
+DELIMITER ;
+
+-- Step 7: Create Trigger trg1 to update user's balance after a transaction is inserted
+DELIMITER $$
+CREATE TRIGGER trg1 AFTER INSERT ON t2
+FOR EACH ROW
+BEGIN
+    -- Update the user's balance by adding the transaction amount
+    UPDATE t1 SET balance = balance + NEW.amount WHERE id = NEW.user_id;
+END$$
+DELIMITER ;

@@ -1,0 +1,34 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+INSERT INTO integers (id, value) VALUES (3, 30);
+
+CREATE VIEW value_view AS SELECT value FROM integers WHERE value > 15;
+
+CREATE TABLE strings (
+    text VARCHAR
+);
+
+INSERT INTO strings VALUES ('hello');
+INSERT INTO strings VALUES ('world');
+
+ALTER TABLE integers ADD COLUMN description VARCHAR;
+
+UPDATE integers SET description = 'ten' WHERE id = 1;
+
+CREATE INDEX value_index ON integers (value);
+
+-- DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT approx_count_distinct(value) FROM integers;
+
+-- Test string functions
+SELECT levenshtein('kitten', 'sitting');
+
+-- Test date functions
+SELECT date('now');
+
+DROP VIEW value_view;

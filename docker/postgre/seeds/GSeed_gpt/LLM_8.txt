@@ -1,0 +1,57 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK (age >= 0),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, age) VALUES 
+('Alice', 30),
+('Bob', 25),
+('', 40),
+(NULL, 50);
+
+SELECT t1.name, t2.age 
+FROM test_table t1 
+JOIN (
+    SELECT id, name FROM test_table WHERE is_active = TRUE
+) t2 ON t1.id = t2.id 
+WHERE t1.created_at > '2023-01-01';
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+CREATE INDEX idx_name ON test_table (name);
+CREATE INDEX idx_gin_description ON test_table USING gin(description);
+
+BEGIN;
+    UPDATE test_table SET is_active = FALSE WHERE age >= 40;
+    SAVEPOINT my_savepoint;
+    DELETE FROM test_table WHERE name = 'Alice';
+    ROLLBACK TO my_savepoint;
+COMMIT;
+
+CREATE VIEW test_view AS 
+SELECT name, age, created_at::DATE AS signup_date 
+FROM test_table 
+WHERE is_active = TRUE;
+
+CREATE OR REPLACE FUNCTION increment_age()
+RETURNS TRIGGER LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.age := OLD.age + 1;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER update_age_trigger
+BEFORE UPDATE ON test_table
+FOR EACH ROW EXECUTE PROCEDURE increment_age();
+
+SELECT * FROM test_view;
+
+DROP TRIGGER update_age_trigger ON test_table;
+DROP FUNCTION increment_age();
+DROP VIEW test_view;
+DROP TABLE test_table;

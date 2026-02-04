@@ -1,0 +1,23 @@
+SHOW GLOBAL VARIABLES LIKE 'auto_increment%';
+CREATE TABLE test_index (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255),
+  age INT,
+  INDEX name_age_idx (name, age) USING BTREE
+);
+INSERT INTO test_index (name, age) VALUES ('Alice', 30), ('Bob', 25), ('Charlie', 40);
+CREATE TABLE test_partition (
+    id INT,
+    name VARCHAR(50)
+)
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+INSERT INTO test_partition VALUES (5, 'Dave'), (15, 'Eve'), (25, 'Frank');
+SELECT * FROM test_partition PARTITION (p1);
+CREATE TEMPORARY TABLE temp_table (id INT, value VARCHAR(20));
+INSERT INTO temp_table VALUES (1, 'Temporary');
+SELECT * FROM temp_table;
+EXPLAIN SELECT * FROM test_index WHERE name = 'Alice';

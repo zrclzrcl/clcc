@@ -1,0 +1,75 @@
+BEGIN;
+SELECT pg_advisory_xact_lock(1);
+SELECT pg_advisory_xact_lock(2);
+SELECT pg_advisory_xact_lock(3);
+SELECT pg_advisory_lock(4, 5);
+SELECT pg_advisory_lock(6, 7);
+SELECT pg_advisory_lock(8, 9);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+COMMIT;
+
+BEGIN;
+SELECT pg_advisory_xact_lock(1);
+SELECT pg_advisory_xact_lock(2);
+SELECT pg_advisory_xact_lock(3);
+SELECT pg_advisory_lock(4, 5);
+SELECT pg_advisory_lock(6, 7);
+SELECT pg_advisory_lock(8, 9);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+ROLLBACK;
+
+SELECT pg_advisory_lock(10, 11);
+SELECT pg_advisory_lock(12, 13);
+SELECT pg_advisory_lock(14, 15);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+
+BEGIN;
+SELECT pg_advisory_xact_lock(16);
+SELECT pg_advisory_xact_lock(17);
+SELECT pg_advisory_xact_lock(18);
+SELECT pg_advisory_lock(19, 20);
+SELECT pg_advisory_lock(21, 22);
+SELECT pg_advisory_lock(23, 24);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+COMMIT;
+
+SELECT pg_advisory_unlock_all();
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+
+BEGIN;
+SELECT pg_advisory_xact_lock(1);
+SELECT pg_advisory_xact_lock(2);
+SELECT pg_advisory_xact_lock(3);
+SELECT pg_advisory_lock(4, 5);
+SELECT pg_advisory_lock(6, 7);
+SELECT pg_advisory_lock(8, 9);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+COMMIT;
+
+BEGIN;
+SELECT pg_advisory_xact_lock(1);
+SELECT pg_advisory_xact_lock(2);
+SELECT pg_advisory_xact_lock(3);
+SELECT pg_advisory_lock(4, 5);
+SELECT pg_advisory_lock(6, 7);
+SELECT pg_advisory_lock(8, 9);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+ROLLBACK;
+
+SELECT pg_advisory_lock(25, 26);
+SELECT pg_advisory_lock(27, 28);
+SELECT pg_advisory_lock(29, 30);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+
+BEGIN;
+SELECT pg_advisory_xact_lock(31);
+SELECT pg_advisory_xact_lock(32);
+SELECT pg_advisory_xact_lock(33);
+SELECT pg_advisory_lock(34, 35);
+SELECT pg_advisory_lock(36, 37);
+SELECT pg_advisory_lock(38, 39);
+SELECT * FROM pg_locks WHERE locktype = 'advisory';
+COMMIT;
+
+SELECT pg_advisory_unlock_all();
+SELECT * FROM pg_locks WHERE locktype = 'advisory';

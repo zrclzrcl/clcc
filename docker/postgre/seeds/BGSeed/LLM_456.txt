@@ -1,0 +1,84 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL,
+    department VARCHAR(255)
+);
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+INSERT INTO department (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employee (name, salary, department) VALUES
+('Alice', 60000, 'Sales'),
+('Bob', 75000, 'Marketing'),
+('Charlie', 90000, 'Engineering');
+
+SELECT * FROM employee;
+
+SELECT * FROM department;
+
+SELECT employee.name, employee.salary, department.name AS department_name
+FROM employee
+JOIN department ON employee.department = department.name;
+
+UPDATE employee SET salary = 65000 WHERE name = 'Alice';
+
+DELETE FROM employee WHERE name = 'Charlie';
+
+SELECT AVG(salary) FROM employee;
+
+SELECT department, COUNT(*) FROM employee GROUP BY department;
+
+CREATE INDEX idx_employee_department ON employee (department);
+
+EXPLAIN SELECT * FROM employee WHERE department = 'Sales';
+
+PREPARE get_employee_by_id AS
+SELECT name, salary FROM employee WHERE id = $1;
+
+EXECUTE get_employee_by_id(1);
+
+DEALLOCATE get_employee_by_id;
+
+CREATE VIEW employee_view AS
+SELECT name, salary FROM employee WHERE salary > 70000;
+
+SELECT * FROM employee_view;
+
+DROP VIEW employee_view;
+
+CREATE MATERIALIZED VIEW materialized_employee AS
+SELECT name, salary FROM employee;
+
+SELECT * FROM materialized_employee;
+
+REFRESH MATERIALIZED VIEW materialized_employee;
+
+DROP MATERIALIZED VIEW materialized_employee;
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+ALTER TABLE employee ADD COLUMN hire_date DATE;
+
+UPDATE employee SET hire_date = CURRENT_DATE;
+
+SELECT name, age(hire_date) FROM employee;
+
+DROP TABLE employee;
+DROP TABLE department;

@@ -1,0 +1,63 @@
+-- Test case for SQLite database fuzzing
+-- This seed includes a variety of SQL statements that test different functionality paths in SQLite.
+
+-- Create tables with various data types and constraints
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    data BLOB,
+    flag BOOLEAN,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Test edge cases for data types (NULL, empty strings, large integers)
+INSERT INTO t1 VALUES(0, '', 3.14, x'ABCD', 1, '2024-01-01');
+INSERT INTO t1 VALUES(1, 'test', NULL, NULL, 0, CURRENT_TIMESTAMP);
+INSERT INTO t1 VALUES(2, 'hello', -9223372036854775808, x'1234', 1, NULL);
+
+-- Test RTree extension for spatial queries
+CREATE VIRTUAL TABLE t2 USING rtree(
+    id,
+    x1, y1,
+    x2, y2
+);
+
+-- Insert some test data for spatial queries
+INSERT INTO t2 VALUES(0, 0.0, 0.0, 100.0, 100.0);
+INSERT INTO t2 VALUES(1, 50.0, 50.0, 150.0, 150.0);
+
+-- Test basic SELECT with aggregations
+SELECT 
+    COUNT(*) as total,
+    SUM(value) as sum_value,
+    AVG(value) as avg_value,
+    MIN(id) as min_id,
+    MAX(ts) as max_ts
+FROM t1;
+
+-- Test complex query with subqueries and window functions
+WITH cte AS (
+    SELECT id, name, value FROM t1 WHERE flag = 1
+)
+SELECT 
+    c.id,
+    c.name,
+    c.value,
+    RANK() OVER (ORDER BY c.value DESC) as rank,
+    (SELECT COUNT(*) FROM t2 WHERE x1 <= c.id AND y1 <= c.id) as count_spatial
+FROM cte c;
+
+-- Test full-text search with FTS5 extension
+CREATE VIRTUAL TABLE ft USING fts5(name, content);
+INSERT INTO ft VALUES('test document', 'This is a test document for SQLite fuzz testing');
+SELECT * FROM ft WHERE ft MATCH 'test';
+
+-- Test vacuum and analyze commands
+VACUUM;
+ANALYZE;
+
+-- Cleanup (uncomment if needed)
+-- DROP TABLE t1;
+-- DROP TABLE t2;
+-- DROP TABLE ft;

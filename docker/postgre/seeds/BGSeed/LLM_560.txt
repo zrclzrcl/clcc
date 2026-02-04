@@ -1,0 +1,178 @@
+-- Initial seed for PostgreSQL 18 RC1
+
+-- Create a sample table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    department VARCHAR(255),
+    salary NUMERIC(10, 2),
+    hire_date DATE,
+    skills TEXT[]
+);
+
+-- Insert some data
+INSERT INTO employees (name, department, salary, hire_date, skills) VALUES
+('Alice Smith', 'Sales', 60000.00, '2022-01-15', ARRAY['sales', 'communication']),
+('Bob Johnson', 'Marketing', 75000.00, '2021-05-20', ARRAY['marketing', 'analysis', 'seo']),
+('Charlie Brown', 'Sales', 62000.00, '2022-03-10', ARRAY['sales', 'negotiation']),
+('David Williams', 'Engineering', 90000.00, '2020-11-01', ARRAY['programming', 'design', 'testing']),
+('Eve Davis', 'Marketing', 78000.00, '2021-08-01', ARRAY['marketing', 'social media', 'content']),
+('Finn Taylor', 'Engineering', 95000.00, '2020-09-15', ARRAY['programming', 'architecture', 'devops']);
+
+-- Create another table for departments
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(255) UNIQUE NOT NULL,
+    location VARCHAR(255)
+);
+
+-- Insert data into the departments table
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+-- Add a foreign key constraint to the employees table
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+-- Update the employees table with department IDs
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+-- Basic SELECT query
+SELECT * FROM employees;
+
+-- SELECT with WHERE clause
+SELECT name, salary FROM employees WHERE department = 'Sales' AND salary > 60000;
+
+-- SELECT with ORDER BY
+SELECT name, hire_date FROM employees ORDER BY hire_date DESC;
+
+-- SELECT with LIMIT and OFFSET
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3 OFFSET 1;
+
+-- SELECT with JOIN
+SELECT e.name, d.dept_name, d.location
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+-- SELECT with GROUP BY and aggregate function
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+-- SELECT with HAVING clause
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 70000;
+
+-- SELECT with DISTINCT
+SELECT DISTINCT department FROM employees;
+
+-- Using CASE statement
+SELECT
+    name,
+    CASE
+        WHEN salary > 80000 THEN 'High'
+        WHEN salary > 65000 THEN 'Medium'
+        ELSE 'Low'
+    END AS salary_level
+FROM employees;
+
+-- Using COALESCE and NULLIF
+SELECT COALESCE(department, 'Unknown') AS department, NULLIF(location, 'San Francisco') AS location
+FROM departments;
+
+-- Subquery example
+SELECT name, salary
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees WHERE department = 'Engineering');
+
+-- Common Table Expression (CTE) example
+WITH HighSalaryEmployees AS (
+    SELECT name, salary
+    FROM employees
+    WHERE salary > 80000
+)
+SELECT name, salary
+FROM HighSalaryEmployees
+ORDER BY salary DESC;
+
+-- Array operations
+SELECT name, skills FROM employees WHERE 'programming' = ANY(skills);
+SELECT name, skills[1] AS first_skill FROM employees;
+
+-- JSON functions (assuming a JSON column exists - let's add one!)
+ALTER TABLE employees ADD COLUMN profile JSONB;
+UPDATE employees SET profile = jsonb_build_object('age', 30, 'city', 'Example City') WHERE id = 1;
+SELECT name, profile ->> 'city' AS city FROM employees;
+
+-- Create index concurrently
+CREATE INDEX CONCURRENTLY idx_employees_department ON employees (department);
+
+-- Create table with fillfactor
+CREATE TABLE large_table (id SERIAL PRIMARY KEY, data TEXT) WITH (FILLFACTOR = 70);
+
+-- Window function example
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Generate series
+SELECT generate_series(1, 10);
+
+-- More complex query combining multiple features
+WITH DepartmentAvgSalaries AS (
+    SELECT
+        dept_id,
+        AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY dept_id
+)
+SELECT
+    e.name,
+    e.salary,
+    d.dept_name,
+    das.avg_salary
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id
+JOIN DepartmentAvgSalaries das ON e.dept_id = das.dept_id
+WHERE e.salary > das.avg_salary
+ORDER BY e.salary DESC
+LIMIT 5;
+
+-- Adding some data type tests
+CREATE TABLE data_types_test (
+    id SERIAL PRIMARY KEY,
+    smallint_col SMALLINT,
+    integer_col INTEGER,
+    bigint_col BIGINT,
+    decimal_col DECIMAL(10, 2),
+    numeric_col NUMERIC(12, 4),
+    real_col REAL,
+    double_precision_col DOUBLE PRECISION,
+    serial_col SERIAL,
+    bigserial_col BIGSERIAL,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    timestamptz_col TIMESTAMPTZ,
+    time_col TIME,
+    timetz_col TIMETZ,
+    interval_col INTERVAL,
+    boolean_col BOOLEAN,
+    char_col CHAR(10),
+    varchar_col VARCHAR(20),
+    text_col TEXT,
+    bytea_col BYTEA,
+    uuid_col UUID,
+    json_col JSON,
+    jsonb_col JSONB,
+    xml_col XML
+);
+
+INSERT INTO data_types_test (smallint_col, integer_col, bigint_col, decimal_col, numeric_col, real_col, double_precision_col, date_col, timestamp_col, timestamptz_col, time_col, timetz_col, interval_col, boolean_col, char_col, varchar_col, text_col, bytea_col, uuid_col, json_col, jsonb_col, xml_col) VALUES
+(10, 1000, 1000000000, 12345.67, 98765.4321, 123.45, 9876.54321, '2024-01-01', '2024-01-01 10:00:00', '2024-01-01 10:00:00+00', '10:00:00', '10:00:00+00', '1 year 2 months', TRUE, 'a', 'test varchar', 'test text', '\x74657374'::bytea, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{"key": "value"}', '{"key": "value"}', '<root><element>data</element></root>');
+
+SELECT * FROM data_types_test;

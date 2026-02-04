@@ -1,0 +1,26 @@
+CREATE TABLE t1(n int, log int, dt date, flag boolean);
+INSERT INTO t1 VALUES(2, 1, '2023-01-01', true);
+INSERT INTO t1 VALUES(3, 1, NULL, false);
+INSERT INTO t1 VALUES(4, 1, '2023-01-02', true);
+INSERT INTO t1 VALUES(4, 3, '2023-01-02', NULL);
+
+SELECT n, log FROM t1 WHERE dt >= '2023-01-01' ORDER BY n;
+
+SELECT log, count(*) AS cnt FROM t1 GROUP BY log HAVING cnt > 2 ORDER BY cnt DESC;
+
+SELECT DISTINCT log FROM t1 ORDER BY log ASC;
+
+CREATE TABLE t2(id int, name varchar(50), age int, salary decimal);
+INSERT INTO t2 VALUES(1, 'Alice', 30, 50000.00);
+INSERT INTO t2 VALUES(2, 'Bob', NULL, 60000.50);
+INSERT INTO t2 VALUES(3, 'Charlie', 45, NULL);
+
+SELECT t1.n, t1.log, t2.name FROM t1 LEFT JOIN t2 ON t1.log = t2.id WHERE t2.age IS NOT NULL ORDER BY t1.n;
+
+SELECT * FROM (SELECT id, name, salary FROM t2 UNION ALL SELECT id+100, name || ' Jr.', salary*1.1 FROM t2) AS combined ORDER BY id;
+
+WITH cte AS (
+    SELECT log, n, ROW_NUMBER() OVER (ORDER BY n DESC) AS rn
+    FROM t1
+)
+SELECT log, n, rn FROM cte WHERE rn <= 3 ORDER BY rn;

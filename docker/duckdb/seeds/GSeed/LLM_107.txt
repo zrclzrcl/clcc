@@ -1,0 +1,57 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), ('DuckDB'), (NULL);
+
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-02-15'), (NULL);
+
+-- Using DuckDB's LIST type
+CREATE TABLE list_table (l INTEGER[]);
+INSERT INTO list_table VALUES ([1, 2, 3]), ([4, NULL, 6]), (NULL);
+
+-- Using DuckDB's STRUCT type
+CREATE TABLE struct_table (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO struct_table VALUES ({a: 1, b: 'one'}), ({a: NULL, b: 'two'}), (NULL);
+
+-- Test CASE WHEN expressions
+SELECT i, CASE WHEN i IS NULL THEN 'NULL' ELSE 'Not NULL' END FROM integers;
+
+-- Test string functions
+SELECT s, UPPER(s), LENGTH(s) FROM strings;
+
+-- Test date functions
+SELECT d, DATE_TRUNC('month', d) FROM dates;
+
+-- Test LIST operations
+SELECT l, list_sum(l), list_contains(l, 2) FROM list_table;
+
+-- Test STRUCT access
+SELECT s, s.a, s.b FROM struct_table;
+
+-- Test UNNEST
+SELECT i FROM list_table, UNNEST(l) AS i;
+
+-- Test grouping and aggregation
+SELECT s, COUNT(*) FROM strings GROUP BY s;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test DuckDB-specific extension (autoinstall is enabled by default)
+INSTALL httpfs;
+LOAD httpfs;
+
+-- Attempting a read from a (likely non-existent) remote file
+-- SELECT * FROM read_csv_auto('https://example.com/data.csv');
+
+-- Test JSON functionality
+CREATE TABLE json_test (j JSON);
+INSERT INTO json_test VALUES ('{"a": 1, "b": "hello"}'), ('[1,2,3]'), (NULL);
+SELECT j, json_extract_string(j, '$.b') from json_test where j is not NULL;
+
+CREATE TABLE empty_table (x INT);
+INSERT INTO empty_table SELECT * FROM integers WHERE 1=0; -- always empty
+
+SELECT * FROM empty_table;

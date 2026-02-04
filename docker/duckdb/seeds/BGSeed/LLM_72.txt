@@ -1,0 +1,76 @@
+BEGIN TRANSACTION;
+
+-- Create a table with various data types and constraints
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER CHECK (age > 0),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50) DEFAULT 'Unknown',
+    is_active BOOLEAN
+);
+
+-- Insert some sample data
+INSERT INTO employees (id, name, age, salary, hire_date, department, is_active) VALUES
+(1, 'Alice', 30, 60000.00, '2022-01-15', 'Sales', TRUE),
+(2, 'Bob', 25, 50000.00, '2023-03-10', 'Marketing', TRUE),
+(3, 'Charlie', 35, 75000.00, '2021-11-01', 'Engineering', TRUE),
+(4, 'David', 28, 55000.00, '2023-06-20', 'Sales', FALSE),
+(5, 'Eve', 40, 90000.00, '2020-09-05', 'Engineering', TRUE);
+
+-- Create a table to demonstrate foreign key relationships
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+-- Insert sample departments
+INSERT INTO departments (dept_id, dept_name, location) VALUES
+(1, 'Sales', 'New York'),
+(2, 'Marketing', 'Los Angeles'),
+(3, 'Engineering', 'San Francisco');
+
+-- Add a foreign key constraint to the employees table
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'Engineering';
+ALTER TABLE employees DROP COLUMN department; -- Remove redundant column
+
+-- Create a view
+CREATE VIEW active_employees AS
+SELECT id, name, age, salary, hire_date, dept_name
+FROM employees
+JOIN departments ON employees.dept_id = departments.dept_id
+WHERE is_active = TRUE;
+
+-- Example queries using DuckDB specific functions and features
+
+-- Use string functions
+SELECT name, UPPER(name), LOWER(name), SUBSTR(name, 1, 3) FROM employees;
+
+-- Use date functions
+SELECT name, hire_date, DATE_PART('year', hire_date), DATE_DIFF('day', hire_date, CURRENT_DATE()) FROM employees;
+
+-- Demonstrate UNNEST function (DuckDB specific)
+CREATE TABLE test_unnest (list INTEGER[]);
+INSERT INTO test_unnest VALUES ([1, 2, 3]), ([4, 5, 6]);
+SELECT value FROM test_unnest, UNNEST(list) AS value;
+
+-- Demonstrate LIST_VALUE function (DuckDB specific, creates a list from input values)
+SELECT LIST_VALUE(1,2,3);
+
+-- Demonstrate STRUCT_PACK (DuckDB specific)
+SELECT STRUCT_PACK(a := 1, b := 'hello');
+
+-- Demonstrate JSON functionality (DuckDB specific - limited in initial versions, expanded later)
+CREATE TABLE json_test (id INTEGER, data JSON);
+INSERT INTO json_test VALUES (1, '{"name": "John", "age": 30}');
+SELECT data -> 'name' FROM json_test; -- Access JSON elements
+
+-- Demonstrate window functions
+SELECT name, salary, AVG(salary) OVER (PARTITION BY dept_id) FROM employees;
+
+COMMIT TRANSACTION;

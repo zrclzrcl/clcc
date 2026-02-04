@@ -1,0 +1,31 @@
+CREATE TABLE test_fuzz (
+    id INT4,
+    data TEXT,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    flag BOOLEAN,
+    value NUMERIC(10,2)
+);
+
+INSERT INTO test_fuzz VALUES (1, 'small text', DEFAULT, TRUE, 100.5);
+INSERT INTO test_fuzz SELECT generate_series(2, 100) as id, LPAD('', 1000, 'x') as data, CURRENT_TIMESTAMP, FALSE, random() * 1000;
+
+CREATE INDEX idx_id ON test_fuzz (id);
+CREATE INDEX idx_data_gin ON test_fuzz USING GIN (data gin_trgm_ops);
+CREATE UNIQUE INDEX idx_unique ON test_fuzz (id, flag);
+
+SET work_mem = '64kB';
+SET enable_seqscan = FALSE;
+SET enable_indexscan = TRUE;
+
+SELECT COUNT(*) FROM test_fuzz WHERE value > 500;
+SELECT * FROM test_fuzz JOIN (SELECT id FROM test_fuzz WHERE flag IS TRUE) t USING (id);
+SELECT data FROM test_fuzz WHERE id IN (SELECT id FROM test_fuzz WHERE value < 100);
+SELECT SUM(value), AVG(value) FROM test_fuzz GROUP BY flag;
+SELECT id, data, RANK() OVER (ORDER BY value DESC) FROM test_fuzz;
+
+WITH cte AS (
+    SELECT * FROM test_fuzz WHERE ts > CURRENT_TIMESTAMP - INTERVAL '1 day'
+)
+SELECT COUNT(*) FROM cte;
+
+SELECT * FROM test_fuzz WHERE data IS NULL;

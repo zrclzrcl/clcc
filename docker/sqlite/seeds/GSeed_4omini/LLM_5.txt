@@ -1,0 +1,16 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT COLLATE NOCASE, age INTEGER);
+INSERT INTO users (username, email, age) VALUES ('Alice', 'alice@example.com', 30);
+INSERT INTO users (username, email, age) VALUES ('Bob', 'bob@Example.com', 25);
+INSERT INTO users (username, email) VALUES ('Charlie', 'charlie@example.com');
+SELECT id, username, email FROM users WHERE age IS NOT NULL;
+UPDATE users SET age = 26 WHERE username = 'Bob';
+DELETE FROM users WHERE id = 3;
+ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, total_amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, total_amount) VALUES (1, 150.75);
+INSERT INTO orders (user_id, total_amount) VALUES (2, 75.25);
+INSERT INTO orders (user_id, total_amount) VALUES (1, 20.00);
+SELECT users.username, SUM(orders.total_amount) FROM users JOIN orders ON users.id = orders.user_id GROUP BY users.username;
+CREATE INDEX idx_user_email ON users(email);
+SELECT username, COUNT(*) FROM orders JOIN users ON orders.user_id = users.id GROUP BY username HAVING COUNT(*) > 1;

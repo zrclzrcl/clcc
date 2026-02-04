@@ -1,0 +1,117 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_products_name ON products (name);
+
+INSERT INTO products (name, description, price) VALUES
+    ('Laptop', 'High-performance laptop for professionals', 1200.50),
+    ('Mouse', 'Ergonomic wireless mouse', 25.99),
+    ('Keyboard', 'Mechanical keyboard with RGB lighting', 100.00),
+    ('Monitor', '27-inch 4K UHD monitor', 450.75);
+
+SELECT * FROM products WHERE price > 50 ORDER BY name;
+
+UPDATE products SET price = price * 1.10 WHERE id = 1;
+
+DELETE FROM products WHERE id = 2;
+
+CREATE VIEW expensive_products AS
+SELECT id, name, price FROM products WHERE price > 500;
+
+SELECT * FROM expensive_products;
+
+CREATE OR REPLACE FUNCTION discount_price(original_price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN original_price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, discount_price(price, 10) AS discounted_price FROM products;
+
+CREATE TABLE product_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+INSERT INTO product_categories (name) VALUES
+    ('Electronics'),
+    ('Accessories');
+
+ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES product_categories(id);
+
+UPDATE products SET category_id = 1 WHERE name IN ('Laptop', 'Monitor');
+UPDATE products SET category_id = 2 WHERE name IN ('Mouse', 'Keyboard');
+
+SELECT p.name, p.price, pc.name AS category FROM products p JOIN product_categories pc ON p.category_id = pc.id;
+
+CREATE TABLE product_details (
+    product_id INTEGER PRIMARY KEY REFERENCES products(id),
+    screen_size VARCHAR(20),
+    ram INTEGER,
+    storage VARCHAR(20)
+);
+
+INSERT INTO product_details (product_id, screen_size, ram, storage) VALUES
+    (1, '15.6 inch', 16, '512GB SSD'),
+    (4, '27 inch', NULL, NULL);
+
+SELECT p.name, pd.screen_size, pd.ram, pd.storage FROM products p LEFT JOIN product_details pd ON p.id = pd.product_id;
+
+CREATE INDEX idx_product_details_ram ON product_details (ram);
+
+SELECT current_database(), current_user, version();
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+-- Using WITH ORDINALITY
+SELECT * FROM generate_series(10, 12) WITH ORDINALITY AS t(num, ord);
+
+-- Using LATERAL JOIN
+SELECT p.name, s.i FROM products p, generate_series(1,3) AS s(i) WHERE p.id = 1;
+
+-- Using window functions
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Using common table expression (CTE)
+WITH ExpensiveProducts AS (
+    SELECT id, name, price FROM products WHERE price > 100
+)
+SELECT name, price FROM ExpensiveProducts ORDER BY price DESC;
+
+-- Example using unnest and arrays
+SELECT * FROM unnest(ARRAY['a','b','c']);
+
+-- Example using pg_sleep
+SELECT pg_sleep(0.01);
+
+--Example using case statements
+SELECT name,
+       CASE
+           WHEN price > 500 THEN 'Expensive'
+           WHEN price > 100 THEN 'Moderate'
+           ELSE 'Affordable'
+       END AS price_category
+FROM products;
+
+-- JSON examples
+ALTER TABLE products ADD COLUMN details JSONB;
+
+UPDATE products SET details = '{"screen_size": "15.6 inch", "ram": "16GB"}'::jsonb WHERE id = 1;
+
+SELECT name, details ->> 'screen_size' AS screen_size FROM products;
+
+SELECT name FROM products WHERE details @> '{"ram": "16GB"}'::jsonb;
+
+-- Cleanup
+DROP VIEW IF EXISTS expensive_products;
+DROP FUNCTION IF EXISTS discount_price(DECIMAL, DECIMAL);
+DROP TABLE IF EXISTS product_details;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS product_categories;

@@ -1,0 +1,140 @@
+SET client_min_messages TO 'warning';
+
+-- Create and drop schema
+CREATE SCHEMA test_schema;
+DROP SCHEMA test_schema;
+
+-- Create and drop table
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255));
+DROP TABLE test_table;
+
+-- Create and drop index
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255));
+CREATE INDEX test_index ON test_table (name);
+DROP INDEX test_index;
+DROP TABLE test_table;
+
+-- Insert, update, delete data
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255));
+INSERT INTO test_table (name) VALUES ('test1'), ('test2');
+UPDATE test_table SET name = 'updated' WHERE id = 1;
+DELETE FROM test_table WHERE id = 2;
+DROP TABLE test_table;
+
+-- Select data with various conditions
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255), age INTEGER);
+INSERT INTO test_table (name, age) VALUES ('test1', 20), ('test2', 30), ('test3', 25);
+SELECT * FROM test_table WHERE age > 22 AND name LIKE 'test%';
+SELECT COUNT(*) FROM test_table WHERE age < 30;
+SELECT AVG(age) FROM test_table;
+DROP TABLE test_table;
+
+-- Create view and materialized view
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255));
+CREATE VIEW test_view AS SELECT id, name FROM test_table;
+CREATE MATERIALIZED VIEW test_mat_view AS SELECT id, name FROM test_table;
+DROP MATERIALIZED VIEW test_mat_view;
+DROP VIEW test_view;
+DROP TABLE test_table;
+
+-- Create function and trigger
+CREATE FUNCTION test_func(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(255), value INTEGER);
+
+CREATE OR REPLACE FUNCTION test_trigger_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.value := NEW.value * 2;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER test_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+EXECUTE PROCEDURE test_trigger_func();
+
+INSERT INTO test_table (name, value) VALUES ('test', 5);
+
+DROP TRIGGER test_trigger ON test_table;
+DROP FUNCTION test_trigger_func();
+DROP TABLE test_table;
+DROP FUNCTION test_func(INTEGER, INTEGER);
+
+-- Create type and domain
+CREATE TYPE test_type AS (a INTEGER, b TEXT);
+CREATE DOMAIN test_domain AS INTEGER CHECK (VALUE > 0);
+DROP DOMAIN test_domain;
+DROP TYPE test_type;
+
+-- Create and use enum
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (name text, current_mood mood);
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+SELECT * FROM person WHERE current_mood = 'happy';
+DROP TABLE person;
+DROP TYPE mood;
+
+-- Create and use sequence
+CREATE SEQUENCE test_seq START 1 INCREMENT 1;
+SELECT nextval('test_seq');
+DROP SEQUENCE test_seq;
+
+-- Use window functions
+CREATE TABLE sales (
+    product VARCHAR(50),
+    quarter VARCHAR(10),
+    sales_amount INTEGER
+);
+
+INSERT INTO sales (product, quarter, sales_amount) VALUES
+('Product A', 'Q1', 100),
+('Product A', 'Q2', 150),
+('Product A', 'Q3', 200),
+('Product B', 'Q1', 80),
+('Product B', 'Q2', 120),
+('Product B', 'Q3', 180);
+
+SELECT
+    product,
+    quarter,
+    sales_amount,
+    SUM(sales_amount) OVER (PARTITION BY product ORDER BY quarter) AS running_total
+FROM sales;
+
+DROP TABLE sales;
+
+-- Create collation
+CREATE COLLATION german (provider = icu, locale = 'de-DE');
+DROP COLLATION german;
+
+-- Create extension
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+DROP EXTENSION pg_trgm;
+
+-- Create text search configuration
+CREATE TEXT SEARCH DICTIONARY my_dict (
+    template = simple,
+    stopwords = 'english'
+);
+DROP TEXT SEARCH DICTIONARY my_dict;
+
+-- Partitioned table
+CREATE TABLE measurement (
+    logdate timestamp without time zone,
+    city_id int not null,
+    temp_c numeric
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2016m01 PARTITION OF measurement
+    FOR VALUES FROM ('2016-01-01') TO ('2016-02-01');
+
+DROP TABLE measurement_y2016m01;
+DROP TABLE measurement;
+
+RESET client_min_messages;

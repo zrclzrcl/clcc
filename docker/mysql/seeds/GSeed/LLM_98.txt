@@ -1,0 +1,50 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+CREATE TABLE jobs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(id);
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(id);
+ALTER TABLE employees ADD INDEX name_idx (first_name, last_name);
+
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Software Engineer', 60000, 150000);
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Data Scientist', 70000, 160000);
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Project Manager', 80000, 180000);
+
+INSERT INTO departments (name, location_id) VALUES ('Engineering', 1);
+INSERT INTO departments (name, location_id) VALUES ('Data Science', 2);
+INSERT INTO departments (name, location_id) VALUES ('Management', 3);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', '2022-01-01', 1, 100000, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-02-15', 2, 120000, 2);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2022-03-01', 3, 150000, 3);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Alice', 'Brown', 'alice.brown@example.com', '2022-04-10', 1, 90000, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Bob', 'Williams', 'bob.williams@example.com', '2022-05-01', 2, 110000, 2);
+
+-- Add some MySQL specific features.
+SET GLOBAL validate_password.policy=LOW;
+CREATE EVENT myevent ON SCHEDULE EVERY 1 MINUTE DO UPDATE employees SET salary = salary * 1.01 WHERE department_id = 1;
+FLUSH TABLES employees, departments, jobs;
+SELECT * FROM employees FORCE INDEX (name_idx) WHERE first_name LIKE 'J%';

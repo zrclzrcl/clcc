@@ -1,0 +1,59 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE `products` (
+  `product_id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `stock_quantity` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`product_id`),
+  FULLTEXT KEY `product_name` (`product_name`,`description`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `products` (`product_name`, `description`, `price`, `stock_quantity`) VALUES
+('Awesome T-Shirt', 'A comfortable and stylish t-shirt for all occasions.', 25.99, 50),
+('Fantastic Mug', 'A durable mug perfect for your morning coffee.', 12.50, 100),
+('Incredible Book', 'A captivating book that will keep you on the edge of your seat.', 19.99, 25);
+
+CREATE TABLE `orders` (
+  `order_id` int(11) NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11) NOT NULL,
+  `order_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `total_amount` decimal(10,2) NOT NULL,
+  `status` enum('pending','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
+  PRIMARY KEY (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `order_items` (
+  `order_item_id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`order_item_id`),
+  FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`),
+  FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE OR REPLACE VIEW `high_value_customers` AS
+SELECT c.customer_id, COUNT(o.order_id) as order_count, SUM(o.total_amount) as total_spent
+FROM orders o JOIN (SELECT DISTINCT customer_id FROM orders) c ON o.customer_id = c.customer_id
+GROUP BY c.customer_id
+HAVING total_spent > 100
+ORDER BY total_spent DESC;
+
+DELIMITER //
+CREATE PROCEDURE `UpdateProductStock`(IN productId INT, IN quantityChange INT)
+BEGIN
+    UPDATE products SET stock_quantity = stock_quantity + quantityChange WHERE product_id = productId;
+END //
+DELIMITER ;
+
+ALTER TABLE products ADD COLUMN discount DECIMAL(4,2) DEFAULT 0.00;
+
+INSERT INTO products (product_name, price, stock_quantity, discount) VALUES ('Special Item', 99.99, 10, 0.10);
+
+ANALYZE TABLE products, orders, order_items;
+SET sql_mode=@old_sql_mode;

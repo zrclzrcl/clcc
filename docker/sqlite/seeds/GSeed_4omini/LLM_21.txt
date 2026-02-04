@@ -1,0 +1,11 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP) WITHOUT ROWID;
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(name, email) VALUES('Alice', 'alice@example.com'), ('Bob', 'bob@example.com');
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (1, 150.75), (2, 200.00);
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_users_email ON users(email);
+PRAGMA foreign_keys = ON;
+SELECT u.name, SUM(o.amount) AS total_spent FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id;
+ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'pending';
+UPDATE orders SET status = 'completed' WHERE amount > 150;
+DELETE FROM orders WHERE created_at < DATETIME('now', '-1 year');

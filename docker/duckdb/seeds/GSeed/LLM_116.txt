@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR
+);
+
+INSERT INTO departments (id, name) VALUES (1, 'Sales'), (2, 'Marketing'), (3, 'Engineering');
+
+INSERT INTO employees (id, name, salary, hire_date, department_id) VALUES
+(1, 'Alice', 60000.00, '2022-01-15', 1),
+(2, 'Bob', 75000.00, '2021-05-20', 2),
+(3, 'Charlie', 90000.00, '2020-11-01', 3);
+
+-- Test DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT APPROXIMATE COUNT DISTINCT(salary) FROM employees;
+
+-- Test DuckDB specific feature: JSON
+CREATE TABLE json_test (data JSON);
+INSERT INTO json_test VALUES ('{"name": "John", "age": 30}');
+SELECT data['name'] FROM json_test;
+
+-- Test DuckDB specific feature: Date/Time functions and operations
+SELECT hire_date + INTERVAL '1 year' FROM employees;
+SELECT AGE(hire_date) FROM employees;
+
+-- Test window function with DuckDB
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) as salary_rank FROM employees;
+
+-- Test DuckDB specific feature: UNNEST
+CREATE TABLE unnest_test (list INTEGER[]);
+INSERT INTO unnest_test VALUES ([1, 2, 3]), ([4, 5]);
+SELECT UNNEST(list) FROM unnest_test;
+
+-- Test DuckDB specific feature: List aggregates
+SELECT LIST(salary) FROM employees;
+
+-- Test DuckDB Specific Feature: Correlation
+SELECT CORR(salary, id) FROM employees;
+
+-- Test DuckDB Specific Feature: Pivot
+CREATE TABLE pivot_test (col1 VARCHAR, col2 VARCHAR, val INTEGER);
+INSERT INTO pivot_test VALUES ('a', 'x', 1), ('a', 'y', 2), ('b', 'x', 3), ('b', 'y', 4);
+
+SELECT * FROM pivot_test PIVOT (SUM(val) FOR col2 IN ('x', 'y'));

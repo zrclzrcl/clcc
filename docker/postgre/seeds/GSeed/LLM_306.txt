@@ -1,0 +1,117 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Create a simple table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    password_hash TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create another table with a foreign key
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some data into the users table
+INSERT INTO users (username, email, password_hash) VALUES
+    ('john_doe', 'john.doe@example.com', crypt('password123', gen_salt('bf'))),
+    ('jane_smith', 'jane.smith@example.com', crypt('securepass', gen_salt('bf'))),
+    ('peter_jones', 'peter.jones@example.com', crypt('passcode', gen_salt('bf')));
+
+-- Insert some data into the posts table
+INSERT INTO posts (user_id, title, content) VALUES
+    (1, 'My First Post', 'This is the content of my first post.'),
+    (1, 'Another Post', 'More content from john_doe.'),
+    (2, 'Jane''s Thoughts', 'Some interesting thoughts from jane_smith.'),
+    (3, 'Peter''s Musings', 'Random musings from peter_jones.');
+
+-- Select all users
+SELECT id, username, email FROM users;
+
+-- Select all posts with their authors
+SELECT p.title, u.username
+FROM posts p
+JOIN users u ON p.user_id = u.id;
+
+-- Update a user's email
+UPDATE users SET email = 'john.new@example.com' WHERE username = 'john_doe';
+
+-- Delete a post
+DELETE FROM posts WHERE title = 'Another Post';
+
+-- Select posts created in the last week
+SELECT title FROM posts WHERE created_at >= NOW() - INTERVAL '7 days';
+
+-- Group posts by user and count them
+SELECT u.username, COUNT(p.id) AS post_count
+FROM users u
+LEFT JOIN posts p ON u.id = p.user_id
+GROUP BY u.username
+ORDER BY post_count DESC;
+
+-- Use a CTE to find users with more than one post
+WITH UserPostCounts AS (
+    SELECT user_id, COUNT(id) AS post_count
+    FROM posts
+    GROUP BY user_id
+    HAVING COUNT(id) > 1
+)
+SELECT u.username
+FROM users u
+JOIN UserPostCounts upc ON u.id = upc.user_id;
+
+-- Use a CASE statement
+SELECT
+    username,
+    CASE
+        WHEN id % 2 = 0 THEN 'Even ID'
+        ELSE 'Odd ID'
+    END AS id_type
+FROM users;
+
+-- Create an enum type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+-- JSONB example
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    event_data JSONB
+);
+
+INSERT INTO events (event_data) VALUES
+('{"type": "login", "user": "john_doe", "timestamp": "2024-01-01T12:00:00Z"}'),
+('{"type": "logout", "user": "john_doe", "timestamp": "2024-01-01T13:00:00Z"}');
+
+SELECT event_data ->> 'user' AS user FROM events WHERE event_data ->> 'type' = 'login';
+
+-- ARRAY example
+CREATE TABLE tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    related_posts INTEGER[]
+);
+
+INSERT INTO tags (name, related_posts) VALUES
+('PostgreSQL', ARRAY[1, 2, 3]);
+
+SELECT related_posts[1] FROM tags WHERE name = 'PostgreSQL';
+
+-- Generate series example
+SELECT generate_series(1, 5);
+
+-- String Aggregation
+SELECT user_id, string_agg(title, ', ') FROM posts GROUP BY user_id;

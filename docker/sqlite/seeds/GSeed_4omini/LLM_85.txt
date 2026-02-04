@@ -1,0 +1,45 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, department_id INTEGER, salary REAL, hire_date TEXT, UNIQUE(name, department_id));
+
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT, location TEXT);
+
+INSERT INTO departments(id, name, location) VALUES 
+(1, 'HR', 'Building A'), 
+(2, 'Engineering', 'Building B'), 
+(3, 'Sales', 'Building C');
+
+WITH RECURSIVE salary_scale(level, increment) AS (
+    VALUES (1, 5000) 
+    UNION ALL 
+    SELECT level + 1, increment + 1000 FROM salary_scale WHERE level < 10
+)
+INSERT INTO employees(id, name, department_id, salary, hire_date) 
+SELECT 
+    x, 
+    printf('Employee%d', x), 
+    (x % 3) + 1,
+    s.increment,
+    date('now', '-' || (x % 5) || ' years')
+FROM 
+    (SELECT rowid as x FROM employees LIMIT 10) AS emp
+JOIN 
+    salary_scale AS s ON emp.x <= 10;
+
+
+SELECT d.name, AVG(e.salary) AS average_salary 
+FROM employees e 
+JOIN departments d ON e.department_id = d.id 
+GROUP BY d.name 
+HAVING AVG(e.salary) > 6000;
+
+SELECT e.name, d.location 
+FROM employees e 
+LEFT JOIN departments d ON e.department_id = d.id 
+WHERE e.hire_date >= date('now', '-3 years') 
+ORDER BY e.salary DESC;
+
+SELECT e1.name AS Employee_Name, e2.name AS Manager_Name 
+FROM employees e1 
+JOIN employees e2 ON e1.department_id = e2.department_id AND e1.id != e2.id 
+WHERE e1.salary > e2.salary;

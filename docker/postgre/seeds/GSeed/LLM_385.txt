@@ -1,0 +1,110 @@
+CREATE TABLE measurements (
+    logdate         date,
+    peaktemp        int,
+    units           varchar(10)
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurements_y2024m01 PARTITION OF measurements
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+CREATE TABLE measurements_y2024m02 PARTITION OF measurements
+    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+
+CREATE TABLE measurements_y2024m03 PARTITION OF measurements
+    FOR VALUES FROM ('2024-03-01') TO ('2024-04-01');
+
+CREATE INDEX measurements_logdate_idx ON measurements (logdate);
+
+CREATE INDEX measurements_peaktemp_idx ON measurements (peaktemp);
+
+INSERT INTO measurements (logdate, peaktemp, units) VALUES ('2024-01-15', 35, 'Celsius');
+INSERT INTO measurements (logdate, peaktemp, units) VALUES ('2024-02-20', 70, 'Fahrenheit');
+INSERT INTO measurements (logdate, peaktemp, units) VALUES ('2024-03-10', 25, 'Celsius');
+
+SELECT * FROM measurements WHERE logdate BETWEEN '2024-01-01' AND '2024-03-31';
+
+UPDATE measurements SET units = 'Kelvin' WHERE units = 'Celsius';
+
+DELETE FROM measurements WHERE peaktemp > 50;
+
+ALTER TABLE measurements ADD COLUMN city VARCHAR(50);
+
+ALTER TABLE measurements_y2024m01 ADD COLUMN city VARCHAR(50);
+ALTER TABLE measurements_y2024m02 ADD COLUMN city VARCHAR(50);
+ALTER TABLE measurements_y2024m03 ADD COLUMN city VARCHAR(50);
+
+INSERT INTO measurements (logdate, peaktemp, units, city) VALUES ('2024-01-20', 40, 'Celsius', 'London');
+INSERT INTO measurements (logdate, peaktemp, units, city) VALUES ('2024-02-25', 80, 'Fahrenheit', 'New York');
+INSERT INTO measurements (logdate, peaktemp, units, city) VALUES ('2024-03-15', 30, 'Celsius', 'Paris');
+
+SELECT logdate, peaktemp, city FROM measurements WHERE units = 'Celsius';
+
+CREATE VIEW high_temps AS
+SELECT logdate, peaktemp, city FROM measurements WHERE peaktemp > 30;
+
+SELECT * FROM high_temps;
+
+DROP VIEW high_temps;
+
+CREATE MATERIALIZED VIEW monthly_avg_temps AS
+SELECT date_trunc('month', logdate) AS month, AVG(peaktemp) AS avg_temp
+FROM measurements
+GROUP BY month;
+
+REFRESH MATERIALIZED VIEW monthly_avg_temps;
+
+SELECT * FROM monthly_avg_temps;
+
+DROP MATERIALIZED VIEW monthly_avg_temps;
+
+CREATE TABLE measurement_types (
+    type_id SERIAL PRIMARY KEY,
+    type_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+INSERT INTO measurement_types (type_name) VALUES ('Temperature');
+INSERT INTO measurement_types (type_name) VALUES ('Humidity');
+
+ALTER TABLE measurements ADD COLUMN type_id INT;
+
+UPDATE measurements SET type_id = 1 WHERE units IN ('Celsius', 'Fahrenheit', 'Kelvin');
+
+ALTER TABLE measurements ADD CONSTRAINT fk_type_id
+    FOREIGN KEY (type_id) REFERENCES measurement_types(type_id);
+
+SELECT m.logdate, m.peaktemp, mt.type_name
+FROM measurements m
+JOIN measurement_types mt ON m.type_id = mt.type_id;
+
+CREATE FUNCTION celsius_to_fahrenheit(celsius INT)
+RETURNS INT AS $$
+BEGIN
+    RETURN (celsius * 9/5) + 32;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT logdate, peaktemp, celsius_to_fahrenheit(peaktemp) AS fahrenheit_temp
+FROM measurements WHERE units = 'Celsius';
+
+DROP FUNCTION celsius_to_fahrenheit(int);
+
+CREATE TRIGGER measurements_insert_trigger
+BEFORE INSERT ON measurements
+FOR EACH ROW
+EXECUTE FUNCTION check_peaktemp();
+
+CREATE OR REPLACE FUNCTION check_peaktemp()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.peaktemp > 100 THEN
+        RAISE EXCEPTION 'Peak temperature is too high';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER measurements_insert_trigger ON measurements;
+
+DROP FUNCTION check_peaktemp();
+
+DROP TABLE measurements, measurement_types, measurements_y2024m01, measurements_y2024m02, measurements_y2024m03;

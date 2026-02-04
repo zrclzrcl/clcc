@@ -1,0 +1,68 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+-- Test basic table creation and insertion
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+INSERT INTO products (name, price) VALUES ('Laptop', 1200.00), ('Mouse', 25.00);
+
+-- Test different data types and constraints
+CREATE TABLE users (
+    user_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id)
+);
+INSERT INTO users (username, email) VALUES ('testuser', 'test@example.com');
+
+-- Test ALTER TABLE operations
+ALTER TABLE products ADD COLUMN description TEXT;
+UPDATE products SET description = 'A high-performance laptop' WHERE name = 'Laptop';
+
+-- Test indexing and FULLTEXT search (MySQL-specific)
+CREATE FULLTEXT INDEX idx_products_name ON products(name);
+SELECT * FROM products WHERE MATCH (name) AGAINST ('Laptop');
+
+-- Test Stored Procedure (MySQL-specific)
+DELIMITER //
+CREATE PROCEDURE GetProductPrice(IN productName VARCHAR(255), OUT productPrice DECIMAL(10, 2))
+BEGIN
+    SELECT price INTO productPrice FROM products WHERE name = productName;
+END //
+DELIMITER ;
+
+CALL GetProductPrice('Laptop', @price);
+SELECT @price;
+
+-- Test views
+CREATE VIEW ProductView AS SELECT id, name, price FROM products WHERE price > 50;
+SELECT * FROM ProductView;
+
+-- Test transactions
+START TRANSACTION;
+UPDATE products SET price = price * 1.1 WHERE name = 'Laptop';
+INSERT INTO products (name, price) VALUES ('Keyboard', 75.00);
+COMMIT;
+
+-- Test ENUM and SET data types (MySQL-specific)
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    status ENUM('pending', 'processing', 'shipped', 'delivered') DEFAULT 'pending',
+    payment_methods SET('credit_card', 'paypal', 'bank_transfer')
+);
+
+INSERT INTO orders (status, payment_methods) VALUES ('shipped', 'credit_card,paypal');
+
+-- Test spatial data types (MySQL-specific, if enabled) - likely to cause errors if spatial is not enabled
+-- CREATE TABLE locations (id INT PRIMARY KEY AUTO_INCREMENT, geom GEOMETRY);
+-- INSERT INTO locations (geom) VALUES (ST_GeomFromText('POINT(10 10)'));
+
+-- Clean up (for repeatable testing) - not strictly necessary, but good practice.
+DROP PROCEDURE IF EXISTS GetProductPrice;
+DROP VIEW IF EXISTS ProductView;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders;
+-- DROP TABLE IF EXISTS locations; -- Conditional drop, based on whether spatial types are enabled

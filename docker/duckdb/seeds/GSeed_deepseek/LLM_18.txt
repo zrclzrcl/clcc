@@ -1,0 +1,100 @@
+-- Initial seed for DuckDB database fuzz testing
+
+-- Create tables with various data types and constraints
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a table with unique constraint on a column
+CREATE TABLE t2 (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(10) UNIQUE,
+    status BOOLEAN DEFAULT FALSE
+);
+
+-- Test edge cases with large data types and indexes
+CREATE TABLE t3 (
+    id BIGINT,
+    data BLOB,
+    description TEXT
+);
+CREATE INDEX t3_idx ON t3 (id, SUBSTR(description, 1, 255));
+
+-- Create a partitioned table to test partitioning logic
+CREATE TABLE sales (
+    sale_id INTEGER PRIMARY KEY,
+    region TEXT,
+    amount REAL,
+    sale_date DATE
+) PARTITIONED BY (region);
+
+-- Test JSON data type and indexing on JSON fields
+CREATE TABLE json_test (
+    id INTEGER PRIMARY KEY,
+    metadata JSONB
+);
+INSERT INTO json_test VALUES (1, '{"name": "test", "value": 42}');
+CREATE INDEX json_idx ON json_test ((metadata->>'name'));
+
+-- Create a view to test derived tables and complex queries
+CREATE VIEW v1 AS
+SELECT 
+    t1.id,
+    t1.name,
+    t2.code,
+    t3.description
+FROM t1
+JOIN t2 ON t1.id = t2.id
+LEFT JOIN t3 ON t1.id = t3.id;
+
+-- Test virtual tables and FTS (Full-Text Search)
+CREATE VIRTUAL TABLE fts_table USING fts5(
+    content TEXT,
+    language 'english'
+);
+INSERT INTO fts_table VALUES ('This is a test document for FTS.', 'english');
+
+-- Test ALTER statements to modify schema
+ALTER TABLE t1 ADD COLUMN new_col TEXT;
+ALTER TABLE t2 DROP COLUMN status;
+ALTER TABLE t3 RENAME COLUMN data TO binary_data;
+
+-- Test edge cases with NULL values and constraints
+INSERT INTO t1 (id, name, value) VALUES 
+(1, 'Test', 100),
+(2, 'Edge Case', NULL); -- Testing NULL in a column without NOT NULL constraint
+
+-- Create indexes on expressions to test complex indexing
+CREATE INDEX t1_expr_idx ON t1 ((name || '_' || COALESCE(value::TEXT, 'null')));
+
+-- Test unique constraints and potential conflicts
+INSERT INTO t2 (code) VALUES ('DUP_CODE');
+-- The following statement should fail due to duplicate key
+INSERT INTO t2 (code) VALUES ('DUP_CODE');
+
+-- Test triggers for data validation
+CREATE TRIGGER check_value BEFORE INSERT ON t1 
+FOR EACH ROW WHEN (NEW.value <= 0)
+EXECUTE FUNCTION raise_exception('Value must be greater than zero.');
+
+-- Create a stored procedure to test procedural logic
+CREATE PROCEDURE count_records()
+LANGUAGE SQL
+AS $$
+SELECT COUNT(*) FROM t1;
+$$;
+
+-- Test partitioned table inserts and query routing
+INSERT INTO sales VALUES 
+(1, 'north', 100.5, '2023-01-01'),
+(2, 'south', 200.75, '2023-01-02');
+
+-- Test JSONB operations and indexing
+UPDATE json_test SET metadata = '{"name": "update", "value": 43}' WHERE id = 1;
+SELECT * FROM json_test WHERE metadata->>'name' = 'update';
+
+-- Test FTS queries
+SELECT * FROM fts_table WHERE content MATCH 'test';

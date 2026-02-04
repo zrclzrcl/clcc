@@ -1,0 +1,70 @@
+-- Create tables with various constraints and data types
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age SMALLINT CHECK (age >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATE,
+    UNIQUE(name)
+);
+
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    category_name TEXT NOT NULL,
+    parent_category_id INTEGER REFERENCES t2(id) MATCH SIMPLE ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+CREATE TABLE t3 (
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    t2_id INTEGER REFERENCES t2(id),
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    CONSTRAINT positive_value CHECK (value >= 0)
+);
+
+-- Create indexes for testing query performance and optimization
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE INDEX idx_t2_parent_category ON t2(parent_category_id);
+
+-- Insert sample data with various edge cases
+INSERT INTO t1 VALUES (1, 'Alice', 30, '2024-01-01 00:00:00', '2024-01-01');
+INSERT INTO t1 VALUES (2, 'Bob', NULL, DEFAULT, '2024-01-02'); -- Testing NULL age
+INSERT INTO t1 VALUES (3, 'Charlie', 25, '2024-01-03 12:34:56', '2024-01-03');
+
+INSERT INTO t2 VALUES (1, 'Electronics', NULL);
+INSERT INTO t2 VALUES (2, 'Computers', 1);
+INSERT INTO t2 VALUES (3, 'Laptops', 2);
+
+-- Testing self-referential foreign key
+INSERT INTO t2 VALUES (4, 'Monitors', 2);
+INSERT INTO t2 VALUES (5, 'Peripherals', 1);
+
+-- Insert into t3 with various combinations
+INSERT INTO t3 VALUES (1, 1, 2, 100.50);
+INSERT INTO t3 VALUES (2, 2, 4, NULL); -- Testing NULL value
+INSERT INTO t3 VALUES (3, 3, 5, 75.25);
+
+-- Complex query with CTE and window function
+WITH ranked_t1 AS (
+    SELECT id, name, age,
+           ROW_NUMBER() OVER (ORDER BY age DESC) as rank
+    FROM t1
+)
+INSERT INTO t1 VALUES (4, 'David', 35, CURRENT_TIMESTAMP, CURRENT_DATE);
+
+-- Testing ALTER TABLE operations
+ALTER TABLE t2 ADD COLUMN description TEXT;
+ALTER TABLE t3 ADD CONSTRAINT valid_value CHECK (value > -10.00); -- Testing constraint modification
+
+-- Select statements to test various features
+SELECT DISTINCT name FROM t1 ORDER BY name DESC NULLS FIRST;
+SELECT COUNT(*) as total_rows FROM t1;
+SELECT SUM(value) as total_value FROM t3 WHERE value IS NOT NULL;
+
+-- Join operations
+SELECT t1.name, t2.category_name 
+FROM t1 
+JOIN t3 ON t1.id = t3.t1_id 
+JOIN t2 ON t3.t2_id = t2.id 
+WHERE t2.parent_category_id IS NOT NULL 
+LIMIT 5;

@@ -1,0 +1,40 @@
+CREATE TABLE strings (
+    id INTEGER,
+    text VARCHAR
+);
+
+INSERT INTO strings VALUES (1, 'hello');
+INSERT INTO strings VALUES (2, 'world');
+INSERT INTO strings VALUES (3, 'Hello');
+INSERT INTO strings VALUES (4, 'WorlD');
+
+-- Test case-insensitive comparisons
+SELECT * FROM strings WHERE text = 'hello';
+SELECT * FROM strings WHERE lower(text) = 'hello';
+SELECT * FROM strings WHERE upper(text) = 'HELLO';
+
+-- Test string concatenation and substrings
+SELECT text || '!' FROM strings;
+SELECT substr(text, 2, 3) FROM strings;
+
+-- Test string length and replacement
+SELECT length(text) FROM strings;
+SELECT replace(text, 'o', '0') FROM strings;
+
+-- Test regexp_matches, a DuckDB specific function.
+SELECT regexp_matches(text, '.*o.*') FROM strings;
+
+--Test case-insensitive LIKE predicate, using DuckDB's ILIKE.
+SELECT * FROM strings WHERE text ILIKE '%wor%';
+
+--Test bitwise operations which are supported in DuckDB
+CREATE TABLE bitwise_test (val INTEGER);
+INSERT INTO bitwise_test VALUES (1);
+INSERT INTO bitwise_test VALUES (2);
+INSERT INTO bitwise_test VALUES (3);
+INSERT INTO bitwise_test VALUES (4);
+
+SELECT val & 2 FROM bitwise_test;
+SELECT val | 2 FROM bitwise_test;
+SELECT val ^ 2 FROM bitwise_test;
+SELECT ~val FROM bitwise_test;

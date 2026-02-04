@@ -1,0 +1,90 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE ROLE test_role WITH LOGIN PASSWORD 'password';
+CREATE SCHEMA test_schema AUTHORIZATION test_role;
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE DOMAIN us_postal_code AS TEXT CHECK (VALUE ~ '^\d{5}(-\d{4})?$');
+CREATE TABLE person (  name text,  mood mood);
+CREATE TABLE employee (  name text,  salary integer);
+CREATE TABLE city (
+    name            text,
+    population      float
+);
+CREATE VIEW rich_people AS
+    SELECT name
+    FROM employee
+    WHERE salary > 100000;
+CREATE MATERIALIZED VIEW city_statistics AS
+    SELECT
+        name,
+        population
+    FROM city
+    WHERE population > 10000;
+CREATE FUNCTION hello(name text) RETURNS text AS $$
+    BEGIN
+        RETURN 'Hello, ' || name || '!';
+    END;
+$$ LANGUAGE plpgsql;
+CREATE AGGREGATE avg_income (numeric)
+(
+    sfunc = numeric_avg_accum,
+    stype = numeric[],
+    finalfunc = numeric_avg,
+    initcond = '{0,0}'
+);
+CREATE OPERATOR == (
+    LEFTARG = integer,
+    RIGHTARG = integer,
+    PROCEDURE = eq,
+    COMMUTATOR = ==
+);
+CREATE INDEX person_name_idx ON person (name);
+CREATE UNIQUE INDEX employee_name_idx ON employee (name);
+ALTER TABLE person OWNER TO test_role;
+ALTER VIEW rich_people OWNER TO test_role;
+ALTER MATERIALIZED VIEW city_statistics OWNER TO test_role;
+ALTER FUNCTION hello(text) OWNER TO test_role;
+ALTER AGGREGATE avg_income (numeric) OWNER TO test_role;
+ALTER OPERATOR == (integer, integer) OWNER TO test_role;
+ALTER INDEX person_name_idx OWNER TO test_role;
+GRANT SELECT ON person TO PUBLIC;
+GRANT ALL PRIVILEGES ON TABLE employee TO test_role;
+REVOKE ALL PRIVILEGES ON TABLE employee FROM PUBLIC;
+COMMENT ON TABLE person IS 'Table storing personal information';
+COMMENT ON COLUMN person.name IS 'Name of the person';
+COMMENT ON VIEW rich_people IS 'View of employees earning more than 100k';
+COMMENT ON MATERIALIZED VIEW city_statistics IS 'Materialized view of cities with high population';
+COMMENT ON FUNCTION hello(text) IS 'Simple greeting function';
+COMMENT ON AGGREGATE avg_income (numeric) IS 'Custom aggregate for average income';
+COMMENT ON OPERATOR == (integer, integer) IS 'Custom equality operator';
+COMMENT ON INDEX person_name_idx IS 'Index on person name';
+CREATE TRIGGER salary_check
+    BEFORE INSERT OR UPDATE
+    ON employee
+    FOR EACH ROW
+    EXECUTE PROCEDURE check_salary();
+CREATE RULE update_salary AS ON UPDATE TO employee
+    WHERE NEW.salary < 0
+    DO INSTEAD NOTHING;
+CREATE SEQUENCE serial START 101;
+ALTER SEQUENCE serial OWNER TO test_role;
+SELECT nextval('serial');
+INSERT INTO person (name, mood) VALUES ('Alice', 'happy');
+INSERT INTO employee (name, salary) VALUES ('Bob', 50000);
+INSERT INTO city (name, population) VALUES ('New York', 8000000);
+SELECT * FROM person WHERE mood = 'happy';
+SELECT name FROM employee WHERE salary > 40000;
+UPDATE employee SET salary = 60000 WHERE name = 'Bob';
+DELETE FROM person WHERE name = 'Alice';
+EXPLAIN SELECT * FROM person WHERE name = 'Alice';
+DROP TABLE person;
+DROP VIEW rich_people;
+DROP MATERIALIZED VIEW city_statistics;
+DROP FUNCTION hello(text);
+DROP AGGREGATE avg_income (numeric);
+DROP OPERATOR == (integer, integer);
+DROP INDEX person_name_idx;
+DROP TYPE mood;
+DROP DOMAIN us_postal_code;
+DROP SCHEMA test_schema CASCADE;
+DROP ROLE test_role;
+DROP TABLESPACE test_tablespace;

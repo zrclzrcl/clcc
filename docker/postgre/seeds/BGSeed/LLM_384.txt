@@ -1,0 +1,229 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    price DECIMAL(10, 2),
+    category VARCHAR(50)
+);
+
+INSERT INTO products (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Desk', 300.00, 'Furniture'),
+('Chair', 150.00, 'Furniture');
+
+CREATE INDEX idx_products_category ON products (category);
+
+-- Example of using window functions
+SELECT
+    name,
+    price,
+    category,
+    AVG(price) OVER (PARTITION BY category) AS avg_category_price
+FROM
+    products;
+
+-- Example of using common table expressions (CTEs)
+WITH CategoryAverages AS (
+    SELECT
+        category,
+        AVG(price) AS avg_price
+    FROM
+        products
+    GROUP BY
+        category
+)
+SELECT
+    p.name,
+    p.price,
+    p.category,
+    ca.avg_price
+FROM
+    products p
+JOIN
+    CategoryAverages ca ON p.category = ca.category
+WHERE p.price > ca.avg_price;
+
+-- Example of using aggregate functions with GROUP BY
+SELECT
+    category,
+    COUNT(*),
+    AVG(price),
+    MAX(price),
+    MIN(price)
+FROM
+    products
+GROUP BY
+    category;
+
+-- Example of using subqueries
+SELECT
+    name,
+    price
+FROM
+    products
+WHERE
+    price > (SELECT AVG(price) FROM products);
+
+-- Example of using LIKE operator for pattern matching
+SELECT
+    name
+FROM
+    products
+WHERE
+    name LIKE '%top%';
+
+-- Example of using BETWEEN operator for range queries
+SELECT
+    name,
+    price
+FROM
+    products
+WHERE
+    price BETWEEN 50 AND 500;
+
+-- Example of using ORDER BY clause
+SELECT
+    name,
+    price
+FROM
+    products
+ORDER BY
+    price DESC;
+
+-- Example of using LIMIT and OFFSET clauses for pagination
+SELECT
+    name,
+    price
+FROM
+    products
+ORDER BY
+    id
+LIMIT 2 OFFSET 1;
+
+-- Example of using CASE statement for conditional logic
+SELECT
+    name,
+    price,
+    CASE
+        WHEN price > 500 THEN 'Expensive'
+        WHEN price > 100 THEN 'Moderate'
+        ELSE 'Cheap'
+    END AS price_range
+FROM
+    products;
+
+-- Example of using JOIN clause
+CREATE TABLE product_details (
+    product_id INTEGER PRIMARY KEY,
+    description TEXT
+);
+
+INSERT INTO product_details (product_id, description) VALUES
+(1, 'High-performance laptop for professionals.'),
+(4, 'Ergonomic desk for comfortable working.');
+
+SELECT
+    p.name,
+    p.price,
+    pd.description
+FROM
+    products p
+LEFT JOIN
+    product_details pd ON p.id = pd.product_id;
+
+-- Example of using UNION ALL to combine results
+SELECT name, price FROM products WHERE category = 'Electronics'
+UNION ALL
+SELECT name, price FROM products WHERE category = 'Furniture';
+
+-- Example of using INTERSECT
+CREATE TABLE products_copy (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    price DECIMAL(10, 2),
+    category VARCHAR(50)
+);
+
+INSERT INTO products_copy (name, price, category) SELECT name, price, category FROM products WHERE price > 100;
+INSERT INTO products_copy (name, price, category) VALUES ('New Product', 50.00, 'Other');
+
+SELECT name FROM products INTERSECT SELECT name FROM products_copy;
+
+-- Example of using EXCEPT
+SELECT name FROM products EXCEPT SELECT name FROM products_copy;
+
+-- Example of using DISTINCT clause
+SELECT DISTINCT category FROM products;
+
+-- Example of using NULLIF and COALESCE functions
+SELECT NULLIF(10, 10);
+SELECT COALESCE(NULL, 'Default Value');
+
+-- Example of using generate_series function
+SELECT generate_series(1, 5);
+
+-- Example of using date/time functions (PostgreSQL specific)
+SELECT NOW();
+SELECT CURRENT_DATE;
+
+-- Example of using string functions (PostgreSQL specific)
+SELECT UPPER('hello');
+SELECT LOWER('WORLD');
+SELECT LENGTH('PostgreSQL');
+
+-- Example of using array functions (PostgreSQL specific)
+SELECT ARRAY[1, 2, 3];
+SELECT array_append(ARRAY[1, 2], 3);
+
+-- Example of using JSON functions (PostgreSQL specific)
+SELECT '{"a": 1, "b": 2}'::json -> 'a';
+
+-- Example of using WITH ORDINALITY (PostgreSQL specific)
+SELECT * FROM UNNEST(ARRAY['a', 'b', 'c']) WITH ORDINALITY;
+
+-- Example of using FILTER (PostgreSQL specific)
+SELECT
+    category,
+    COUNT(*) FILTER (WHERE price > 200)
+FROM
+    products
+GROUP BY
+    category;
+
+-- Example of creating and using a temporary table
+CREATE TEMP TABLE temp_products AS SELECT * FROM products WHERE price > 100;
+SELECT * FROM temp_products;
+DROP TABLE temp_products;
+
+-- Example of using foreign keys (requires another table)
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER
+);
+
+INSERT INTO orders (product_id, quantity) VALUES (1, 2);
+SELECT * FROM orders;
+DROP TABLE orders;
+
+--Example of using materialized views
+CREATE MATERIALIZED VIEW product_summary AS SELECT category, AVG(price) FROM products GROUP BY category;
+SELECT * FROM product_summary;
+REFRESH MATERIALIZED VIEW product_summary;
+DROP MATERIALIZED VIEW product_summary;
+
+-- Example using advisory locks
+SELECT pg_advisory_lock(1);
+SELECT pg_advisory_unlock(1);
+
+-- Example using range types
+CREATE TABLE timerange_test (during timerange);
+INSERT INTO timerange_test VALUES ('[2010-01-01, 2010-01-02]');
+SELECT * FROM timerange_test;
+DROP TABLE timerange_test;
+
+DROP TABLE products_copy;
+DROP TABLE product_details;
+DROP INDEX idx_products_category;
+DROP TABLE products;

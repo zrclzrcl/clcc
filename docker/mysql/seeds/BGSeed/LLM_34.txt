@@ -1,0 +1,137 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+SET @SESSION.auto_increment_increment=3;
+SET @SESSION.auto_increment_offset=1;
+
+-- Test different data types and constraints
+CREATE TABLE test_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10,2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    binary_col BINARY(10),
+    varbinary_col VARBINARY(255),
+    tinyblob_col TINYBLOB,
+    blob_col BLOB,
+    mediumblob_col MEDIUMBLOB,
+    longblob_col LONGBLOB,
+    tinytext_col TINYTEXT,
+    text_col TEXT,
+    mediumtext_col MEDIUMTEXT,
+    longtext_col LONGTEXT,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3'),
+    geometry_col GEOMETRY,
+    json_col JSON,
+    not_null_int INT NOT NULL DEFAULT 0,
+    unique_varchar VARCHAR(20) UNIQUE
+);
+
+-- Insert some data with different values
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, binary_col, varbinary_col, tinytext_col, text_col, mediumtext_col, longtext_col, enum_col, set_col, geometry_col, json_col, unique_varchar) VALUES
+    (127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-26', '2023-10-26 12:34:56', '12:34:56', 2023, 'char', 'varchar', 'binary', 'varbinary', 'tinytext', 'text', 'mediumtext', 'longtext', 'value2', 'option1,option3', ST_GeomFromText('POINT(1 1)'), '{"key1": "value1", "key2": 123}', 'unique1'),
+    (-128, -32768, -8388608, -2147483648, -9223372036854775808, -3.14, -2.71828, -12345.67, '2024-01-01', '2024-01-01 00:00:00', '00:00:00', 2024, 'char2', 'varchar2', 'binary2', 'varbinary2', 'tinytext2', 'text2', 'mediumtext2', 'longtext2', 'value1', 'option2', ST_GeomFromText('POINT(2 2)'), '{"key3": "value3", "key4": 456}', 'unique2');
+
+-- Test some unusual updates
+UPDATE test_types SET normal_int = normal_int + 1 WHERE id = 1;
+UPDATE test_types SET varchar_col = REPEAT('A',250) WHERE id = 2;
+UPDATE test_types SET json_col = JSON_SET(json_col, '$.new_key', 'new_value') WHERE id = 1;
+
+-- Test some unusual queries
+SELECT * FROM test_types WHERE normal_int BETWEEN 10 AND 100;
+SELECT * FROM test_types WHERE varchar_col LIKE '%varchar%';
+SELECT id, JSON_EXTRACT(json_col, '$.key1') FROM test_types;
+SELECT id, ST_AsText(geometry_col) FROM test_types;
+
+-- Test partitioning
+CREATE TABLE test_partition (
+    id INT,
+    value VARCHAR(255)
+)
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (30),
+    PARTITION p3 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO test_partition (id, value) VALUES (5, 'value1'), (15, 'value2'), (25, 'value3'), (35, 'value4');
+SELECT * FROM test_partition PARTITION (p1);
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE test_proc (IN input_id INT)
+BEGIN
+    SELECT * FROM test_types WHERE id = input_id;
+END //
+DELIMITER ;
+
+CALL test_proc(1);
+
+-- Test views
+CREATE VIEW test_view AS
+SELECT id, varchar_col FROM test_types;
+
+SELECT * FROM test_view;
+
+-- Test indexes and foreign keys
+CREATE TABLE test_index (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value VARCHAR(255),
+    test_types_id INT,
+    INDEX value_index (value),
+    FOREIGN KEY (test_types_id) REFERENCES test_types(id)
+);
+
+INSERT INTO test_index (value, test_types_id) VALUES ('index_value', 1);
+
+-- Test trigger
+CREATE TABLE test_trigger_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER test_trigger
+AFTER INSERT ON test_types
+FOR EACH ROW
+BEGIN
+    INSERT INTO test_trigger_log (message) VALUES (CONCAT('New row inserted with id = ', NEW.id));
+END //
+DELIMITER ;
+
+INSERT INTO test_types (varchar_col) VALUES ('trigger_test');
+SELECT * FROM test_trigger_log;
+
+-- Test fulltext index
+CREATE TABLE test_fulltext (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    FULLTEXT INDEX content_index (content)
+) ENGINE=InnoDB; -- Fulltext indexes are supported for InnoDB since MySQL 5.6
+INSERT INTO test_fulltext (content) VALUES ('This is a test sentence.'), ('Another sentence for fulltext search.');
+SELECT * FROM test_fulltext WHERE MATCH (content) AGAINST ('test');
+
+-- Test spatial index
+CREATE TABLE test_spatial (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    point GEOMETRY NOT NULL,
+    SPATIAL INDEX(point)
+) ENGINE=MyISAM;
+INSERT INTO test_spatial (point) VALUES (ST_GeomFromText('POINT(1 1)'));
+SELECT * FROM test_spatial WHERE MBRContains(ST_GeomFromText('POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))'), point);
+
+SET sql_mode=@old_sql_mode;

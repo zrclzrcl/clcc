@@ -1,0 +1,54 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department) REFERENCES departments(dept_name);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+INSERT INTO employees (emp_name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 90000.00, 'Engineering', '2020-11-01');
+
+CREATE VIEW employee_summary AS
+SELECT emp_name, salary, department FROM employees;
+
+DELIMITER //
+CREATE TRIGGER before_employee_insert
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary < 0 THEN
+        SET NEW.salary = 0;
+    END IF;
+END;//
+DELIMITER ;
+
+CREATE PROCEDURE `UpdateSalary`(IN empId INT, IN newSalary DECIMAL(10,2))
+BEGIN
+  UPDATE employees SET salary = newSalary WHERE emp_id = empId;
+END;
+
+CREATE FULLTEXT INDEX emp_name_idx ON employees(emp_name);
+
+SELECT * FROM employees WHERE MATCH(emp_name) AGAINST ('Alice' IN NATURAL LANGUAGE MODE);
+
+-- Example of using window functions
+SELECT emp_name, salary, department,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Example using JSON functions (MySQL 5.7+)
+ALTER TABLE employees ADD COLUMN extra_info JSON;
+UPDATE employees SET extra_info = JSON_OBJECT('performance_rating', 4, 'skills', JSON_ARRAY('SQL', 'Python'));
+SELECT emp_name, extra_info ->> '$.performance_rating' AS performance FROM employees;

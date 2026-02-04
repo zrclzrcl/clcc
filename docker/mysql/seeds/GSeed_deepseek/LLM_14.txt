@@ -1,0 +1,36 @@
+SET @OLD_SQL_MODE = @@SQL_MODE;
+SET SQL_MODE = 'NO_ENGINE_SUBSTITUTION,STRICT_ALL_TABLES';
+
+CREATE TABLE t1 (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    geom GEOMETRY NOT NULL SRID 0,
+    dt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    txt TEXT CHECK (txt REGEXP '[A-Za-z]{3}'),
+    num DECIMAL(10,5) UNSIGNED ZEROFILL
+);
+
+INSERT INTO t1 (geom, txt, num) VALUES 
+(ST_GeomFromText('Point(1 1)'), 'abc', 999.99999),
+(ST_GeomFromText('LineString(0 0, 1 1)'), 'XYZ', 500.12345);
+
+CREATE TRIGGER trg_t1 AFTER INSERT ON t1 FOR EACH ROW 
+BEGIN
+    INSERT INTO t2 (id) VALUES (NEW.id);
+END;
+
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE x INT DEFAULT 0;
+    WHILE x < 10 DO
+        SET x = x + 1;
+        INSERT INTO t1 (geom) VALUES (ST_GeomFromText('Point(1 1)'));
+    END WHILE;
+END$$
+DELIMITER ;
+
+BENCHMARK(1000, 
+    SELECT COUNT(*) AS cnt FROM t1 JOIN information_schema.tables USING (id)
+);
+
+SELECT * FROM t1 WHERE ST_Contains(ST_GeomFromText('Polygon((0 0, 2 0, 2 2, 0 2))'), geom);

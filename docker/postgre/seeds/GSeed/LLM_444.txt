@@ -1,0 +1,128 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice Smith', 'Sales', 60000.00),
+('Bob Johnson', 'Marketing', 75000.00),
+('Charlie Brown', 'Engineering', 90000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = 3;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, SUM(salary) FROM employees GROUP BY department;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+DROP INDEX idx_department;
+
+DROP TABLE employees;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(100),
+    city VARCHAR(50)
+);
+
+INSERT INTO customers (customer_name, city) VALUES
+('David Lee', 'New York'),
+('Emily Chen', 'Los Angeles');
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, CURRENT_DATE, 150.00),
+(2, CURRENT_DATE, 200.00);
+
+SELECT * FROM orders INNER JOIN customers ON orders.customer_id = customers.customer_id;
+
+CREATE OR REPLACE FUNCTION calculate_tax(amount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN amount * 0.08;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_tax(100.00);
+
+DROP FUNCTION calculate_tax(DECIMAL);
+
+-- Example of using window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Example of using common table expressions (CTEs)
+WITH high_salary_employees AS (
+    SELECT name, salary
+    FROM employees
+    WHERE salary > 80000
+)
+SELECT name, salary FROM high_salary_employees;
+
+-- Using generate_series function
+SELECT generate_series(1, 10);
+
+-- Create a temporary table
+CREATE TEMP TABLE temp_table AS
+SELECT * FROM employees WHERE department = 'Sales';
+
+SELECT * FROM temp_table;
+
+DROP TABLE temp_table;
+
+-- Using arrays
+CREATE TABLE array_example (
+    id SERIAL PRIMARY KEY,
+    names VARCHAR(100)[]
+);
+
+INSERT INTO array_example (names) VALUES
+(ARRAY['John', 'Jane', 'Peter']);
+
+SELECT names[1] FROM array_example;
+
+DROP TABLE array_example;
+
+-- Using JSONB data type
+CREATE TABLE jsonb_example (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO jsonb_example (data) VALUES
+('{"name": "John Doe", "age": 30}');
+
+SELECT data ->> 'name' FROM jsonb_example;
+
+DROP TABLE jsonb_example;
+
+DROP TABLE orders;
+DROP TABLE customers;

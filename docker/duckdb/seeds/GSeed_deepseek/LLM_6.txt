@@ -1,0 +1,48 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    status BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data BLOB,
+    UNIQUE(name)
+);
+
+INSERT INTO t1 VALUES(
+    1,
+    'test_name',
+    3.14159265,
+    TRUE,
+    CURRENT_TIMESTAMP,
+    X'010203'
+);
+
+ALTER TABLE t1 ADD COLUMN description TEXT;
+UPDATE t1 SET description = 'Sample Description';
+
+CREATE TRIGGER trig AFTER UPDATE OF name ON t1 BEGIN
+    UPDATE t1 SET log = 'Name updated at ' || strftime('%Y-%m-%d %H:%M:%S', created_at)
+    WHERE id = new.id;
+END;
+
+CREATE INDEX idx_id ON t1(id);
+CREATE INDEX idx_name ON t1(name COLLATE NOCASE);
+CREATE INDEX idx_status ON t1(status);
+CREATE INDEX idx_created ON t1(created_at);
+
+CREATE VIEW v1 AS
+SELECT id, name || ' - ' || description AS full_info FROM t1;
+
+WITH cte AS (
+    SELECT id, value, created_at FROM t1
+)
+INSERT INTO t1(id, value, created_at) 
+SELECT id, value * 2, MINUTE(created_at, -1) FROM cte
+WHERE name = 'test_name';
+
+SELECT id, name, status, value,
+       ROW_NUMBER() OVER (ORDER BY id DESC) AS rn,
+       COUNT(*) OVER () AS total
+FROM t1
+GROUP BY status, created_at
+HAVING COUNT(*) > 0;

@@ -1,0 +1,64 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_name (name)
+);
+
+INSERT INTO test_table (name, value) VALUES
+('Test1', 100.5),
+('Test2', NULL),
+('Test3', -999999.99);
+
+REPLACE INTO test_table (id, name, value) VALUES
+(1, 'UpdatedTest1', 200.75);
+
+UPDATE test_table SET value = 1000 WHERE name = 'Test4';
+
+SELECT 
+    t1.id,
+    t1.name,
+    t2.value as another_value,
+    (SELECT COUNT(*) FROM test_table WHERE value > t1.value) as higher_count,
+    ROW_NUMBER() OVER (ORDER BY t1.value DESC) as row_num,
+    JSON_OBJECT('id', t1.id, 'name', t1.name) as data_json
+FROM test_table t1
+JOIN (
+    SELECT id, value FROM test_table WHERE name LIKE 'Test%'
+) t2 ON t1.id = t2.id;
+
+START TRANSACTION;
+INSERT INTO test_table (name, value) VALUES ('TransactionTest', 500);
+SAVEPOINT my_savepoint;
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+CREATE INDEX idx_value ON test_table(value);
+
+DELIMITER ;;
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log (action, timestamp) VALUES ('insert', NOW());
+END;;
+DELIMITER ;
+
+DELIMITER ;;
+CREATE PROCEDURE insert_if_not_exists(IN name_param VARCHAR(100), IN value_param DECIMAL(10, 2))
+BEGIN
+    DECLARE count INT;
+    SELECT COUNT(*) INTO count FROM test_table WHERE name = name_param;
+    IF count = 0 THEN
+        INSERT INTO test_table (name, value) VALUES (name_param, value_param);
+    END IF;
+END;;
+DELIMITER ;
+
+CREATE VIEW test_view AS
+SELECT id, name, value 
+FROM test_table
+WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY);
+
+INSERT INTO test_table (name, value) VALUES ('JSONTest', JSON_EXTRACT('{"value": 300}', '$.value'));

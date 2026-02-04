@@ -1,0 +1,141 @@
+-- Initial seed for PostgreSQL 16
+-- Create a table
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE DEFAULT CURRENT_DATE
+);
+
+-- Insert some data
+INSERT INTO employee (name, age, salary) VALUES
+('Alice Smith', 30, 60000.00),
+('Bob Johnson', 25, 50000.00),
+('Charlie Brown', 35, 70000.00);
+
+-- Select all employees
+SELECT * FROM employee;
+
+-- Select employees with salary greater than 55000
+SELECT name, salary FROM employee WHERE salary > 55000;
+
+-- Update salary of Alice Smith
+UPDATE employee SET salary = 65000.00 WHERE name = 'Alice Smith';
+
+-- Delete employee with id 2
+DELETE FROM employee WHERE id = 2;
+
+-- Create a new table for departments
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+-- Insert some departments
+INSERT INTO department (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+-- Add a foreign key to the employee table
+ALTER TABLE employee ADD COLUMN department_id INTEGER REFERENCES department(id);
+
+-- Update employee records with department IDs
+UPDATE employee SET department_id = 1 WHERE name = 'Alice Smith';
+UPDATE employee SET department_id = 2 WHERE name = 'Charlie Brown';
+
+-- Select employees with their department
+SELECT employee.name, department.name AS department_name
+FROM employee
+JOIN department ON employee.department_id = department.id;
+
+-- Create a view
+CREATE VIEW employee_department AS
+SELECT employee.name, department.name AS department_name
+FROM employee
+JOIN department ON employee.department_id = department.id;
+
+-- Select from the view
+SELECT * FROM employee_department;
+
+-- Create an index on the employee name
+CREATE INDEX idx_employee_name ON employee (name);
+
+-- Using EXPLAIN to analyze query execution plan
+EXPLAIN SELECT * FROM employee WHERE name = 'Alice Smith';
+
+-- Using DISTINCT
+SELECT DISTINCT age FROM employee;
+
+-- Using GROUP BY and COUNT
+SELECT department_id, COUNT(*) FROM employee GROUP BY department_id;
+
+-- Using ORDER BY
+SELECT * FROM employee ORDER BY salary DESC;
+
+-- Using LIMIT
+SELECT * FROM employee LIMIT 2;
+
+-- Using OFFSET
+SELECT * FROM employee LIMIT 1 OFFSET 1;
+
+-- Using CASE WHEN
+SELECT name,
+       CASE
+           WHEN age < 30 THEN 'Young'
+           WHEN age < 40 THEN 'Mid-age'
+           ELSE 'Senior'
+       END AS age_group
+FROM employee;
+
+-- Using a subquery
+SELECT name, salary
+FROM employee
+WHERE salary > (SELECT AVG(salary) FROM employee);
+
+-- Create a function (simple example)
+CREATE OR REPLACE FUNCTION get_employee_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employee);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Call the function
+SELECT get_employee_count();
+
+-- Using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employee;
+
+-- Create a table with a generated column
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    price DECIMAL(10, 2),
+    discount DECIMAL(4,2),
+    final_price DECIMAL(10,2) GENERATED ALWAYS AS (price * (1 - discount)) STORED
+);
+
+INSERT INTO products (name, price, discount) VALUES ('Product A', 100, 0.1);
+SELECT * FROM products;
+
+-- Using Common Table Expressions (CTEs)
+WITH RankedEmployees AS (
+    SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank
+    FROM employee
+)
+SELECT name, salary FROM RankedEmployees WHERE salary_rank <= 2;
+
+-- Truncate table
+TRUNCATE TABLE employee;
+
+-- Drop table
+DROP TABLE products;
+DROP TABLE employee;
+DROP TABLE department;
+
+DROP VIEW employee_department;
+
+DROP FUNCTION get_employee_count();

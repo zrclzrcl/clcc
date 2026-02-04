@@ -1,0 +1,125 @@
+SET client_min_messages TO 'warning';
+
+-- Clean up from any previous runs
+DROP ROLE IF EXISTS test_user1;
+DROP ROLE IF EXISTS test_user2;
+DROP ROLE IF EXISTS test_group1;
+
+-- Create users and groups
+CREATE USER test_user1;
+CREATE USER test_user2;
+CREATE GROUP test_group1 WITH USER test_user1, test_user2;
+
+-- Set session authorization
+SET SESSION AUTHORIZATION test_user1;
+SELECT session_user, current_user;
+
+-- Create and manipulate tables
+CREATE TABLE table1 (id SERIAL PRIMARY KEY, data TEXT);
+CREATE TABLE table2 (ref_id INTEGER REFERENCES table1(id), value INTEGER);
+
+INSERT INTO table1 (data) VALUES ('test data 1'), ('test data 2');
+INSERT INTO table2 (ref_id, value) SELECT id, id * 10 FROM table1;
+
+SELECT * FROM table1;
+SELECT * FROM table2;
+
+UPDATE table1 SET data = 'updated data' WHERE id = 1;
+DELETE FROM table2 WHERE value > 10;
+
+-- Try different locking modes
+BEGIN;
+LOCK TABLE table1 IN ACCESS EXCLUSIVE MODE;
+COMMIT;
+
+BEGIN;
+LOCK TABLE table2 IN ROW SHARE MODE;
+SELECT * FROM table2 FOR UPDATE;
+COMMIT;
+
+-- Grant and revoke privileges
+GRANT SELECT ON table1 TO test_user2;
+GRANT INSERT, UPDATE ON table2 TO test_group1;
+REVOKE UPDATE ON table2 FROM test_user1;
+
+-- Views
+CREATE VIEW view1 AS SELECT * FROM table1 WHERE id > 0;
+GRANT SELECT ON view1 TO test_user2;
+SELECT * FROM view1;
+
+-- Functions
+CREATE FUNCTION add_values(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+  BEGIN
+    RETURN a + b;
+  END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_values(5, 10);
+GRANT EXECUTE ON FUNCTION add_values(INTEGER, INTEGER) TO test_user2;
+
+-- Aggregates
+CREATE AGGREGATE my_sum (numeric)
+(
+    sfunc = numeric_add,
+    stype = numeric,
+    initcond = 0
+);
+
+SELECT my_sum(value) FROM table2;
+
+-- Sequences
+CREATE SEQUENCE seq1 START 100;
+SELECT nextval('seq1');
+
+-- Large Objects
+SELECT lo_create(16384);
+SELECT lo_unlink(16384);
+SELECT lo_create(16385);
+SELECT lo_export(16385, '/tmp/large_object_backup');
+SELECT lo_unlink(16385);
+
+-- Foreign data wrapper
+CREATE EXTENSION IF NOT EXISTS file_fdw;
+
+CREATE SERVER IF NOT EXISTS my_file_server
+FOREIGN DATA WRAPPER file_fdw;
+
+CREATE FOREIGN TABLE IF NOT EXISTS foreign_table (
+    line text
+)
+SERVER my_file_server
+OPTIONS (filename '/tmp/foreign_file.txt', format 'text');
+
+-- Partitioned table
+CREATE TABLE list_parted_table (trans_id int, trans_date date, amount decimal(9,2))
+PARTITION BY LIST (EXTRACT(MONTH FROM trans_date));
+
+CREATE TABLE list_parted_table_202401 PARTITION OF list_parted_table
+FOR VALUES IN (1);
+CREATE TABLE list_parted_table_202402 PARTITION OF list_parted_table
+FOR VALUES IN (2);
+
+-- Constraints
+ALTER TABLE table2 ADD CONSTRAINT positive_value CHECK (value > 0);
+
+-- Reset session authorization
+RESET SESSION AUTHORIZATION;
+
+-- Clean up resources
+DROP FUNCTION IF EXISTS add_values(INTEGER, INTEGER);
+DROP AGGREGATE IF EXISTS my_sum(numeric);
+DROP SEQUENCE IF EXISTS seq1;
+DROP VIEW IF EXISTS view1;
+DROP TABLE IF EXISTS foreign_table;
+DROP SERVER IF EXISTS my_file_server;
+DROP EXTENSION IF EXISTS file_fdw;
+DROP TABLE IF EXISTS list_parted_table_202401;
+DROP TABLE IF EXISTS list_parted_table_202402;
+DROP TABLE IF EXISTS list_parted_table;
+DROP TABLE IF EXISTS table1;
+DROP TABLE IF EXISTS table2;
+DROP ROLE IF EXISTS test_user1;
+DROP ROLE IF EXISTS test_user2;
+DROP ROLE IF EXISTS test_group1;
+
+SET client_min_messages TO 'notice';

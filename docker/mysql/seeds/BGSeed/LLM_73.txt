@@ -1,0 +1,71 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    balance DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX name_index (name)
+);
+
+INSERT INTO accounts (name, balance) VALUES ('Alice', 100.00);
+INSERT INTO accounts (name, balance) VALUES ('Bob', 250.50);
+INSERT INTO accounts (name, balance) VALUES ('Charlie', -50.00);
+
+SET @transaction_id = UUID();
+
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 20.00 WHERE name = 'Alice';
+    UPDATE accounts SET balance = balance + 20.00 WHERE name = 'Bob';
+    -- Simulate a concurrent transaction conflict
+    -- SELECT SLEEP(2);
+COMMIT;
+
+ANALYZE TABLE accounts;
+
+-- Test stored procedure (create and call)
+DELIMITER //
+CREATE PROCEDURE transfer(IN sender VARCHAR(255), IN receiver VARCHAR(255), IN amount DECIMAL(10, 2))
+BEGIN
+    UPDATE accounts SET balance = balance - amount WHERE name = sender;
+    UPDATE accounts SET balance = balance + amount WHERE name = receiver;
+END //
+DELIMITER ;
+
+CALL transfer('Bob', 'Charlie', 10.00);
+
+-- Test triggers (create and trigger)
+CREATE TABLE transaction_log (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT,
+    amount DECIMAL(10, 2),
+    transaction_type ENUM('deposit', 'withdrawal'),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER after_account_update
+AFTER UPDATE ON accounts
+FOR EACH ROW
+BEGIN
+    IF NEW.balance < OLD.balance THEN
+        INSERT INTO transaction_log (account_id, amount, transaction_type) VALUES (NEW.id, OLD.balance - NEW.balance, 'withdrawal');
+    ELSEIF NEW.balance > OLD.balance THEN
+        INSERT INTO transaction_log (account_id, amount, transaction_type) VALUES (NEW.id, NEW.balance - OLD.balance, 'deposit');
+    END IF;
+END //
+DELIMITER ;
+
+UPDATE accounts SET balance = balance + 50.00 WHERE name = 'Alice';
+
+-- Test generated columns
+ALTER TABLE accounts ADD COLUMN balance_status VARCHAR(20) GENERATED ALWAYS AS (IF(balance > 0, 'Positive', 'Negative')) STORED;
+
+-- Test partitioning
+ALTER TABLE accounts PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+-- Reset optimizer_trace
+SET optimizer_trace="enabled=off";

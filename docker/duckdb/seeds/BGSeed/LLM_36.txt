@@ -1,0 +1,72 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    location VARCHAR
+);
+
+INSERT INTO departments (id, name, location) VALUES
+(1, 'Sales', 'New York'),
+(2, 'Marketing', 'London'),
+(3, 'Engineering', 'San Francisco');
+
+INSERT INTO employees (id, name, department, salary, hire_date) VALUES
+(1, 'Alice', 'Sales', 60000.00, '2022-01-15'),
+(2, 'Bob', 'Marketing', 75000.00, '2021-05-20'),
+(3, 'Charlie', 'Engineering', 100000.00, '2020-11-01'),
+(4, 'David', 'Sales', 62000.00, '2022-03-10'),
+(5, 'Eve', 'Engineering', 110000.00, '2019-07-01');
+
+-- DuckDB specific window function and date manipulation
+SELECT
+    name,
+    department,
+    salary,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank,
+    date_trunc('month', hire_date) as hire_month
+FROM employees
+WHERE hire_date BETWEEN DATE '2021-01-01' AND CURRENT_DATE()
+QUALIFY salary_rank <= 2; -- DuckDB's QUALIFY clause
+
+-- Test aggregations with filters
+SELECT
+    department,
+    AVG(salary) AS average_salary
+FROM employees
+WHERE salary > 70000
+GROUP BY department
+HAVING COUNT(*) > 1;
+
+-- Attempt a common table expression (CTE) with recursive query capabilities in DuckDB (though this one isn't recursive). Recursive CTEs are important for graph database fuzzing.
+WITH RankedSalaries AS (
+    SELECT
+        name,
+        department,
+        salary,
+        ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn
+    FROM employees
+)
+SELECT name, department, salary
+FROM RankedSalaries
+WHERE rn = 1;
+
+-- Correlated subquery testing edge cases.
+SELECT e.name, e.salary
+FROM employees e
+WHERE e.salary > (SELECT AVG(salary) FROM employees WHERE department = e.department);
+
+-- Test string functions that are optimized in DuckDB such as ILIKE
+SELECT name FROM employees WHERE name ILIKE '%a%';
+
+-- Test complex arithmetic operations and NULL handling
+SELECT id, salary * (1 + 0.05 * (id % 3)) as adjusted_salary, salary + NULL FROM employees;
+
+-- Test for UNNEST with a generated sequence (DuckDB specific)
+SELECT value FROM generate_series(1, 5);

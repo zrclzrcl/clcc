@@ -1,0 +1,96 @@
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', '2023-03-20', 75000.00, 2),
+('Peter', 'Jones', '2022-08-01', 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE employee_id = 1;
+
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id;
+
+SELECT department_id, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department_id
+ORDER BY average_salary DESC;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Larry', 'sad');
+INSERT INTO person (name, current_mood) VALUES ('Curly', 'ok');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+-- Using a Common Table Expression (CTE)
+WITH high_earners AS (
+    SELECT employee_id, first_name, last_name
+    FROM employees
+    WHERE salary > 80000
+)
+SELECT * FROM high_earners;
+
+-- Using JSON
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100),
+    details JSON
+);
+
+INSERT INTO products (product_name, details) VALUES
+('Laptop', '{"brand": "Dell", "model": "XPS 13", "price": 1200}');
+
+SELECT product_name, details ->> 'brand' AS brand FROM products;
+
+-- Using Arrays
+CREATE TABLE student (
+  name varchar(50),
+  subjects text[]
+);
+
+INSERT INTO student (name, subjects) VALUES ('Alice', '{"Math", "Physics", "Chemistry"}');
+
+SELECT name, subjects[1] FROM student; -- Accessing the first element (Math)
+
+--ALTER TABLE example
+--ADD COLUMN column_name data_type;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = first_name || '.' || last_name || '@example.com';
+
+DROP TABLE IF EXISTS student;
+DROP TABLE IF EXISTS person;
+DROP TYPE IF EXISTS mood;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;

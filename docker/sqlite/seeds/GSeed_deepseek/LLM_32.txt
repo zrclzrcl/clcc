@@ -1,0 +1,167 @@
+-- Create tables with various data types to cover different scenarios
+CREATE TABLE IF NOT EXISTS t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add unique constraints for testing uniqueness and key violations
+CREATE UNIQUE INDEX idx_t1_name ON t1(name);
+
+-- Create a table with blob data type to test binary storage
+CREATE TABLE IF NOT EXISTS t2 (
+    id INTEGER PRIMARY KEY,
+    data BLOB,
+    metadata TEXT
+);
+
+-- Create a table with foreign keys for join operations
+CREATE TABLE IF NOT EXISTS t3 (
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    status BOOLEAN DEFAULT FALSE
+);
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, value) VALUES ('test1', 100.5);
+INSERT INTO t1 (name, value) VALUES ('test2', NULL); -- Testing NULL values
+
+-- Insert binary data
+INSERT INTO t2 (data, metadata) VALUES (X'ABCD', 'binary_test');
+
+-- Create a table with autoincrement to test rowid operations
+CREATE TABLE IF NOT EXISTS t4 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT UNIQUE
+);
+
+-- Populate t3 with foreign key references
+INSERT INTO t3 (t1_id, status) VALUES ((SELECT id FROM t1 WHERE name = 'test1'), TRUE);
+INSERT INTO t3 (t1_id, status) VALUES ((SELECT id FROM t1 WHERE name = 'test2'), FALSE);
+
+-- Update operation to modify existing records
+UPDATE t1 SET value = 200.5 WHERE name = 'test1';
+
+-- Delete operation with a subquery condition
+DELETE FROM t3 WHERE t1_id NOT IN (SELECT id FROM t1);
+
+-- Create a table for testing joins and unions
+CREATE TABLE IF NOT EXISTS t5 (
+    col1 TEXT,
+    col2 INTEGER
+);
+
+-- Insert data into t5 for join operations
+INSERT INTO t5 VALUES ('a', 1), ('b', 2), ('c', 3);
+
+-- Select with LEFT JOIN to test outer joins
+SELECT t1.name, t3.status FROM t1 LEFT JOIN t3 ON t1.id = t3.t1_id;
+
+-- Test UNION operation
+(SELECT col1 FROM t5 WHERE col2 > 1)
+UNION
+(SELECT name FROM t1 WHERE value IS NOT NULL);
+
+-- Create a table for testing aggregate functions
+CREATE TABLE IF NOT EXISTS t6 (
+    id INTEGER PRIMARY KEY,
+    amount REAL,
+    category TEXT
+);
+
+-- Insert sample data into t6
+INSERT INTO t6 VALUES (1, 100.5, 'A'), (2, 200.0, 'B'), (3, NULL, 'C');
+
+-- Test aggregate functions and group by
+SELECT category, COUNT(*), SUM(amount), MAX(amount) FROM t6 GROUP BY category;
+
+-- Create a table for testing window functions
+CREATE TABLE IF NOT EXISTS t7 (
+    id INTEGER PRIMARY KEY,
+    value REAL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert data into t7
+INSERT INTO t7 (value) VALUES (10), (20), (30), (40), (50);
+
+-- Test window functions with ROWID (SQLite specific)
+SELECT id, value, ROW_NUMBER() OVER (ORDER BY value DESC) AS rank FROM t7;
+
+-- Create a table for testing common table expressions (CTEs)
+CREATE TABLE IF NOT EXISTS t8 (
+    id INTEGER PRIMARY KEY,
+    parent_id INTEGER REFERENCES t8(id),
+    name TEXT
+);
+
+-- Insert hierarchical data into t8
+INSERT INTO t8 VALUES (1, NULL, 'root');
+INSERT INTO t8 VALUES (2, 1, 'child1');
+INSERT INTO t8 VALUES (3, 1, 'child2');
+
+-- Test CTE with recursive query
+WITH RECURSIVE hierarchy(id, name, level) AS (
+    SELECT id, name, 0 FROM t8 WHERE parent_id IS NULL
+    UNION ALL
+    SELECT t8.id, t8.name, h.level + 1
+    FROM t8 JOIN hierarchy h ON t8.parent_id = h.id
+)
+SELECT * FROM hierarchy;
+
+-- Create a table for testing triggers and constraints
+CREATE TABLE IF NOT EXISTS t9 (
+    id INTEGER PRIMARY KEY,
+    balance REAL CHECK(balance >= 0),
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a trigger to update last_updated on row modification
+CREATE TRIGGER IF NOT EXISTS trg_t9_update AFTER UPDATE ON t9
+BEGIN
+    UPDATE t9 SET last_updated = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Insert sample data into t9
+INSERT INTO t9 (id, balance) VALUES (1, 1000.0);
+
+-- Test trigger by updating a row
+UPDATE t9 SET balance = balance + 500 WHERE id = 1;
+
+-- Create an index for testing query optimization
+CREATE INDEX IF NOT EXISTS idx_t1_value ON t1(value);
+
+-- Test complex join with multiple conditions
+SELECT t1.name, t3.status, t6.category FROM t1
+JOIN t3 ON t1.id = t3.t1_id
+LEFT JOIN t6 ON t3.id = t6.id
+WHERE t6.amount > 100;
+
+-- Create a table for testing transactions and isolation levels
+CREATE TABLE IF NOT EXISTS t10 (
+    id INTEGER PRIMARY KEY,
+    amount REAL DEFAULT 0.0
+);
+
+-- Insert initial data into t10
+INSERT INTO t10 VALUES (1, 1000), (2, 2000);
+
+-- Begin a transaction and test row-level locking
+BEGIN TRANSACTION;
+SELECT * FROM t10 WHERE id = 1 FOR UPDATE;
+
+-- Test savepoint for partial rollbacks
+SAVEPOINT my_savepoint;
+
+-- Perform an operation that can be rolled back
+UPDATE t10 SET amount = amount + 500 WHERE id = 1;
+
+-- Rollback to the savepoint
+ROLLBACK TO my_savepoint;
+
+-- Commit the transaction
+COMMIT;
+
+-- Test vacuum to clean up database
+VACUUM;

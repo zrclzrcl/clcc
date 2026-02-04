@@ -1,0 +1,11 @@
+CREATE TABLE t1 (id INT, name VARCHAR(50), age INT);
+INSERT INTO t1 VALUES (1, 'Alice', 30), (2, 'Bob', NULL), (3, 'Charlie', 45);
+CREATE TABLE t2 (id INT, salary DECIMAL, hire_date DATE);
+INSERT INTO t2 VALUES (1, 50000, '2020-01-01'), (2, 60000, '2021-05-15'), (3, NULL, '2022-10-20');
+SELECT t1.id, name, salary FROM t1 JOIN t2 ON t1.id = t2.id WHERE age IS NOT NULL;
+SELECT t1.name, COALESCE(salary, 0) AS sal FROM t1 LEFT JOIN t2 ON t1.id = t2.id ORDER BY sal DESC;
+SELECT id, name, salary, SUM(salary) OVER (PARTITION BY id) as total FROM t1 JOIN t2 USING(id);
+WITH cte AS (SELECT id, name, hire_date, RANK() OVER (ORDER BY hire_date) as rank FROM t2)
+SELECT * FROM cte WHERE rank <= 2;
+SELECT age, COUNT(*) as cnt, SUM(salary) as total_salary
+FROM t1 JOIN t2 ON t1.id = t2.id GROUP BY age HAVING COUNT(*) > 1;

@@ -1,0 +1,49 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, description, price) VALUES
+('Awesome Gadget', 'A very useful gadget', 99.99),
+('Interesting Book', 'A captivating story', 19.99),
+('Stylish Shirt', 'Comfortable and fashionable', 29.99);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+-- MariaDB specific feature: Window function with IGNORE NULLS
+SELECT 
+    name, 
+    price,
+    LAG(price, 1, 0) IGNORE NULLS OVER (ORDER BY price) AS previous_price
+FROM products;
+
+-- MariaDB specific feature: JSON functions
+UPDATE products SET description = JSON_SET(description, '$.features', JSON_ARRAY('durable', 'portable')) WHERE id = 1;
+
+SELECT name, JSON_EXTRACT(description, '$.features') FROM products WHERE id = 1;
+
+-- Test for MariaDB dynamic columns
+CREATE TABLE dynamic_test (id INT PRIMARY KEY AUTO_INCREMENT, attrs MEDIUMBLOB);
+INSERT INTO dynamic_test (attrs) VALUES (COLUMN_CREATE('color', 'red', 'size', 'large'));
+SELECT id, COLUMN_GET(attrs, 'color' AS CHAR) FROM dynamic_test;

@@ -1,0 +1,45 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), ('duckdb');
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test string functions
+SELECT s, UPPER(s) FROM strings;
+
+-- Test date functions
+SELECT CURRENT_DATE, DATE('2023-10-27');
+
+-- Test aggregate functions
+SELECT SUM(i), AVG(i), COUNT(*) FROM integers;
+
+-- Test JSON functions (DuckDB specific)
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}'), ('[1, 2, 3]');
+SELECT j, json_extract_string(j, '$.b') FROM jsons;
+
+-- Test LIST functions (DuckDB specific)
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES (ARRAY[1, 2, 3]), (ARRAY[4, 5, 6]);
+SELECT l, list_sum(l) FROM lists;
+
+--Test UNNEST
+SELECT value FROM lists, UNNEST(l) AS value;
+
+-- Test EXCEPT ALL and INTERSECT ALL
+CREATE TABLE t1 (a INTEGER);
+CREATE TABLE t2 (a INTEGER);
+INSERT INTO t1 VALUES (1), (1), (2);
+INSERT INTO t2 VALUES (1), (2), (2), (2);
+SELECT * FROM t1 EXCEPT ALL SELECT * FROM t2;
+SELECT * FROM t1 INTERSECT ALL SELECT * FROM t2;
+
+-- Test UNION DISTINCT and UNION ALL
+SELECT 1 UNION DISTINCT SELECT 1;
+SELECT 1 UNION ALL SELECT 1;
+
+--Test correlated subquery
+SELECT * FROM integers WHERE i IN (SELECT i FROM integers WHERE i > 2);

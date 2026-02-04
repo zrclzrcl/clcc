@@ -1,0 +1,119 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(50)
+);
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id VARCHAR(20) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    commission_pct DECIMAL(2, 2),
+    department_id INTEGER REFERENCES departments(department_id)
+);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 'SALES_REP', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 'MKT_MGR', 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 'ENG_DEV', 90000.00, 3);
+
+-- Example of using window functions
+SELECT
+    employee_id,
+    first_name,
+    last_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Example of using common table expressions (CTEs)
+WITH HighSalaryEmployees AS (
+    SELECT employee_id, first_name, last_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Example of using aggregate functions with GROUP BY
+SELECT department_id, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department_id;
+
+-- Example of using joins
+SELECT
+    e.first_name,
+    e.last_name,
+    d.department_name
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.department_id;
+
+-- Example of using subqueries
+SELECT first_name, last_name
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Example of using LIKE operator
+SELECT first_name, last_name
+FROM employees
+WHERE last_name LIKE 'S%';
+
+-- Example of using ILIKE operator (case-insensitive LIKE)
+SELECT first_name, last_name
+FROM employees
+WHERE first_name ILIKE 'j%';
+
+-- Example of using regular expressions
+SELECT first_name, last_name
+FROM employees
+WHERE email SIMILAR TO '%@example.%';
+
+-- Example of using CASE WHEN
+SELECT
+    first_name,
+    last_name,
+    CASE
+        WHEN salary > 80000 THEN 'High'
+        WHEN salary > 60000 THEN 'Medium'
+        ELSE 'Low'
+    END AS salary_level
+FROM
+    employees;
+
+-- Example of using DISTINCT
+SELECT DISTINCT department_id FROM employees;
+
+-- Example of using LIMIT and OFFSET
+SELECT first_name, last_name FROM employees LIMIT 2 OFFSET 1;
+
+-- Example of using ORDER BY
+SELECT first_name, last_name FROM employees ORDER BY last_name ASC;
+
+-- Example of using NULLIF
+SELECT department_name, NULLIF(location, 'Unknown') AS location FROM departments;
+
+-- Example of using COALESCE
+SELECT first_name, COALESCE(phone_number, 'N/A') AS phone_number FROM employees;
+
+-- Example of using array aggregates
+SELECT department_id, ARRAY_AGG(first_name) FROM employees GROUP BY department_id;
+
+-- Example of using JSON functions (if JSON extension is enabled)
+
+-- VACUUM ANALYZE employees;
+-- VACUUM ANALYZE departments;

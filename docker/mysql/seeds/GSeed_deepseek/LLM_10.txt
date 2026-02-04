@@ -1,0 +1,61 @@
+CREATE TABLE test_table (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  score FLOAT CHECK (score >= 0 AND score <= 10)
+);
+
+CREATE UNIQUE INDEX idx_unique_id ON test_table(id);
+CREATE INDEX idx_name ON test_table(name);
+
+INSERT INTO test_table (name, score) VALUES 
+('Test User', 5.5),
+('Another Test', 8.9),
+('Third Entry', 3.2);
+
+-- Testing constraint violation
+INSERT INTO test_table (id, name, score) VALUES (1, 'Duplicate ID', 7.0);
+
+CREATE VIEW test_view AS
+SELECT id, name, active, created_at FROM test_table WHERE active = TRUE;
+
+DELIMITER $$
+CREATE PROCEDURE test_proc(IN input_score FLOAT)
+BEGIN
+  INSERT INTO test_table (name, score) 
+  SELECT CONCAT('Proc Test ', RAND()), input_score;
+END$$
+DELIMITER ;
+
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+INSERT INTO trigger_log VALUES (NEW.id, 'Inserted', NOW());
+
+DELETE FROM test_table WHERE RAND() > 0.5;
+
+UPDATE test_table SET active = FALSE WHERE score < 5;
+
+SELECT TABLE_NAME, ENGINE, ROW_FORMAT 
+FROM information_schema.tables 
+WHERE TABLE_SCHEMA = DATABASE();
+
+WITH ranked_records AS (
+  SELECT id, name, ROW_NUMBER() OVER (ORDER BY created_at DESC) as rn
+  FROM test_table
+)
+DELETE FROM ranked_records WHERE rn > 10;
+
+CREATE TABLE test_table2 (
+  id INT PRIMARY KEY,
+  fk_id INT,
+  description TEXT,
+  FOREIGN KEY (fk_id) REFERENCES test_table(id) ON DELETE CASCADE
+);
+
+ALTER TABLE test_table ADD COLUMN tags JSON;
+UPDATE test_table SET tags = '{"tag1", "tag2"}';
+
+-- Testing full-text search functionality
+CREATE FULLTEXT INDEX idx_description ON test_table(description);

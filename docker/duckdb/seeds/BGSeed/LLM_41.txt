@@ -1,0 +1,70 @@
+BEGIN;
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    quantity INTEGER DEFAULT 0,
+    available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Insert some initial data
+INSERT INTO products (name, description, price, quantity) VALUES
+    ('Awesome Widget', 'A really awesome widget', 19.99, 100),
+    ('Deluxe Gadget', 'The most deluxe gadget you can buy', 99.99, 50),
+    ('Simple Thing', 'A simple, yet effective thing', 5.00, 200);
+
+-- Create a table to store product reviews
+CREATE TABLE reviews (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Insert some reviews
+INSERT INTO reviews (product_id, rating, comment) VALUES
+    ((SELECT id FROM products WHERE name = 'Awesome Widget'), 5, 'This widget is truly awesome!'),
+    ((SELECT id FROM products WHERE name = 'Awesome Widget'), 4, 'Pretty good widget, but could be better.'),
+    ((SELECT id FROM products WHERE name = 'Deluxe Gadget'), 3, 'It is deluxe, but not worth the price.');
+
+-- Create a view to aggregate product information and reviews
+CREATE VIEW product_summary AS
+SELECT
+    p.id,
+    p.name,
+    p.description,
+    p.price,
+    p.quantity,
+    AVG(r.rating) AS average_rating,
+    COUNT(r.id) AS review_count
+FROM
+    products p
+LEFT JOIN
+    reviews r ON p.id = r.product_id
+GROUP BY
+    p.id, p.name, p.description, p.price, p.quantity;
+
+-- Example queries to test different features
+SELECT * FROM products WHERE price > 50 ORDER BY price DESC LIMIT 10;
+SELECT name, average_rating FROM product_summary ORDER BY average_rating DESC;
+SELECT date_trunc('month', created_at) AS month, COUNT(*) FROM reviews GROUP BY month ORDER BY month;
+SELECT list(rating) FROM reviews GROUP BY product_id; -- DuckDB specific: list aggregate function
+SELECT quantile_cont(0.5) WITHIN GROUP (ORDER BY price) FROM products; -- DuckDB specific: quantile
+SELECT approx_count_distinct(name) FROM products; -- DuckDB specific: approximate count distinct
+
+-- Use UNNEST to explode a list
+SELECT UNNEST(LIST_VALUE(1,2,3,4,5));
+
+-- Demonstrate window functions
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Demonstrate string functions
+SELECT name, UPPER(name), LENGTH(name) FROM products;
+
+COMMIT;

@@ -1,0 +1,125 @@
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+INSERT INTO products (product_no, name, price) VALUES
+    (1, 'Cheese', 9.99),
+    (2, 'Bread', 1.49),
+    (3, 'Milk', 2.99);
+
+CREATE TABLE orders (
+    order_id integer,
+    customer_id integer,
+    order_date date
+);
+
+INSERT INTO orders (order_id, customer_id, order_date) VALUES
+    (101, 1, '2024-01-15'),
+    (102, 2, '2024-01-16'),
+    (103, 1, '2024-01-17');
+
+CREATE TABLE order_items (
+    order_id integer,
+    product_no integer,
+    quantity integer
+);
+
+INSERT INTO order_items (order_id, product_no, quantity) VALUES
+    (101, 1, 2),
+    (101, 2, 1),
+    (102, 3, 3),
+    (103, 1, 1),
+    (103, 3, 2);
+
+SELECT p.name, SUM(oi.quantity * p.price) AS total_value
+FROM products p
+JOIN order_items oi ON p.product_no = oi.product_no
+GROUP BY p.name
+ORDER BY total_value DESC;
+
+SELECT o.order_id, c.customer_id, o.order_date
+FROM orders o
+JOIN (SELECT DISTINCT customer_id FROM orders WHERE order_date > '2024-01-01') AS c
+ON o.customer_id = c.customer_id
+WHERE o.order_date BETWEEN '2024-01-10' AND '2024-01-20';
+
+CREATE VIEW customer_order_summary AS
+SELECT
+    c.customer_id,
+    COUNT(o.order_id) AS total_orders,
+    SUM(oi.quantity * p.price) AS total_spent
+FROM (SELECT DISTINCT customer_id from orders) AS c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+LEFT JOIN order_items oi ON o.order_id = oi.order_id
+LEFT JOIN products p ON oi.product_no = p.product_no
+GROUP BY c.customer_id
+ORDER BY total_spent DESC;
+
+SELECT * FROM customer_order_summary;
+
+SELECT generate_series(1, 10);
+
+SELECT md5('hello');
+
+SELECT uuid_generate_v4();
+
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+
+ALTER TABLE products ADD COLUMN description text;
+
+UPDATE products SET description = 'Delicious cheese' WHERE product_no = 1;
+
+DELETE FROM order_items WHERE order_id = 102 AND product_no = 3;
+
+SELECT name, price FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+SELECT EXISTS (SELECT 1 FROM products WHERE name = 'Cheese');
+
+SELECT product_no, name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+SELECT product_no, name, price,
+       DENSE_RANK() OVER (ORDER BY price DESC) as price_dense_rank
+FROM products;
+
+SELECT product_no, name, price,
+       ROW_NUMBER() OVER (ORDER BY price DESC) as price_row_number
+FROM products;
+
+SELECT product_no, name, price,
+       NTILE(2) OVER (ORDER BY price DESC) as price_ntile
+FROM products;
+
+SELECT product_no, name, price,
+       LAG(price, 1, 0) OVER (ORDER BY price DESC) as prev_price
+FROM products;
+
+SELECT product_no, name, price,
+       LEAD(price, 1, 0) OVER (ORDER BY price DESC) as next_price
+FROM products;
+
+SELECT corr(price, product_no) FROM products;
+
+SELECT max(price) FILTER (WHERE product_no > 1) FROM products;
+
+SELECT name,price FROM products ORDER BY price NULLS FIRST;
+SELECT name,price FROM products ORDER BY price NULLS LAST;
+SELECT json_build_object('name', name, 'price', price) FROM products;
+SELECT json_agg(json_build_object('name', name, 'price', price)) FROM products;
+
+DROP VIEW customer_order_summary;
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE products;
+DROP FUNCTION increment(integer);

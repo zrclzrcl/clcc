@@ -1,0 +1,11 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);
+INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
+INSERT INTO users (name, email) VALUES ('Bob', 'bob@example.com');
+CREATE INDEX idx_email ON users(email);
+ALTER TABLE users ADD COLUMN age INTEGER;
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, total REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, total) VALUES (1, 99.99);
+INSERT INTO orders (user_id, total) VALUES (2, 150.50);
+PRAGMA foreign_keys = ON;
+PRAGMA user_version = 1;
+PRAGMA integrity_check;

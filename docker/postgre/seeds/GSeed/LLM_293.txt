@@ -1,0 +1,91 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    description TEXT
+);
+INSERT INTO test_table (name, value, description) VALUES ('Test 1', 10, 'First test record');
+INSERT INTO test_table (name, value, description) VALUES ('Test 2', 20, 'Second test record');
+INSERT INTO test_table (name, value, description) VALUES ('Test 3', NULL, 'Third test record with NULL value');
+SELECT * FROM test_table WHERE value > 15;
+SELECT name, LENGTH(description) FROM test_table;
+UPDATE test_table SET value = 30 WHERE name = 'Test 1';
+DELETE FROM test_table WHERE id = 3;
+CREATE INDEX idx_test_table_name ON test_table (name);
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+SELECT name, created_at AT TIME ZONE 'UTC' FROM test_table;
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value IS NOT NULL;
+SELECT * FROM test_view;
+DROP VIEW test_view;
+DROP INDEX idx_test_table_name;
+DROP TABLE test_table;
+DROP TABLESPACE test_tablespace;
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Bob', 'sad');
+SELECT * FROM person WHERE current_mood = 'happy';
+DROP TABLE person;
+DROP TYPE mood;
+CREATE FUNCTION add_emojis(text) RETURNS text AS $$
+    SELECT $1 || ' 😊';
+$$ LANGUAGE SQL;
+SELECT add_emojis('Hello');
+DROP FUNCTION add_emojis(text);
+CREATE AGGREGATE my_average (numeric) (
+    SFUNC = numeric_add,
+    STYPE = numeric,
+    FINALFUNC = numeric_avg
+);
+SELECT my_average(value) FROM (VALUES (10), (20), (30)) AS v(value);
+DROP AGGREGATE my_average (numeric);
+CREATE DOMAIN us_postal_code AS TEXT CHECK (VALUE ~ '^\d{5}(-\d{4})?$');
+CREATE TABLE addresses (
+    address_id SERIAL PRIMARY KEY,
+    city text,
+    postal_code us_postal_code
+);
+INSERT INTO addresses (city, postal_code) VALUES ('Anytown', '12345');
+SELECT * FROM addresses;
+DROP TABLE addresses;
+DROP DOMAIN us_postal_code;
+CREATE SCHEMA authorization_test;
+CREATE TABLE authorization_test.test_table (id SERIAL PRIMARY KEY, value INTEGER);
+INSERT INTO authorization_test.test_table (value) VALUES (1);
+SELECT * FROM authorization_test.test_table;
+DROP TABLE authorization_test.test_table;
+DROP SCHEMA authorization_test;
+CREATE UNLOGGED TABLE unlogged_test (id SERIAL PRIMARY KEY, value INTEGER);
+INSERT INTO unlogged_test (value) VALUES (1);
+SELECT * FROM unlogged_test;
+DROP TABLE unlogged_test;
+CREATE SEQUENCE test_sequence START 1 INCREMENT 1;
+SELECT nextval('test_sequence');
+DROP SEQUENCE test_sequence;
+CREATE MATERIALIZED VIEW materialized_test AS SELECT 1 AS value;
+SELECT * FROM materialized_test;
+REFRESH MATERIALIZED VIEW materialized_test;
+DROP MATERIALIZED VIEW materialized_test;
+CREATE OR REPLACE FUNCTION safe_divide(numerator numeric, denominator numeric)
+RETURNS numeric AS $$
+BEGIN
+    IF denominator = 0 THEN
+        RETURN NULL;
+    ELSE
+        RETURN numerator / denominator;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+SELECT safe_divide(10, 2);
+SELECT safe_divide(10, 0);
+DROP FUNCTION safe_divide(numeric, numeric);
+CREATE TEXT SEARCH DICTIONARY my_dict (
+    TEMPLATE = snowball,
+    language = english,
+    stopwords = 'english'
+);
+DROP TEXT SEARCH DICTIONARY my_dict;

@@ -1,0 +1,80 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Create a table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    password_hash TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Insert some data
+INSERT INTO users (username, email, password_hash) VALUES
+    ('john_doe', 'john.doe@example.com', crypt('password123', gen_salt('bf'))),
+    ('jane_smith', 'jane.smith@example.com', crypt('secure_pass', gen_salt('bf'))),
+    ('peter_jones', 'peter.jones@example.com', crypt('another_password', gen_salt('bf')));
+
+-- Select data
+SELECT id, username, email FROM users WHERE username LIKE 'j%';
+
+-- Update data
+UPDATE users SET email = 'john.new@example.com', updated_at = NOW() WHERE username = 'john_doe';
+
+-- Delete data
+DELETE FROM users WHERE username = 'peter_jones';
+
+-- Create another table with foreign key
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some posts
+INSERT INTO posts (user_id, title, content) VALUES
+    (1, 'First Post', 'This is the content of the first post.'),
+    (1, 'Second Post', 'Another post by John.'),
+    (2, 'Jane''s Thoughts', 'Some interesting thoughts by Jane.');
+
+-- Select with join
+SELECT u.username, p.title FROM users u JOIN posts p ON u.id = p.user_id;
+
+-- Aggregate query
+SELECT user_id, COUNT(*) FROM posts GROUP BY user_id;
+
+-- Using WITH RECURSIVE (simple example)
+WITH RECURSIVE nums AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM nums WHERE n < 5
+)
+SELECT * FROM nums;
+
+-- Create a table with jsonb column
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    details JSONB
+);
+
+-- Insert jsonb data
+INSERT INTO products (name, details) VALUES
+    ('Laptop', '{"brand": "Dell", "model": "XPS 15", "price": 1200}'),
+    ('Mouse', '{"brand": "Logitech", "model": "MX Master 3", "price": 99}');
+
+-- Select with jsonb operations
+SELECT name, details -> 'brand' FROM products WHERE details ->> 'price' > '100';
+
+-- Alter table
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+
+-- Drop table
+DROP TABLE posts;
+DROP TABLE products;
+DROP TABLE users;
+
+DROP EXTENSION pgcrypto;

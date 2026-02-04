@@ -1,0 +1,114 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE INDEX idx_salary ON employees (salary);
+
+INSERT INTO employees (name, salary, hire_date) VALUES
+('Alice Smith', 60000.00, '2022-01-15'),
+('Bob Johnson', 75000.50, '2021-05-20'),
+('Charlie Brown', 50000.00, '2023-03-10');
+
+SELECT * FROM employees WHERE salary > 55000.00;
+
+UPDATE employees SET salary = salary * 1.1 WHERE id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+SELECT MIN(salary) FROM employees;
+
+SELECT SUM(salary) FROM employees;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 1;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000.00;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+INSERT INTO departments (name) VALUES ('Sales'), ('Marketing');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+UPDATE employees SET department_id = 1 WHERE id IN (1, 2);
+UPDATE employees SET department_id = 2 WHERE id = 3;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+CREATE SEQUENCE my_sequence START 101;
+
+SELECT nextval('my_sequence');
+
+SELECT currval('my_sequence');
+
+SELECT setval('my_sequence', 200);
+
+DROP SEQUENCE my_sequence;
+
+CREATE TYPE status AS ENUM ('active', 'inactive', 'pending');
+
+CREATE TABLE accounts (
+    id SERIAL PRIMARY KEY,
+    account_name VARCHAR(255),
+    account_status status
+);
+
+INSERT INTO accounts (account_name, account_status) VALUES ('Savings', 'active');
+
+SELECT * FROM accounts WHERE account_status = 'active';
+
+DROP TABLE accounts;
+DROP TYPE status;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    price NUMERIC(10, 2),
+    available BOOLEAN
+);
+
+INSERT INTO products (name, price, available) VALUES
+('Laptop', 1200.00, TRUE),
+('Mouse', 25.50, TRUE),
+('Keyboard', 75.00, FALSE);
+
+SELECT name, price FROM products WHERE available = TRUE ORDER BY price;
+
+ALTER TABLE products ADD COLUMN description TEXT;
+
+UPDATE products SET description = 'High-performance laptop' WHERE name = 'Laptop';
+
+SELECT name, description FROM products WHERE description IS NOT NULL;
+
+DROP TABLE products;
+
+DROP TABLE employees;
+DROP TABLE departments;

@@ -1,0 +1,48 @@
+-- Enable experimental features for broader testing coverage
+  PRAGMA enable_experimental_features;
+
+  -- Create a table with various data types including nested types
+  CREATE TABLE my_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    value DOUBLE,
+    timestamp TIMESTAMP,
+    list_of_ints INTEGER[],
+    struct_data STRUCT(a INTEGER, b VARCHAR),
+    blob_data BLOB
+  );
+
+  -- Insert diverse data including NULL values and special characters
+  INSERT INTO my_table (id, name, value, timestamp, list_of_ints, struct_data, blob_data) VALUES
+  (1, 'Test String', 3.14, '2023-10-27 10:00:00', [1, 2, 3], {a: 10, b: 'nested'}, 'test_blob'),
+  (2, NULL, -1.0, '2023-10-27 11:00:00', NULL, NULL, NULL),
+  (3, 'String with "quotes"', 1.0e+9, '2023-10-27 12:00:00', [4, NULL, 6], {a: -5, b: 'another'}, 'another_blob');
+
+  -- Test unnesting of arrays
+  SELECT id, value FROM my_table, UNNEST(list_of_ints) AS value;
+
+  -- Create a view that uses window functions
+  CREATE VIEW my_view AS
+  SELECT
+    id,
+    name,
+    value,
+    ROW_NUMBER() OVER (ORDER BY id) AS row_num,
+    AVG(value) OVER () AS avg_value
+  FROM my_table;
+
+  -- Query the view
+  SELECT * FROM my_view;
+
+  -- Example of using a custom scalar function (requires duckdb node)
+  -- CREATE FUNCTION my_custom_function(input VARCHAR) RETURNS VARCHAR AS 'return input.upper()' LANGUAGE PYTHON;
+  -- SELECT my_custom_function(name) from my_table;
+
+  -- Demonstrate grouping and aggregation
+  SELECT SUBSTR(name, 1, 1), AVG(value) FROM my_table GROUP BY 1;
+
+  -- Test correlated subquery.
+  SELECT * FROM my_table AS t1 WHERE EXISTS (SELECT 1 FROM my_table AS t2 WHERE t1.id = t2.id + 1);
+
+  --Vacuum the database
+  VACUUM;

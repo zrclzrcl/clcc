@@ -1,0 +1,82 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    age INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, age, data) VALUES
+('Alice', 30, '{"city": "New York", "occupation": "Engineer"}'),
+('Bob', 25, '{"city": "Los Angeles", "occupation": "Designer"}'),
+('Charlie', 40, '{"city": "Chicago", "occupation": "Manager"}');
+
+SELECT * FROM test_table WHERE age > 27;
+
+UPDATE test_table SET age = 31 WHERE name = 'Alice';
+
+DELETE FROM test_table WHERE id = 2;
+
+SELECT jsonb_pretty(data) FROM test_table;
+
+SELECT name, data ->> 'city' AS city FROM test_table;
+
+CREATE INDEX idx_name ON test_table (name);
+
+CREATE FUNCTION greet(name VARCHAR) RETURNS VARCHAR AS $$
+BEGIN
+    RETURN 'Hello, ' || name || '!';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT greet('World');
+
+CREATE VIEW adult_view AS SELECT id, name, age FROM test_table WHERE age >= 18;
+
+SELECT * FROM adult_view;
+
+ALTER TABLE test_table ADD COLUMN email VARCHAR(255);
+
+UPDATE test_table SET email = name || '@example.com';
+
+SELECT id, name, email FROM test_table;
+
+-- Test enum type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+-- Test arrays
+CREATE TABLE arrtest (
+    i integer[],
+    t text[]
+);
+INSERT INTO arrtest (i, t) VALUES (
+    ARRAY[1,2,3],
+    ARRAY['one','two','three']
+);
+SELECT * FROM arrtest;
+
+-- Test range types
+CREATE TABLE film_durations (
+    title text,
+    duration int4range
+);
+INSERT INTO film_durations (title, duration) VALUES
+    ('Metropolis', '[113,153)');
+SELECT * FROM film_durations;
+
+-- Test uuid
+CREATE TABLE test_uuid (id UUID PRIMARY KEY, name TEXT);
+INSERT INTO test_uuid (id, name) VALUES (gen_random_uuid(), 'test');
+SELECT * FROM test_uuid;
+
+DROP TABLE test_table CASCADE;
+DROP FUNCTION greet(VARCHAR);
+DROP TYPE mood CASCADE;
+DROP TABLE arrtest CASCADE;
+DROP TABLE film_durations CASCADE;
+DROP TABLE test_uuid CASCADE;

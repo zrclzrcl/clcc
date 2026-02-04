@@ -1,0 +1,90 @@
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET autocommit=0;
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE product_categories (
+    product_id INT,
+    category_id INT,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'Powerful laptop for all your needs', 1200.50),
+('The Lord of the Rings', 'A classic fantasy novel', 15.99),
+('T-Shirt', 'Comfortable cotton t-shirt', 20.00);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+-- Test some edge cases
+INSERT INTO products (name, description, price) VALUES ('VeryExpensiveItem', 'An item with a very high price', 9999999.99);
+INSERT INTO products (name, description, price) VALUES ('NullDescriptionItem', NULL, 50.00);
+
+-- Test JSON column (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "black", "size": "large"}' WHERE id = 3;
+
+-- Test FULLTEXT index
+ALTER TABLE products ADD FULLTEXT INDEX product_name_description_idx (name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('laptop' IN NATURAL LANGUAGE MODE);
+
+-- Test spatial data (requires MySQL 5.7.6+)
+CREATE TABLE cities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    location GEOMETRY NOT NULL,
+    SPATIAL INDEX(location)
+) ENGINE=MyISAM;
+
+INSERT INTO cities (name, location) VALUES ('New York', ST_GeomFromText('POINT(-74.0060 40.7128)'));
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN categoryName VARCHAR(255))
+BEGIN
+    SELECT p.name, p.price
+    FROM products p
+    JOIN product_categories pc ON p.id = pc.product_id
+    JOIN categories c ON pc.category_id = c.id
+    WHERE c.name = categoryName;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Electronics');
+
+-- Test Window Functions (MySQL 8.0+)
+SELECT name, price,
+       RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM products;
+
+-- Test Common Table Expression (CTE)
+WITH ExpensiveProducts AS (
+    SELECT name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT name, price FROM ExpensiveProducts;
+
+-- Test Generated Column (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10, 2) GENERATED ALWAYS AS (price * 0.9) STORED;
+
+OPTIMIZE TABLE products;
+
+COMMIT;

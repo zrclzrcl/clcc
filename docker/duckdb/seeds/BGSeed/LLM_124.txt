@@ -1,0 +1,14 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3);
+CREATE VIEW even_integers AS SELECT i FROM integers WHERE i % 2 = 0;
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world');
+CREATE MACRO greet(name) AS 'Hello, ' || name || '!';
+CREATE SEQUENCE my_seq START 1 INCREMENT 2;
+SELECT nextval('my_seq');
+PRAGMA enable_profiling = JSON;
+SELECT * FROM integers WHERE i IN (SELECT i FROM even_integers);
+CREATE TABLE test_nulls (a INTEGER, b VARCHAR);
+INSERT INTO test_nulls VALUES (1, NULL), (NULL, 'test');
+CREATE INDEX idx_a ON test_nulls (a);
+SELECT * FROM test_nulls WHERE a IS NULL;

@@ -1,0 +1,123 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    category VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email CITEXT UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    address TEXT
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount >= 0)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0)
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 'Electronics'),
+('Mouse', 'Wireless mouse', 25.00, 'Electronics'),
+('Keyboard', 'Mechanical keyboard', 75.00, 'Electronics'),
+('T-shirt', 'Cotton T-shirt', 20.00, 'Clothing'),
+('Jeans', 'Blue jeans', 50.00, 'Clothing');
+
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 70.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 4, 1, 20.00),
+(2, 5, 1, 50.00);
+
+SELECT * FROM products WHERE price > 50;
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.last_name = 'Doe';
+
+UPDATE products SET price = price * 1.1 WHERE category = 'Electronics';
+
+DELETE FROM products WHERE price < 10;
+
+SELECT category, AVG(price) AS average_price
+FROM products
+GROUP BY category
+ORDER BY average_price DESC;
+
+SELECT * FROM products ORDER BY price DESC LIMIT 2 OFFSET 1;
+
+SELECT
+    CASE
+        WHEN price > 100 THEN 'Expensive'
+        ELSE 'Affordable'
+    END AS price_range,
+    COUNT(*)
+FROM products
+GROUP BY price_range;
+
+-- PostgreSQL specific features
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "Item 1", "price": 10.00, "details": {"color": "red", "size": "M"}}'),
+('{"name": "Item 2", "price": 20.00, "details": {"color": "blue", "size": "L"}}');
+
+SELECT data -> 'name' FROM json_test WHERE data ->> 'price' > '15';
+
+-- WITH RECURSIVE example (requires table creation)
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    manager_id INTEGER REFERENCES employees(id)
+);
+
+INSERT INTO employees (name, manager_id) VALUES
+('Alice', NULL),
+('Bob', 1),
+('Charlie', 2),
+('David', 1),
+('Eve', 3);
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, manager_id, 0 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.id
+)
+SELECT * FROM employee_hierarchy;
+
+-- casting
+SELECT '123'::INTEGER + 10;
+SELECT 123::TEXT || 'abc';

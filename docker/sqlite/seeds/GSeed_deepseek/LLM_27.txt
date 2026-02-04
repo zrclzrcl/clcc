@@ -1,0 +1,38 @@
+PRAGMA encoding = 'utf-8';
+PRAGMA journal_mode = MEMORY;
+CREATE TABLE t1 (
+    a TEXT NOT NULL,
+    b INTEGER PRIMARY KEY AUTOINCREMENT,
+    c BLOB,
+    d REAL,
+    e BOOLEAN DEFAULT 0,
+    f TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_t1 ON t1 (a) WHERE a > '';
+CREATE TABLE t2 WITHOUT ROWID (
+    x INTEGER PRIMARY KEY,
+    y TEXT CHECK(y LIKE 'A%')
+);
+CREATE VIRTUAL TABLE t3 USING FTS5(content='none', title, content);
+CREATE TABLE t_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TRIGGER trig_t1 AFTER INSERT ON t1 BEGIN
+    INSERT INTO t_history VALUES (NULL, 't1', 'INSERT', CURRENT_TIMESTAMP);
+END;
+CREATE VIEW v1 AS SELECT a, b FROM t1 WHERE c IS NOT NULL ORDER BY d DESC LIMIT 5;
+CREATE VIEW v2 AS SELECT DISTINCT title, content FROM t3 WHERE rank > 0 WITH CHECK OPTION;
+
+INSERT INTO t1 (a, c, e) VALUES ('test', x'deadbeef', 1);
+INSERT INTO t1 (b, d) VALUES (42, 3.14159);
+INSERT INTO t2 (x, y) VALUES (1, 'Apple'), (2, 'Banana');
+INSERT INTO t3 (title, content) VALUES ('Test Document', 'This is a test document for SQLite FTS5.');
+
+UPDATE t1 SET a = 'updated' WHERE a IS NULL;
+UPDATE t2 SET x = x + 1 WHERE y LIKE 'A%';
+UPDATE t3 SET title = 'Updated Test Document' WHERE rank > 0;
+
+SELECT * FROM v1 UNION SELECT * FROM v2 LIMIT 10;

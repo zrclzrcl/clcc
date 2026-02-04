@@ -1,0 +1,47 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET auto_increment_increment=1;
+
+CREATE TABLE t1 (a INT, b VARCHAR(255), c TIMESTAMP DEFAULT CURRENT_TIMESTAMP, d JSON, PRIMARY KEY (a));
+INSERT INTO t1 (a, b) VALUES (1, 'test1'), (2, 'test2'), (3, 'test3');
+UPDATE t1 SET b = 'updated' WHERE a = 1;
+SELECT * FROM t1 WHERE a > 0;
+DELETE FROM t1 WHERE a = 2;
+
+CREATE TABLE t2 (id INT AUTO_INCREMENT PRIMARY KEY, data VARCHAR(255), t1_a INT, FULLTEXT INDEX data_index (data), FOREIGN KEY (t1_a) REFERENCES t1(a) ON DELETE CASCADE);
+INSERT INTO t2 (data, t1_a) VALUES ('searchable text', 1), ('another entry', 3);
+SELECT * FROM t2 WHERE MATCH (data) AGAINST ('searchable' IN NATURAL LANGUAGE MODE);
+ALTER TABLE t2 ADD COLUMN extra_info JSON;
+UPDATE t2 SET extra_info = JSON_OBJECT('key', 'value') WHERE id = 1;
+
+CREATE OR REPLACE VIEW v1 AS SELECT t1.a, t1.b, t2.data FROM t1 JOIN t2 ON t1.a = t2.t1_a;
+SELECT * FROM v1;
+
+CREATE PROCEDURE simpleproc (IN input_val INT)
+BEGIN
+    SELECT * FROM t1 WHERE a = input_val;
+END;
+
+CALL simpleproc(1);
+
+CREATE FUNCTION calculate_sum (x INT, y INT) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN x + y;
+END;
+
+SELECT calculate_sum(5, 10);
+
+CREATE EVENT myevent
+ON SCHEDULE EVERY 1 MINUTE
+STARTS CURRENT_TIMESTAMP
+DO
+  INSERT INTO t1 (a, b) VALUES (100, 'Event triggered');
+
+FLUSH TABLES WITH READ LOCK;
+UNLOCK TABLES;
+
+SET GLOBAL innodb_file_per_table=ON;
+OPTIMIZE TABLE t1;
+
+SET sql_mode=@old_sql_mode;
+SET auto_increment_increment=@auto_increment_increment;

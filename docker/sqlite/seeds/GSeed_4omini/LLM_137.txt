@@ -1,0 +1,17 @@
+CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT NOT NULL); 
+CREATE TABLE posts (post_id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id)); 
+CREATE TABLE comments (comment_id INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, comment_text TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(post_id) REFERENCES posts(post_id), FOREIGN KEY(user_id) REFERENCES users(id)); 
+
+INSERT INTO users (username, email) VALUES ('testuser1', 'test1@example.com'); 
+INSERT INTO users (username, email) VALUES ('testuser2', 'test2@example.com'); 
+INSERT INTO posts (user_id, content) VALUES (1, 'This is a test post.'); 
+INSERT INTO posts (user_id, content) VALUES (1, 'Another test post with special characters! @#%^&*()'); 
+INSERT INTO comments (post_id, user_id, comment_text) VALUES (1, 2, 'This is a test comment.'); 
+INSERT INTO comments (post_id, user_id, comment_text) VALUES (1, 1, 'Response to the test comment.'); 
+
+UPDATE users SET email = 'updated@example.com' WHERE username = 'testuser1'; 
+DELETE FROM comments WHERE comment_id = 1; 
+
+SELECT username, COUNT(posts.post_id) AS post_count FROM users LEFT JOIN posts ON users.id = posts.user_id GROUP BY username; 
+SELECT post_id, GROUP_CONCAT(comment_text) AS comments FROM posts LEFT JOIN comments ON posts.post_id = comments.post_id GROUP BY post_id; 
+SELECT DISTINCT user_id FROM posts WHERE length(content) > 100;

@@ -1,0 +1,26 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, email TEXT UNIQUE);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE VIEW user_orders AS SELECT u.name, o.order_id, o.amount FROM users u JOIN orders o ON u.id = o.user_id;
+
+INSERT INTO users(name, age, email) VALUES ('Alice', 30, 'alice@example.com');
+INSERT INTO users(name, age, email) VALUES ('Bob', 25, 'bob@example.com');
+INSERT INTO orders(user_id, amount) VALUES (1, 99.99);
+INSERT INTO orders(user_id, amount) VALUES (1, 49.99);
+INSERT INTO orders(user_id, amount) VALUES (2, 150.00);
+
+CREATE TRIGGER update_age AFTER UPDATE ON users FOR EACH ROW WHEN NEW.age < OLD.age BEGIN
+    INSERT INTO orders(user_id, amount) VALUES (NEW.id, -10.00); 
+END;
+
+CREATE TRIGGER clear_orders BEFORE DELETE ON users FOR EACH ROW BEGIN
+    DELETE FROM orders WHERE user_id = OLD.id; 
+END;
+
+SELECT * FROM user_orders WHERE amount > 50.00;
+SELECT name, COUNT(order_id) as total_orders FROM user_orders GROUP BY name HAVING total_orders > 1;
+
+ALTER TABLE users ADD COLUMN phone TEXT;
+UPDATE users SET phone = '123-456-7890' WHERE name = 'Alice';
+
+DROP VIEW user_orders;
+CREATE VIEW user_orders AS SELECT u.name, SUM(o.amount) as total_amount FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name;

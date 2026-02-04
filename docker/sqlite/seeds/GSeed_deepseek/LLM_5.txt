@@ -1,0 +1,47 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    age INTEGER CHECK(age >= 0),
+    score REAL DEFAULT 0.0,
+    joined_date DATE
+);
+
+CREATE INDEX idx_t1_name ON t1(name);
+INSERT INTO t1 VALUES(1, 'Alice', 30, 95.5, '2024-01-15');
+INSERT INTO t1 VALUES(2, 'Bob', NULL, 87.2, '2024-02-20');
+INSERT INTO t1 VALUES(3, 'Charlie', 25, NULL, '2024-03-10');
+
+ALTER TABLE t1 ADD COLUMN status TEXT DEFAULT 'active';
+
+CREATE VIEW v1 AS
+SELECT name, score, coalesce(score, 0) as adjusted_score FROM t1;
+
+CREATE TRIGGER trig_t1 AFTER UPDATE OF score ON t1
+FOR EACH ROW WHEN NEW.score > 100.0
+BEGIN
+    INSERT INTO t_log VALUES(NEW.id, 'Score exceeds maximum limit', datetime('now'));
+END;
+
+INSERT INTO t1(name, age, joined_date) VALUES('David', 35, '2024-04-01');
+INSERT INTO t1(name, score, status) VALUES('Eve', 98.7, 'inactive');
+
+SELECT rowid, id, name, typeof(age), score FROM t1;
+SELECT * FROM t1 WHERE age IS NULL OR score > 90.0;
+SELECT DISTINCT substr(name, 1, 2) AS initial FROM t1;
+
+CREATE TABLE t2(a INTEGER PRIMARY KEY AUTOINCREMENT, b TEXT COLLATE NOCASE);
+INSERT INTO t2(b) VALUES('apple'), ('Banana'), ('APPLE');
+SELECT a, b, lower(b) FROM t2 GROUP BY lower(b);
+
+SELECT COUNT(*) total_rows, sum(age) total_age, avg(score) average_score
+FROM t1 WHERE status = 'active' GROUP BY status;
+
+SELECT name, score FROM t1 UNION SELECT name, adjusted_score FROM v1;
+SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.a ORDER BY t1.name COLLATE NOCASE DESC;
+
+BEGIN TRANSACTION;
+    INSERT INTO t1(name, age) VALUES('Frank', 40);
+    ROLLBACK;
+COMMIT;
+
+SELECT * FROM t_log WHERE message LIKE 'Score%';

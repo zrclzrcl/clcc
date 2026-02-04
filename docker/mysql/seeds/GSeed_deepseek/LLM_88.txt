@@ -1,0 +1,25 @@
+SET optimizer_switch='index_merge=on,batched_key_access=off';
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    data BLOB,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    tags SET('tag1', 'tag2', 'tag3'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE t2 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    t1_id INT,
+    value DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+INSERT INTO t1 VALUES 
+(1, 'Test Name', _binary '0x48656C6C6F', 'active', 'tag1,tag3', CURRENT_TIMESTAMP),
+(2, 'Another Test', _binary '0x576F726C64', 'inactive', 'tag2', CURRENT_TIMESTAMP - INTERVAL 1 DAY);
+INSERT INTO t2 (t1_id, value) VALUES 
+(1, 100.50), 
+(2, 200.75),
+(3, NULL); -- Testing edge case with NULL
+SELECT t1.id, t1.name, t2.value, COUNT(*) OVER() AS total_count FROM t1 JOIN t2 ON t1.id = t2.t1_id WHERE t1.status = 'active' AND t2.value > 50 GROUP BY t1.id ORDER BY t2.value DESC LIMIT 1 OFFSET 1;
+SELECT JSON_OBJECT('id', id, 'name', name) AS json_data FROM t1 WHERE name LIKE '%Test%' OR status REGEXP '^inactive$';
+DROP TABLE t1, t2;

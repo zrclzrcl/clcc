@@ -1,0 +1,18 @@
+PRAGMA journal_size = 65536;
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    score REAL CHECK(score >= 0),
+    data BLOB,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_t1 ON t1(name, score);
+INSERT INTO t1 VALUES(1, 'Test', 100.5, x'abcdef', CURRENT_TIMESTAMP);
+REPLACE INTO t1(id, name) VALUES(2, 'Another');
+UPDATE t1 SET score = 90 WHERE id = 1;
+DELETE FROM t1 WHERE score < 50;
+BEGIN;
+    INSERT INTO t1 VALUES(3, 'TransactionTest', 85.5, x'123456', CURRENT_TIMESTAMP);
+COMMIT;
+CREATE VIEW v1 AS SELECT name, score FROM t1 WHERE score >= 90;
+VACUUM;

@@ -1,0 +1,72 @@
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+
+CREATE TABLE department (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+CREATE TABLE employee (
+    emp_id SERIAL PRIMARY KEY,
+    emp_name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    dept_id INT,
+    hire_date DATE,
+    FOREIGN KEY (dept_id) REFERENCES department(dept_id)
+);
+
+INSERT INTO department (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employee (emp_name, salary, dept_id, hire_date) VALUES
+('John Doe', 60000.00, 1, '2022-01-15'),
+('Jane Smith', 75000.00, 2, '2021-05-20'),
+('Peter Jones', 90000.00, 3, '2020-11-01'),
+('Mary Brown', 65000.00, 1, '2023-03-10');
+
+SELECT * FROM employee;
+SELECT emp_name, salary FROM employee WHERE dept_id = 1;
+SELECT AVG(salary) FROM employee;
+SELECT dept_name, COUNT(*) FROM department LEFT JOIN employee ON department.dept_id = employee.dept_id GROUP BY dept_name;
+UPDATE employee SET salary = salary * 1.10 WHERE dept_id = 3;
+DELETE FROM employee WHERE emp_id = 4;
+SELECT * FROM employee ORDER BY salary DESC;
+SELECT UPPER(emp_name) FROM employee;
+SELECT SUBSTRING(emp_name FROM 1 FOR 3) FROM employee;
+SELECT EXTRACT(YEAR FROM hire_date) FROM employee;
+SELECT EXTRACT(MONTH FROM hire_date) FROM employee;
+SELECT EXTRACT(DAY FROM hire_date) FROM employee;
+
+CREATE INDEX idx_dept_id ON employee (dept_id);
+
+EXPLAIN SELECT * FROM employee WHERE dept_id = 1;
+
+-- PostgreSQL specific features
+SELECT version();
+SELECT pg_sleep(0.1);
+
+-- Using generate_series function
+SELECT generate_series(1, 5);
+
+-- Using window functions
+SELECT emp_name, salary, RANK() OVER (ORDER BY salary DESC) FROM employee;
+
+-- Using Common Table Expressions (CTEs)
+WITH high_earners AS (
+    SELECT emp_name, salary FROM employee WHERE salary > 70000
+)
+SELECT * FROM high_earners;
+
+-- Using Arrays
+CREATE TABLE example_array (
+    id SERIAL PRIMARY KEY,
+    names TEXT[]
+);
+
+INSERT INTO example_array (names) VALUES (ARRAY['Alice', 'Bob', 'Charlie']);
+SELECT names[1] FROM example_array;
+
+VACUUM ANALYZE employee;

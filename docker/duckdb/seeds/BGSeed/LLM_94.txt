@@ -1,0 +1,38 @@
+CREATE TABLE integers (
+  i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+-- Test NULL handling in aggregations
+SELECT SUM(i), AVG(i), COUNT(i), COUNT(*), MAX(i), MIN(i) FROM integers;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i), RANK() OVER (ORDER BY i), DENSE_RANK() OVER (ORDER BY i) FROM integers;
+
+-- Test string functions
+CREATE TABLE strings (
+  s VARCHAR
+);
+
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL);
+
+SELECT s, UPPER(s), LOWER(s), LENGTH(s), SUBSTRING(s, 2, 2) FROM strings;
+
+-- Test date/time functions
+CREATE TABLE dates (
+  d DATE
+);
+
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-02-15'), (NULL);
+
+SELECT d, DATE_TRUNC('month', d), DATE_PART('day', d) FROM dates;
+
+-- Test array functions (DuckDB specific)
+CREATE TABLE arrays (
+  a INTEGER[]
+);
+
+INSERT INTO arrays VALUES (ARRAY[1, 2, 3]), (ARRAY[4, 5, NULL]), (NULL);
+
+SELECT a, array_length(a), a[1] FROM arrays;

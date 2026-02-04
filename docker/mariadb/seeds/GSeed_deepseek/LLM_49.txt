@@ -1,0 +1,52 @@
+-- Initial seed for MariaDB fuzz testing
+-- Creates multiple tables with various column types and data
+-- Includes triggers, stored procedures, and unique MariaDB functions
+
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO test_table (name, description, is_active)
+VALUES ('Test Record 1', 'This is a test record.', TRUE),
+       ('Test Record 2', NULL, FALSE),
+       ('Test Record 3', 'Another test record with longer description that should be properly handled by the database engine.', TRUE);
+
+CREATE TABLE test_table_with_constraints (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    unique_field VARCHAR(50) UNIQUE,
+    amount DECIMAL(10,2) CHECK (amount >= 0),
+    created_by INT,
+    FOREIGN KEY (created_by) REFERENCES test_table(id)
+);
+
+ALTER TABLE test_table ADD COLUMN age INT DEFAULT NULL;
+
+CREATE TRIGGER after_insert_test_table
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO test_table_with_constraints (unique_field, amount, created_by)
+    VALUES (CONCAT('Trigger-', NEW.id), RAND() * 1000, NEW.id);
+END;
+
+DELIMITER $$
+CREATE PROCEDURE insert_test_record()
+BEGIN
+    INSERT INTO test_table (name, description) VALUES ('Procedure Record', 'Inserted by stored procedure');
+END$$
+DELIMITER ;
+
+CALL insert_test_record();
+
+CREATE INDEX idx_name ON test_table(name);
+
+SET @test_variable = 'This is a session variable';
+SELECT @test_variable AS test_result;
+
+-- Test specific MariaDB functions and features
+SELECT sysdate(), user(), @@version;

@@ -1,0 +1,175 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+    ('Alice Smith', 'Sales', 60000.00),
+    ('Bob Johnson', 'Marketing', 75000.00),
+    ('Charlie Brown', 'IT', 90000.00);
+
+CREATE VIEW high_earners AS
+SELECT name, department, salary
+FROM employees
+WHERE salary > 70000.00;
+
+SELECT * FROM high_earners;
+
+CREATE INDEX idx_department ON employees (department);
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+SELECT department, MAX(salary) FROM employees GROUP BY department HAVING COUNT(*) > 1;
+
+SELECT * FROM employees WHERE name LIKE 'A%';
+
+SELECT name, department FROM employees ORDER BY salary DESC LIMIT 2;
+
+CREATE TEMPORARY TABLE employee_backup AS SELECT * FROM employees;
+
+SELECT * FROM employee_backup;
+
+DROP TABLE employee_backup;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE;
+
+SELECT name, EXTRACT(YEAR FROM hire_date) FROM employees;
+
+SELECT name, AGE(hire_date) FROM employees;
+
+CREATE OR REPLACE FUNCTION get_employee_count(dept_name VARCHAR) RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees WHERE department = dept_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Sales');
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('IT');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'IT';
+
+ALTER TABLE employees DROP COLUMN department;
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+SELECT e.name, d.dept_name FROM employees e LEFT JOIN departments d ON e.dept_id = d.dept_id;
+
+SELECT d.dept_name, COUNT(e.id) FROM departments d LEFT JOIN employees e ON d.dept_id = e.dept_id GROUP BY d.dept_name;
+
+CREATE TABLE employee_audit (
+    audit_id SERIAL PRIMARY KEY,
+    employee_id INTEGER,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    updated_at TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION audit_salary_change() RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.salary <> NEW.salary THEN
+        INSERT INTO employee_audit (employee_id, old_salary, new_salary, updated_at)
+        VALUES (OLD.id, OLD.salary, NEW.salary, NOW());
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_audit
+AFTER UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION audit_salary_change();
+
+UPDATE employees SET salary = salary * 1.05 WHERE dept_id = 2;
+
+SELECT * FROM employee_audit;
+
+WITH RECURSIVE EmployeeHierarchy AS (
+    SELECT id, name, dept_id, 0 AS level
+    FROM employees
+    WHERE dept_id = 1
+
+    UNION ALL
+
+    SELECT e.id, e.name, e.dept_id, eh.level + 1
+    FROM employees e
+    INNER JOIN EmployeeHierarchy eh ON e.dept_id = eh.dept_id
+    WHERE eh.level < 5
+)
+SELECT * FROM EmployeeHierarchy;
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    category VARCHAR(50) DEFAULT 'Uncategorized'
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+    ('Laptop', 1200.00, 'Electronics'),
+    ('Office Chair', 250.00, 'Furniture'),
+    ('Coffee Maker', 80.00, 'Appliances');
+
+SELECT product_name, price FROM products WHERE category = 'Electronics' AND price > 1000;
+
+ALTER TABLE products ADD CONSTRAINT unique_product_name UNIQUE (product_name);
+
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT category, COUNT(*) AS product_count, AVG(price) AS average_price
+FROM products
+GROUP BY category;
+
+SELECT * FROM product_summary;
+
+REFRESH MATERIALIZED VIEW product_summary;
+
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    sale_date DATE,
+    quantity INTEGER
+);
+
+INSERT INTO sales (product_id, sale_date, quantity) VALUES
+    (1, '2024-01-15', 2),
+    (2, '2024-02-20', 5),
+    (3, '2024-03-10', 3);
+
+SELECT p.product_name, SUM(s.quantity) AS total_quantity_sold
+FROM products p
+JOIN sales s ON p.product_id = s.product_id
+GROUP BY p.product_name
+ORDER BY total_quantity_sold DESC;
+
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE
+);
+
+INSERT INTO users (username, password, email) VALUES
+    ('john_doe', 'hashed_password_1', 'john.doe@example.com'),
+    ('jane_smith', 'hashed_password_2', 'jane.smith@example.com');
+
+GRANT SELECT ON TABLE employees TO PUBLIC;
+REVOKE ALL PRIVILEGES ON TABLE products FROM PUBLIC;

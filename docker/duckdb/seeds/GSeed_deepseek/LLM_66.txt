@@ -1,0 +1,41 @@
+CREATE TABLE test_data (
+    id INTEGER PRIMARY KEY,
+    a TEXT,
+    b REAL,
+    c BOOLEAN
+);
+
+CREATE INDEX idx_a_lower ON test_data (LOWER(a));
+CREATE UNIQUE INDEX idx_b_unique ON test_data (b DESC);
+
+INSERT INTO test_data (id, a, b, c) VALUES 
+(1, 'test1', 10.5, TRUE),
+(2, 'test2', NULL, FALSE),
+(3, 'test3', -999999.99, TRUE),
+(4, NULL, 123456789.123, NULL);
+
+SELECT * FROM test_data;
+
+SELECT 
+    a,
+    b,
+    ROW_NUMBER() OVER (ORDER BY id) as row_num,
+    RANK() OVER (PARTITION BY c ORDER BY b DESC) as rank
+FROM test_data
+WHERE c IS TRUE;
+
+WITH recursive_cte AS (
+    SELECT 1 as n
+    UNION ALL
+    SELECT n + 1 FROM recursive_cte WHERE n < 5
+)
+SELECT * FROM recursive_cte;
+
+BEGIN TRANSACTION;
+INSERT INTO test_data (id, a, b, c) VALUES (5, 'test4', 789.0, TRUE);
+SAVEPOINT sp1;
+DELETE FROM test_data WHERE id = 5;
+ROLLBACK TO sp1;
+COMMIT;
+
+VACUUM;

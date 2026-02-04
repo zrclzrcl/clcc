@@ -1,0 +1,65 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    stock INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price, stock) VALUES
+('Amazing Widget', 'The best widget you will ever own!', 99.99, 100),
+('Deluxe Gadget', 'A premium gadget for the discerning user.', 199.99, 50),
+('Basic Thingy', 'A simple thingy for everyday use.', 9.99, 500);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (customer_id, total) VALUES (1, 99.99), (2, 209.98);
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 99.99), (2, 1, 1, 99.99), (2, 3, 11, 109.89);
+
+-- MariaDB specific JSON functions
+UPDATE products SET description = JSON_OBJECT('features', JSON_ARRAY('durable', 'reliable', 'efficient')) WHERE id = 1;
+
+-- MariaDB specific dynamic columns
+CREATE TABLE dynamic_test (id INT PRIMARY KEY, dc MEDIUMBLOB);
+INSERT INTO dynamic_test VALUES (1, COLUMN_CREATE('name', 'test', 'age', 30));
+SELECT COLUMN_GET(dc, 'name' AS char) FROM dynamic_test WHERE id = 1;
+
+-- Test for FULLTEXT index and MATCH AGAINST
+ALTER TABLE products ADD FULLTEXT INDEX name_description_fulltext (name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('widget' IN NATURAL LANGUAGE MODE);
+
+-- Test for stored procedures
+DELIMITER //
+CREATE PROCEDURE GetProductPrice (IN productId INT, OUT productPrice DECIMAL(10, 2))
+BEGIN
+    SELECT price INTO productPrice FROM products WHERE id = productId;
+END //
+DELIMITER ;
+
+CALL GetProductPrice(1, @price);
+SELECT @price;
+
+-- Window function to calculate running total of prices
+SELECT
+    name,
+    price,
+    SUM(price) OVER (ORDER BY id) AS running_total
+FROM
+    products;

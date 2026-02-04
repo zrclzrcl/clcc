@@ -1,0 +1,25 @@
+SET SQL_MODE = 'STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE test_edge_cases (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+    data BLOB,
+    metadata JSON,
+    location POINT
+);
+INSERT INTO test_edge_cases (name, price, created_at, description, data, metadata, location) VALUES 
+('Test Item 1', 99.99, '2023-01-01 00:00:00', 'A very long description that exceeds normal limits...', _binary '0101010101', '{"key": "value", "array": [1,2,3]}', ST_GeomFromText('POINT(1 1)')),
+('Test Item 2', NULL, '2023-01-02 00:00:00', '', _binary '00000000', '{}', ST_GeomFromText('POINT(2 2)'));
+ALTER TABLE test_edge_cases ADD CONSTRAINT chk_price CHECK (price > 0);
+CREATE INDEX idx_name ON test_edge_cases(name);
+CREATE SPATIAL INDEX idx_location ON test_edge_cases(location);
+START TRANSACTION;
+INSERT INTO test_edge_cases (name, price) VALUES ('Test Item 3', 100.50);
+SAVEPOINT my_savepoint;
+UPDATE test_edge_cases SET description = 'Updated description' WHERE name = 'Test Item 3';
+ROLLBACK TO my_savepoint;
+COMMIT;
+SET @json_data = '{"a": "b", "c": [1,2,3]}';
+SELECT JSON_EXTRACT(@json_data, '$.c[1]');

@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (emp_id, emp_name, salary, department) VALUES
+(1, 'Alice Smith', 60000.00, 'Sales'),
+(2, 'Bob Johnson', 75000.00, 'Marketing'),
+(3, 'Charlie Brown', 50000.00, 'Sales'),
+(4, 'David Lee', 80000.00, 'Engineering'),
+(5, 'Eve Wilson', 90000.00, 'Engineering');
+
+CREATE OR REPLACE VIEW high_earners AS
+SELECT emp_name, salary
+FROM employees
+WHERE salary > 70000.00;
+
+DELIMITER //
+CREATE PROCEDURE raise_salary (IN emp_id_param INT, IN raise_amount DECIMAL(10, 2))
+BEGIN
+    UPDATE employees SET salary = salary + raise_amount WHERE emp_id = emp_id_param;
+END //
+DELIMITER ;
+
+CALL raise_salary(1, 5000.00);
+
+SET @dept = 'Engineering';
+SELECT emp_name, salary FROM employees WHERE department = @dept ORDER BY salary DESC;
+
+-- MariaDB specific function example
+SELECT emp_name, salary, ST_AsText(ST_GeomFromText('POINT(10 20)')) AS location FROM employees LIMIT 1;
+
+-- MariaDB dynamic column example
+CREATE TABLE dyn_table (id INT, attrs JSON);
+INSERT INTO dyn_table VALUES (1, '{"name": "product1", "price": 100}');
+SELECT id, attrs->'$.name' AS product_name FROM dyn_table;
+
+OPTIMIZE TABLE employees;
+
+ANALYZE TABLE employees;
+
+-- Complex query with window function
+SELECT
+    emp_name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;

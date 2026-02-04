@@ -1,0 +1,50 @@
+-- DuckDB Specific Functions & Features Exploration
+-- Initial Seed for Database Fuzz Testing
+
+-- 1. Date & Time Functions
+SELECT CURRENT_TIMESTAMP, DATE('2024-01-01'), STRFTIME('%Y-%m-%d %H:%M:%S', 'now');
+
+-- 2. String Functions and SIMD-accelerated operations
+SELECT UPPER('duckdb'), LOWER('DuckDB'), LENGTH('duckdb'), SUBSTRING('duckdb', 2, 4);
+
+-- 3. Create and populate a table with various data types. Test numeric boundaries
+CREATE TABLE test_data (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    value DOUBLE,
+    ts TIMESTAMP,
+    big_int BIGINT
+);
+
+INSERT INTO test_data (name, value, ts, big_int) VALUES
+('a', 1.0, '2023-01-01', 9223372036854775807),
+('b', 3.14, '2023-01-02', -9223372036854775808),
+('c', -2.71, CURRENT_TIMESTAMP, 0);
+
+
+-- 4. JSON functions (DuckDB's JSON support)
+SELECT JSON('{"key": "value"}'), JSON_EXTRACT('{"a": 1, "b": 2}', '$.a');
+
+-- 5.  List functions (DuckDB's LIST support)
+SELECT LIST([1, 2, 3]);
+SELECT LIST_VALUE(LIST([4,5,6]), 1);
+
+-- 6.  UNNEST function. Test that this handles different types and sizes of lists correctly
+SELECT * FROM UNNEST([LIST([1,2,3]), LIST(['a','b'])]);
+
+-- 7. Data type conversions. try to cause errors or overflows
+SELECT CAST('123' AS INTEGER), CAST(123.45 AS VARCHAR), CAST(9223372036854775807 AS VARCHAR);
+
+-- 8. Correlated subquery
+SELECT name FROM test_data WHERE value > (SELECT AVG(value) FROM test_data);
+
+-- 9. Aggregation and grouping
+SELECT AVG(value), COUNT(*) FROM test_data GROUP BY SUBSTRING(name, 1, 1);
+
+-- 10. Window Functions (RANK)
+SELECT name, value, RANK() OVER (ORDER BY value DESC) AS rank_value FROM test_data;
+
+-- 11. Test the BLOOM filter for faster lookups
+CREATE TABLE bloom_filter_test (id INTEGER PRIMARY KEY, value VARCHAR);
+INSERT INTO bloom_filter_test VALUES (1, 'abc'), (2, 'def'), (3, 'ghi');
+SELECT * FROM bloom_filter_test WHERE value = 'abc';

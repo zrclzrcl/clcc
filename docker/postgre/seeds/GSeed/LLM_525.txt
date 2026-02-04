@@ -1,0 +1,128 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone_number VARCHAR(20),
+    address TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date TIMESTAMPTZ DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending'
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT NOT NULL,
+    price_per_unit DECIMAL(10, 2) NOT NULL
+);
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+CREATE INDEX idx_product_id ON order_items (product_id);
+CREATE INDEX idx_order_id ON order_items (order_id);
+
+INSERT INTO products (product_name, price, description) VALUES
+('Laptop', 1200.00, 'High-performance laptop'),
+('Mouse', 25.00, 'Wireless mouse'),
+('Keyboard', 75.00, 'Mechanical keyboard'),
+('Monitor', 300.00, '27-inch monitor'),
+('Webcam', 50.00, '1080p webcam');
+
+INSERT INTO customers (first_name, last_name, email, phone_number, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave'),
+('Robert', 'Jones', 'robert.jones@example.com', '555-123-4567', '789 Pine Ln');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 375.00),
+(3, 350.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 1, 75.00),
+(2, 4, 1, 300.00),
+(3, 4, 1, 300.00),
+(3, 5, 1, 50.00);
+
+SELECT * FROM products WHERE price > 100;
+SELECT first_name, last_name FROM customers WHERE email LIKE '%example.com';
+SELECT order_date, total_amount FROM orders ORDER BY order_date DESC;
+SELECT p.product_name, oi.quantity FROM products p JOIN order_items oi ON p.product_id = oi.product_id WHERE p.price < 500;
+SELECT c.first_name, o.order_id FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id;
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+DELETE FROM products WHERE product_name = 'Webcam';
+SELECT AVG(price) FROM products;
+SELECT COUNT(*) FROM customers;
+SELECT MAX(total_amount) FROM orders;
+SELECT SUM(quantity * price_per_unit) FROM order_items;
+SELECT product_name, LENGTH(description) FROM products;
+SELECT UPPER(first_name), LOWER(last_name) FROM customers;
+SELECT SUBSTRING(email FROM 1 FOR 5) FROM customers;
+SELECT EXTRACT(YEAR FROM order_date) FROM orders;
+SELECT product_name FROM products WHERE description ILIKE '%high%';
+SELECT * FROM customers WHERE phone_number SIMILAR TO '[0-9]{3}-[0-9]{3}-[0-9]{4}';
+SELECT * FROM products WHERE price BETWEEN 50 AND 500;
+SELECT * FROM customers WHERE customer_id IN (SELECT customer_id FROM orders);
+SELECT * FROM products WHERE EXISTS (SELECT 1 FROM order_items WHERE product_id = products.product_id);
+SELECT order_id, customer_id, LEAD(customer_id, 1, 0) OVER (ORDER BY order_id) AS next_customer_id FROM orders;
+SELECT order_id, customer_id, LAG(customer_id, 1, 0) OVER (ORDER BY order_id) AS prev_customer_id FROM orders;
+SELECT order_id, customer_id, ROW_NUMBER() OVER (ORDER BY order_id) AS row_num FROM orders;
+SELECT order_id, customer_id, RANK() OVER (ORDER BY total_amount DESC) AS rank_num FROM orders;
+SELECT order_id, customer_id, DENSE_RANK() OVER (ORDER BY total_amount DESC) AS dense_rank_num FROM orders;
+SELECT order_id, customer_id, NTILE(4) OVER (ORDER BY total_amount DESC) AS ntile_num FROM orders;
+SELECT order_id, customer_id, PERCENT_RANK() OVER (ORDER BY total_amount DESC) AS percent_rank_num FROM orders;
+SELECT order_id, customer_id, CUME_DIST() OVER (ORDER BY total_amount DESC) AS cume_dist_num FROM orders;
+SELECT product_name, price, description FROM products WHERE to_tsvector('english', description) @@ to_tsquery('english', 'high & performance');
+CREATE OR REPLACE FUNCTION get_customer_name(customer_id INT) RETURNS TEXT AS $$
+    SELECT first_name || ' ' || last_name FROM customers WHERE customer_id = $1;
+$$ LANGUAGE SQL;
+SELECT get_customer_name(1);
+CREATE MATERIALIZED VIEW high_value_products AS SELECT product_name, price FROM products WHERE price > 500;
+REFRESH MATERIALIZED VIEW high_value_products;
+SELECT * FROM high_value_products;
+PREPARE my_query (INT) AS SELECT * FROM orders WHERE customer_id = $1;
+EXECUTE my_query(1);
+DEALLOCATE my_query;
+EXPLAIN SELECT * FROM orders WHERE customer_id = 1;
+ANALYZE products;
+SHOW search_path;
+SET search_path TO public, pg_catalog;
+RESET search_path;
+SELECT version();
+SELECT current_database();
+SELECT current_user;
+SELECT inet_client_addr();
+SELECT inet_server_addr();
+SELECT pg_backend_pid();
+SELECT pg_cancel_backend(pg_backend_pid());
+CREATE ROLE test_role;
+DROP ROLE test_role;
+GRANT SELECT ON products TO test_role;
+REVOKE SELECT ON products FROM test_role;
+BEGIN;
+INSERT INTO products (product_name, price) VALUES ('Test Product', 100);
+ROLLBACK;
+BEGIN;
+INSERT INTO products (product_name, price) VALUES ('Test Product 2', 200);
+COMMIT;
+SAVEPOINT my_savepoint;
+INSERT INTO products (product_name, price) VALUES ('Test Product 3', 300);
+ROLLBACK TO SAVEPOINT my_savepoint;
+RELEASE SAVEPOINT my_savepoint;

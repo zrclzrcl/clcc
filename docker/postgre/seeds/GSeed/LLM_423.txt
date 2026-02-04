@@ -1,0 +1,183 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+INSERT INTO test_table (name, value) VALUES
+('Alice', 10),
+('Bob', 20),
+('Charlie', 30),
+('Alice', 40);
+
+CREATE INDEX idx_name ON test_table (name);
+
+CREATE VIEW test_view AS
+SELECT name, SUM(value) AS total_value
+FROM test_table
+GROUP BY name;
+
+SELECT * FROM test_view;
+
+CREATE MATERIALIZED VIEW test_matview AS
+SELECT name, SUM(value) AS total_value
+FROM test_table
+GROUP BY name
+WITH DATA;
+
+SELECT * FROM test_matview;
+
+REFRESH MATERIALIZED VIEW test_matview;
+
+EXPLAIN (ANALYZE, COSTS OFF) SELECT * FROM test_matview;
+
+CREATE UNIQUE INDEX idx_name_matview ON test_matview (name);
+
+INSERT INTO test_table (name, value) VALUES ('David', 50);
+
+REFRESH MATERIALIZED VIEW CONCURRENTLY test_matview;
+
+SELECT * FROM test_matview;
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'Some description' WHERE id = 1;
+
+REFRESH MATERIALIZED VIEW test_matview;
+
+SELECT * FROM test_matview;
+
+CREATE SCHEMA test_schema;
+
+ALTER MATERIALIZED VIEW test_matview SET SCHEMA test_schema;
+
+SET search_path TO test_schema, public;
+
+SELECT * FROM test_matview;
+
+RESET search_path;
+
+DROP MATERIALIZED VIEW test_schema.test_matview;
+
+DROP VIEW test_view;
+
+DROP TABLE test_table;
+
+CREATE TABLE json_test (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "Eve", "age": 25, "city": "New York"}'),
+('{"name": "Fred", "age": 30, "city": "London"}');
+
+SELECT data -> 'name' AS name FROM json_test;
+
+CREATE MATERIALIZED VIEW json_matview AS
+SELECT id, data ->> 'name' AS name, (data ->> 'age')::integer AS age, data ->> 'city' AS city
+FROM json_test;
+
+SELECT * FROM json_matview;
+
+REFRESH MATERIALIZED VIEW json_matview;
+
+DROP MATERIALIZED VIEW json_matview;
+
+DROP TABLE json_test;
+
+CREATE TABLE range_test (
+  id SERIAL PRIMARY KEY,
+  tsrange TSRANGE
+);
+
+INSERT INTO range_test (tsrange) VALUES
+(tsrange('2023-01-01', '2023-01-05'));
+
+CREATE MATERIALIZED VIEW range_matview AS
+SELECT * FROM range_test;
+
+SELECT * FROM range_matview;
+
+REFRESH MATERIALIZED VIEW range_matview;
+
+DROP MATERIALIZED VIEW range_matview;
+
+DROP TABLE range_test;
+
+CREATE TABLE enum_test (
+    id SERIAL PRIMARY KEY,
+    status TEXT
+);
+
+CREATE TYPE status_enum AS ENUM ('open', 'closed', 'pending');
+
+ALTER TABLE enum_test ALTER COLUMN status TYPE status_enum USING status::status_enum;
+
+INSERT INTO enum_test (status) VALUES ('open'), ('closed');
+
+CREATE MATERIALIZED VIEW enum_matview AS SELECT * FROM enum_test;
+
+SELECT * FROM enum_matview;
+
+REFRESH MATERIALIZED VIEW enum_matview;
+
+DROP MATERIALIZED VIEW enum_matview;
+
+DROP TABLE enum_test;
+DROP TYPE status_enum;
+
+CREATE TABLE partition_test (
+    log_date date NOT NULL,
+    details text
+) PARTITION BY RANGE (log_date);
+
+CREATE TABLE partition_test_y2023m01 PARTITION OF partition_test
+    FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+
+INSERT INTO partition_test (log_date, details) VALUES
+('2023-01-01', 'Details for January 1st');
+
+CREATE MATERIALIZED VIEW partition_matview AS SELECT * FROM partition_test;
+
+SELECT * FROM partition_matview;
+
+REFRESH MATERIALIZED VIEW partition_matview;
+
+DROP MATERIALIZED VIEW partition_matview;
+
+DROP TABLE partition_test;
+
+CREATE TABLE identity_test (
+  id INT GENERATED ALWAYS AS IDENTITY,
+  name VARCHAR(255)
+);
+
+INSERT INTO identity_test (name) VALUES ('Test');
+
+CREATE MATERIALIZED VIEW identity_matview AS SELECT * FROM identity_test;
+
+SELECT * FROM identity_matview;
+
+REFRESH MATERIALIZED VIEW identity_matview;
+
+DROP MATERIALIZED VIEW identity_matview;
+
+DROP TABLE identity_test;
+
+CREATE TABLE collation_test (
+  id SERIAL PRIMARY KEY,
+  name TEXT COLLATE "en_US"
+);
+
+INSERT INTO collation_test (name) VALUES ('Test');
+
+CREATE MATERIALIZED VIEW collation_matview AS SELECT * FROM collation_test;
+
+SELECT * FROM collation_matview;
+
+REFRESH MATERIALIZED VIEW collation_matview;
+
+DROP MATERIALIZED VIEW collation_matview;
+
+DROP TABLE collation_test;

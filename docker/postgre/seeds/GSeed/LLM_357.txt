@@ -1,0 +1,185 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    zip_code VARCHAR(20),
+    country_id VARCHAR(2)
+);
+
+CREATE TABLE countries (
+    id VARCHAR(2) PRIMARY KEY,
+    name VARCHAR(50),
+    region_id INTEGER
+);
+
+CREATE TABLE regions (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+INSERT INTO regions (name) VALUES ('Europe');
+INSERT INTO countries (id, name, region_id) VALUES ('US', 'United States', 1);
+INSERT INTO locations (address, city, state, zip_code, country_id) VALUES ('123 Main St', 'Anytown', 'CA', '91234', 'US');
+INSERT INTO departments (name, location_id) VALUES ('Sales', 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 60000.00, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-20', 2, 75000.00, 1);
+
+SELECT * FROM employees WHERE salary > 50000;
+SELECT first_name, last_name FROM employees ORDER BY last_name;
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+DELETE FROM employees WHERE id = 2;
+
+CREATE INDEX idx_employees_last_name ON employees (last_name);
+
+-- Using PostgreSQL-specific features
+SELECT version();
+SELECT current_database();
+SELECT inet_client_addr();
+SELECT pg_backend_pid();
+SELECT pg_cancel_backend(pg_backend_pid());
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- Window functions
+SELECT first_name, last_name, salary, RANK() OVER (ORDER BY salary DESC) FROM employees;
+
+-- Common Table Expressions (CTEs)
+WITH high_earners AS (
+    SELECT first_name, last_name, salary FROM employees WHERE salary > 70000
+)
+SELECT * FROM high_earners;
+
+-- Array type
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    names TEXT[]
+);
+
+INSERT INTO array_test (names) VALUES (ARRAY['Alice', 'Bob', 'Charlie']);
+SELECT names[1] FROM array_test WHERE id = 1;
+
+-- JSON type
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES ('{"name": "Product A", "price": 25.99}');
+SELECT data -> 'name' FROM json_test WHERE id = 1;
+
+-- Trigger example
+CREATE OR REPLACE FUNCTION log_salary_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Salary changed from % to %', OLD.salary, NEW.salary;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_change_trigger
+BEFORE UPDATE OF salary ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE log_salary_change();
+
+UPDATE employees SET salary = 66000 WHERE id = 1;
+
+-- Check constraint
+ALTER TABLE employees ADD CONSTRAINT positive_salary CHECK (salary > 0);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Bad', 'Salary', 'bad.salary@example.com', '2024-01-01', 1, -100, 1);
+
+-- Generate series
+SELECT generate_series(1, 10);
+
+-- UUID type
+CREATE TABLE uuid_test (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50)
+);
+INSERT INTO uuid_test (name) VALUES ('Test UUID');
+SELECT id FROM uuid_test;
+
+-- Range types
+CREATE TABLE reservation (room int, during tsrange);
+INSERT INTO reservation VALUES (1108, '[2010-01-01 14:30, 2010-01-01 15:30)');
+SELECT * FROM reservation WHERE during @> '2010-01-01 15:00'::timestamp;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department_id, COUNT(*) FROM employees GROUP BY department_id;
+REFRESH MATERIALIZED VIEW employee_summary;
+SELECT * FROM employee_summary;
+
+-- Recursive query
+CREATE TABLE category (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    parent_id INTEGER REFERENCES category(id)
+);
+
+INSERT INTO category (name, parent_id) VALUES
+('Electronics', NULL),
+('Computers', 1),
+('Laptops', 2),
+('Desktops', 2);
+
+WITH RECURSIVE category_tree AS (
+    SELECT id, name, parent_id, 1 AS level
+    FROM category
+    WHERE parent_id IS NULL
+
+    UNION ALL
+
+    SELECT c.id, c.name, c.parent_id, ct.level + 1
+    FROM category c
+    JOIN category_tree ct ON c.parent_id = ct.id
+)
+SELECT * FROM category_tree;
+
+-- Foreign data wrapper
+CREATE EXTENSION postgres_fdw;
+
+CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw
+OPTIONS (host 'localhost', dbname 'postgres', port '5432');
+
+CREATE USER MAPPING FOR CURRENT_USER
+SERVER loopback
+OPTIONS (user 'postgres', password 'password'); --Replace with correct password
+
+CREATE FOREIGN TABLE foreign_employees (
+  id integer,
+  first_name varchar(50),
+  last_name varchar(50),
+  email varchar(100),
+  hire_date date,
+  job_id integer,
+  salary decimal(10,2),
+  department_id integer
+)
+SERVER loopback
+OPTIONS (schema_name 'public', table_name 'employees');
+
+SELECT * FROM foreign_employees;

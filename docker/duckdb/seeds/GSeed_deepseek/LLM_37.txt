@@ -1,0 +1,44 @@
+-- Create tables
+CREATE TABLE t1 (a INT);
+INSERT INTO t1 VALUES (0), (1), NULL, 2147483647;
+
+CREATE TABLE t2 (
+   id INT,
+   name VARCHAR(50),
+   birthdate DATE,
+   is_active BOOLEAN
+);
+INSERT INTO t2 VALUES 
+(1, 'Alice', '2000-02-29', TRUE),
+(2, '', '1970-01-01', FALSE),
+(3, NULL, '2020-06-15', NULL),
+(4, 'Bob', '2012-02-29', TRUE);
+
+CREATE TABLE t3 (
+   c1 INT,
+   c2 VARCHAR(10)
+);
+INSERT INTO t3 VALUES 
+(1, 'x'),
+(1, 'y'),
+(2, 'z');
+
+-- Complex query using CTE and window function
+WITH cte AS (
+   SELECT 
+      t1.a,
+      t2.name,
+      ROW_NUMBER() OVER (ORDER BY t1.a) as row_num
+   FROM t1
+   LEFT JOIN t2 ON t1.a = t2.id
+)
+SELECT * FROM cte WHERE name IS NOT NULL;
+
+-- Lateral join example
+SELECT 
+   t1.a,
+   lt.c2
+FROM t1
+LEFT JOIN LATERAL (
+   SELECT c2 FROM t3 WHERE c1 = t1.a
+) lt ON TRUE;

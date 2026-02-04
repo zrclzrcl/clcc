@@ -1,0 +1,84 @@
+-- Initial seed for MariaDB fuzz testing
+-- This seed includes various SQL statements that cover different functionalities in MariaDB.
+
+-- Create a test schema
+CREATE SCHEMA IF NOT EXISTS db_fuzz;
+
+-- Use the created schema
+USE db_fuzz;
+
+-- Create tables with different data types and constraints
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active'
+);
+
+-- Create a table with partitions
+CREATE TABLE t_partitioned (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data VARCHAR(255),
+    type CHAR(1)
+) ENGINE=InnoDB PARTITION BY HASH(id) PARTITIONS 4;
+
+-- Insert sample data
+INSERT INTO t1 (name, value, status) VALUES 
+('Test1', 100.5, 'active'),
+('Test2', NULL, 'inactive'),
+('Test3', 200.75, 'active');
+
+-- Create a trigger
+DELIMITER $$
+CREATE TRIGGER trig_before_insert_t1 BEFORE INSERT ON t1 FOR EACH ROW
+BEGIN
+    IF NEW.status IS NULL THEN
+        SET NEW.status = 'active';
+    END IF;
+END$$
+DELIMITER ;
+
+-- Create a stored procedure with parameters
+DELIMITER $$
+CREATE PROCEDURE sp_test_proc(IN param1 INT, OUT param2 VARCHAR(255))
+BEGIN
+    DECLARE var1 INT DEFAULT 0;
+    SET var1 = param1 * 2;
+    SELECT CONCAT('Result: ', var1) INTO param2;
+END$$
+DELIMITER ;
+
+-- Create a view
+CREATE VIEW v_test AS 
+SELECT id, name, value FROM t1 WHERE status = 'active';
+
+-- Test edge cases with NULL and boundary values
+INSERT INTO t_partitioned (id, data, type) VALUES 
+(0, 'Zero', 'A'),
+(NULL, 'Null Data', 'B'),
+(2147483647, 'Max INT', 'C');
+
+-- Test for foreign key constraints
+SET foreign_key_checks = 0;
+CREATE TABLE t_child (
+    id INT PRIMARY KEY,
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES t1(id)
+);
+SET foreign_key_checks = 1;
+
+-- Test for different SQL modes
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE';
+
+-- Test for MariaDB-specific features
+CREATE EVENT IF NOT EXISTS ev_test 
+ON SCHEDULE EVERY 1 HOUR 
+DO INSERT INTO t_partitioned (data, type) VALUES ('Event Data', 'E');
+
+-- Clean up unnecessary objects
+DROP TABLE IF EXISTS t_child;
+FLUSH TABLES db_fuzz.t1;
+
+-- Optimize table for better performance
+OPTIMIZE TABLE t1;

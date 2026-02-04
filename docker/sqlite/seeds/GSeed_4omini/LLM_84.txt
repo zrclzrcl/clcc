@@ -1,0 +1,35 @@
+DROP TABLE IF EXISTS users;
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, email TEXT NOT NULL, age INTEGER CHECK(age >= 0));
+
+INSERT INTO users(username, email, age) VALUES('alice', 'alice@example.com', 30);
+INSERT INTO users(username, email, age) VALUES('bob', 'bob@example.com', 25);
+INSERT INTO users(username, email, age) VALUES('charlie', 'charlie@example.com', 35);
+INSERT INTO users(username, email, age) VALUES('dave', 'dave@example.com', 40);
+INSERT INTO users(username, email, age) VALUES('eve', 'eve@example.com', 20);
+INSERT INTO users(username, email, age) VALUES('frank', 'frank@example.com', -5); -- This should trigger an error due to CHECK constraint.
+
+SELECT id, username FROM users WHERE age > 25 ORDER BY age DESC;
+
+WITH user_counts AS (
+    SELECT age, COUNT(*) AS count FROM users GROUP BY age HAVING COUNT(*) > 1
+)
+SELECT u.id, u.username, u.age, uc.count FROM users u
+JOIN user_counts uc ON u.age = uc.age
+ORDER BY u.age;
+
+CREATE INDEX idx_users_email ON users(email);
+SELECT username FROM users WHERE email LIKE '%example.com' ORDER BY username;
+
+DROP TABLE IF EXISTS transactions;
+CREATE TABLE transactions(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+
+INSERT INTO transactions(user_id, amount) VALUES(1, 100.50);
+INSERT INTO transactions(user_id, amount) VALUES(2, 150.75);
+INSERT INTO transactions(user_id, amount) VALUES(3, 200.0);
+INSERT INTO transactions(user_id, amount) VALUES(1, 300.25);
+
+SELECT u.username, SUM(t.amount) AS total_amount
+FROM users u
+JOIN transactions t ON u.id = t.user_id
+GROUP BY u.username
+HAVING total_amount > 200;

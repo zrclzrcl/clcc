@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, age INTEGER CHECK(age >= 0));
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL CHECK(amount > 0), FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(username, age) VALUES('alice', 30), ('bob', 25), ('charlie', 35);
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (2, 150.75), (1, 200.00), (3, 80.00);
+
+SELECT u.username, COUNT(o.order_id) AS order_count, SUM(o.amount) AS total_spent 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id 
+HAVING total_spent > 100 
+ORDER BY total_spent DESC;
+
+PRAGMA foreign_keys = ON;

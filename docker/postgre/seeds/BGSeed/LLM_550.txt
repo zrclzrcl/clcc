@@ -1,0 +1,141 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE,
+    location VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id)
+    REFERENCES departments (id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 2, 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 3, 90000.00, 3);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT * FROM employees WHERE department_id = 1;
+
+SELECT first_name, last_name FROM employees ORDER BY last_name ASC;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+SELECT MIN(salary) FROM employees;
+
+SELECT department_id, AVG(salary) FROM employees GROUP BY department_id;
+
+SELECT d.name, COUNT(e.id) FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.name;
+
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2023-12-31';
+
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id;
+
+CREATE VIEW employee_salaries AS
+SELECT first_name, last_name, salary FROM employees;
+
+SELECT * FROM employee_salaries WHERE salary > 70000;
+
+DROP VIEW employee_salaries;
+
+ALTER TABLE employees ADD COLUMN phone_number VARCHAR(20);
+
+ALTER TABLE employees DROP COLUMN phone_number;
+
+SELECT version();
+
+SELECT current_database();
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+CREATE TABLE test_table (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO test_table (data) VALUES ('{"name": "Test", "value": 123}');
+
+SELECT data -> 'name' FROM test_table;
+
+DROP TABLE test_table;
+
+CREATE TABLE range_test (
+  tsrange TSRANGE,
+  int4range INT4RANGE,
+  numrange NUMRANGE
+);
+
+INSERT INTO range_test (tsrange, int4range, numrange) VALUES (
+  '[2020-01-01 00:00:00, 2020-01-02 00:00:00)'::TSRANGE,
+  '[10,20]'::INT4RANGE,
+  '(1.5, 3.0)'::NUMRANGE
+);
+
+SELECT * FROM range_test;
+
+DROP TABLE range_test;
+
+--Testing window functions
+SELECT
+    department_id,
+    AVG(salary) OVER (PARTITION BY department_id) AS avg_salary_per_department
+FROM
+    employees;
+
+--Testing Common Table Expression (CTE)
+WITH EmployeeCounts AS (
+    SELECT department_id, COUNT(*) AS employee_count
+    FROM employees
+    GROUP BY department_id
+)
+SELECT d.name, ec.employee_count
+FROM departments d
+JOIN EmployeeCounts ec ON d.id = ec.department_id;
+
+--Testing GENERATE_SERIES function
+SELECT generate_series(1, 10);
+
+SELECT generate_series(1, 10, 2);
+
+--Testing pg_sleep
+SELECT pg_sleep(0.01);

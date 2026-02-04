@@ -1,0 +1,55 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    timestamp DATE,
+    data BLOB
+  );
+
+  CREATE INDEX idx_name ON test_table(name);
+
+  INSERT INTO test_table VALUES(1, 'Alice', 100.5, '2024-01-01', X'010203');
+  INSERT INTO test_table VALUES(2, 'Bob', NULL, '2024-01-02', X'040506');
+  INSERT INTO test_table VALUES(3, 'Charlie', -50.75, '2024-01-03', NULL);
+
+  SELECT 
+    id,
+    name,
+    value,
+    timestamp,
+    data
+  FROM test_table
+  WHERE value > 0 AND name LIKE 'A%';
+
+  SELECT 
+    t1.id,
+    t1.name,
+    t2.value AS value2,
+    t1.timestamp
+  FROM test_table t1
+  LEFT JOIN (
+    SELECT id, value FROM test_table WHERE value IS NOT NULL
+  ) t2 ON t1.id = t2.id;
+
+  SELECT 
+    name,
+    RANK() OVER (ORDER BY value DESC) as rank_desc,
+    DENSE_RANK() OVER (ORDER BY value ASC) as dense_rank_asc
+  FROM test_table
+  ORDER BY name;
+
+  SELECT 
+    id,
+    name,
+    LEAD(value, 1, 0) OVER (ORDER BY id) as next_value,
+    LAG(value, 1, 0) OVER (ORDER BY id) as prev_value
+  FROM test_table;
+
+  SELECT 
+    ABS(-10),
+    LOWER('HELLO'),
+    UPPER('world'),
+    LENGTH('test string'),
+    ROUND(123.456, 2)
+  FROM test_table
+  LIMIT 1;

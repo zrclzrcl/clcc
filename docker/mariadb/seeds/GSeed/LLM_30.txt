@@ -1,0 +1,67 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+SET GLOBAL innodb_default_row_format=dynamic;
+
+-- Test different storage engines
+CREATE TABLE t1 (id INT PRIMARY KEY, data VARCHAR(255)) ENGINE=InnoDB;
+CREATE TABLE t2 (id INT PRIMARY KEY, data VARCHAR(255)) ENGINE=MyISAM;
+CREATE TABLE t3 (id INT PRIMARY KEY, data VARCHAR(255)) ENGINE=MEMORY;
+CREATE TABLE t4 (id INT PRIMARY KEY, data VARCHAR(255)) ENGINE=Aria;
+
+-- Test different data types, including MariaDB-specific JSON
+CREATE TABLE t5 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT,
+    salary DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSON
+);
+
+-- Test partitioning
+CREATE TABLE t6 (
+    id INT,
+    value VARCHAR(255)
+)
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+-- Test indexes
+CREATE INDEX idx_name ON t5 (name);
+CREATE FULLTEXT INDEX idx_data ON t5 (data);
+
+-- Test stored procedures (simple example)
+DELIMITER //
+CREATE PROCEDURE get_age(IN person_name VARCHAR(255), OUT person_age INT)
+BEGIN
+    SELECT age INTO person_age FROM t5 WHERE name = person_name;
+END //
+DELIMITER ;
+
+-- Test views
+CREATE VIEW v1 AS SELECT id, name FROM t5 WHERE age > 18;
+
+-- Insert some initial data
+INSERT INTO t5 (name, age, salary, data) VALUES
+('Alice', 25, 50000.00, '{"city": "New York", "country": "USA"}'),
+('Bob', 30, 60000.00, '{"city": "London", "country": "UK"}'),
+('Charlie', 22, 45000.00, '{"city": "Paris", "country": "France"}');
+
+INSERT INTO t6 (id, value) VALUES (5, 'a'), (15, 'b'), (25, 'c');
+
+-- Test MariaDB-specific features: SEQUENCE
+CREATE SEQUENCE my_seq START WITH 1 INCREMENT BY 1;
+SELECT NEXT VALUE FOR my_seq;
+
+-- Test GIS data types (MariaDB support)
+CREATE TABLE t7 (id INT PRIMARY KEY, location POINT SRID 0);
+INSERT INTO t7 VALUES (1, ST_GeomFromText('POINT(10 20)'));
+
+-- Show create table for inspection
+SHOW CREATE TABLE t5;
+SHOW CREATE TABLE t6;
+
+-- Alter a table for future mutation
+ALTER TABLE t1 ADD COLUMN ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP;

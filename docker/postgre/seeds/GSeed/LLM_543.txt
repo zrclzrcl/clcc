@@ -1,0 +1,168 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD', 1200.00),
+('Mouse', 'Wireless ergonomic mouse', 25.00),
+('Keyboard', 'Mechanical keyboard with RGB lighting', 100.00),
+('Monitor', '27-inch 4K monitor', 400.00),
+('Headphones', 'Noise-canceling headphones', 150.00);
+
+CREATE INDEX idx_products_name ON products (name);
+CREATE INDEX idx_products_price ON products (price);
+
+SELECT id, name, price FROM products WHERE price > 100 ORDER BY price DESC;
+SELECT COUNT(*) FROM products;
+SELECT AVG(price) FROM products;
+
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+
+DELETE FROM products WHERE id = 5;
+
+SELECT p.name, COUNT(o.id) AS order_count
+FROM products p
+LEFT JOIN orders o ON p.id = o.product_id
+GROUP BY p.name
+ORDER BY order_count DESC;
+
+CREATE TYPE product_category AS ENUM ('Electronics', 'Clothing', 'Books');
+
+ALTER TABLE products ADD COLUMN category product_category;
+
+UPDATE products SET category = 'Electronics' WHERE id IN (1, 2, 3, 4);
+
+SELECT name, category FROM products WHERE category = 'Electronics';
+
+CREATE OR REPLACE FUNCTION discount_price(price DECIMAL, discount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, discount_price(price, 0.1) AS discounted_price FROM products;
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(255) NOT NULL,
+    record_id INTEGER NOT NULL,
+    operation VARCHAR(10) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_name TEXT DEFAULT CURRENT_USER
+);
+
+CREATE OR REPLACE FUNCTION log_product_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES (TG_TABLE_NAME, NEW.id, TG_OP);
+        RETURN NEW;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES (TG_TABLE_NAME, NEW.id, TG_OP);
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES (TG_TABLE_NAME, OLD.id, TG_OP);
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_audit
+AFTER INSERT OR UPDATE OR DELETE ON products
+FOR EACH ROW
+EXECUTE PROCEDURE log_product_changes();
+
+INSERT INTO products (name, description, price) VALUES ('Tablet', '10-inch tablet with Android', 300.00);
+UPDATE products SET price = 330.00 WHERE name = 'Tablet';
+DELETE FROM products WHERE name = 'Tablet';
+
+SELECT * FROM audit_log;
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL,
+    order_date DATE NOT NULL
+);
+
+INSERT INTO orders (product_id, quantity, order_date) VALUES
+(1, 2, '2024-01-01'),
+(2, 5, '2024-01-05'),
+(3, 1, '2024-01-10');
+
+SELECT name, description FROM products WHERE description LIKE '%laptop%';
+SELECT name, description FROM products WHERE description ILIKE '%Laptop%';
+SELECT name, description FROM products WHERE description SIMILAR TO '%(laptop|monitor)%';
+
+-- Test window functions
+SELECT name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Test JSON functionality
+ALTER TABLE products ADD COLUMN details JSONB;
+
+UPDATE products SET details = '{"color": "black", "weight": "1.5kg"}'::JSONB WHERE name = 'Laptop';
+SELECT name, details ->> 'color' AS color FROM products WHERE name = 'Laptop';
+SELECT name, details -> 'color' AS color FROM products WHERE name = 'Laptop';
+
+-- Test full-text search
+ALTER TABLE products ADD COLUMN tsvector tsvector;
+UPDATE products SET tsvector = to_tsvector('english', name || ' ' || description);
+CREATE INDEX idx_products_tsvector ON products USING GIN (tsvector);
+SELECT name FROM products WHERE tsvector @@ to_tsquery('english', 'laptop & high');
+
+--Test materialized view
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT category, AVG(price) AS avg_price, COUNT(*) AS product_count
+FROM products
+GROUP BY category;
+
+SELECT * FROM product_summary;
+REFRESH MATERIALIZED VIEW product_summary;
+
+-- Test LATERAL JOIN
+SELECT p.name, o.quantity
+FROM products p
+LEFT JOIN LATERAL (SELECT quantity FROM orders WHERE product_id = p.id LIMIT 1) o ON TRUE;
+
+-- Test Common Table Expressions (CTEs)
+WITH high_price_products AS (
+    SELECT id, name, price
+    FROM products
+    WHERE price > 200
+)
+SELECT name, price
+FROM high_price_products
+ORDER BY price DESC;
+
+-- Test FILTER clause
+SELECT
+  category,
+  AVG(price) FILTER (WHERE price > 100) AS avg_price_above_100,
+  AVG(price) AS avg_price
+FROM products
+GROUP BY category;
+
+-- Test generate_series
+SELECT generate_series(1, 5);
+SELECT generate_series(now(), now() + interval '5 day', interval '1 day');
+
+-- Test string_agg
+SELECT category, string_agg(name, ', ') AS product_names
+FROM products
+GROUP BY category;
+
+-- Test xml functionality
+CREATE TABLE xml_test (id SERIAL PRIMARY KEY, data XML);
+INSERT INTO xml_test (data) VALUES ('<book><title>The Lord of the Rings</title><author>J.R.R. Tolkien</author></book>');
+SELECT xpath('/book/title/text()', data) FROM xml_test;

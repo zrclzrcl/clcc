@@ -1,0 +1,37 @@
+-- Initial seed for MariaDB fuzz testing
+SET SQL__warnINGS=1;
+SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO, NO_ENGINE_SUBSTITUTION';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    balance DECIMAL(10,2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    metadata JSON,
+    UNIQUE KEY unique_name_age(name, age)
+);
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    INDEX fulltext_content (content) WITH PARSER ngram
+);
+DELIMITER $$
+CREATE FUNCTION fn1(a INT, b INT) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN a + b;
+END$$
+DELIMITER ;
+CREATE TRIGGER trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (content) VALUES (CONCAT('New entry: ', NEW.name, ' added.'));
+END;
+CREATE VIEW vw_t1 AS SELECT id, name, age, balance FROM t1 WHERE balance > 0;
+SET NAMES utf8mb4 COLLATE utf8mb4_bin;
+INSERT INTO t1 (name, age, balance, metadata) VALUES
+    ('Alice', 30, 100.50, '{"role": "admin", "status": "active"}'),
+    ('Bob', 25, -50.75, '{"role": "user", "status": "inactive"}'),
+    ('Charlie', NULL, 0.00, NULL);
+INSERT INTO t2 (content) VALUES
+    ('This is a test text for full-text indexing.'),
+    ('Another example with different content.');

@@ -1,0 +1,40 @@
+-- Sample initial seed for PostgreSQL
+
+-- Create a simple table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+-- Insert some data
+INSERT INTO employees (name, salary, hire_date) VALUES
+('Alice', 60000.00, '2022-01-15'),
+('Bob', 75000.00, '2021-05-20'),
+('Charlie', 50000.00, '2023-03-10');
+
+-- Select all employees
+SELECT * FROM employees;
+
+-- Select employees with salary greater than 65000
+SELECT name, salary FROM employees WHERE salary > 65000;
+
+-- Update salary for Alice
+UPDATE employees SET salary = 62000.00 WHERE name = 'Alice';
+
+-- Delete Charlie
+DELETE FROM employees WHERE name = 'Charlie';
+
+-- Add a new column
+ALTER TABLE employees ADD COLUMN department VARCHAR(255);
+
+-- Update the department column
+UPDATE employees SET department = 'Sales' WHERE id = 1;
+UPDATE employees SET department = 'Marketing' WHERE id = 2;
+
+-- Select employees grouped by department
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+
+-- Drop the table
+DROP TABLE employees;

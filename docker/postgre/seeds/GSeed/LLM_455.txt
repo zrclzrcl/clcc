@@ -1,0 +1,96 @@
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL
+);
+
+INSERT INTO users (username, email) VALUES ('testuser1', 'test1@example.com');
+INSERT INTO users (username, email) VALUES ('testuser2', 'test2@example.com');
+INSERT INTO products (name, price) VALUES ('Product A', 10.99);
+INSERT INTO products (name, price) VALUES ('Product B', 25.50);
+INSERT INTO orders (user_id) SELECT id FROM users WHERE username = 'testuser1';
+INSERT INTO orders (user_id) SELECT id FROM users WHERE username = 'testuser2';
+
+INSERT INTO order_items (order_id, product_id, quantity) SELECT (SELECT id FROM orders LIMIT 1), (SELECT id FROM products LIMIT 1), 2;
+INSERT INTO order_items (order_id, product_id, quantity) SELECT (SELECT id FROM orders ORDER BY id DESC LIMIT 1), (SELECT id FROM products ORDER BY id DESC LIMIT 1), 1;
+
+SELECT * FROM users WHERE username LIKE 'test%';
+SELECT id, name, price FROM products WHERE price > 20 ORDER BY price DESC;
+SELECT o.id, u.username FROM orders o JOIN users u ON o.user_id = u.id WHERE o.order_date > now() - interval '1 week';
+
+UPDATE products SET price = price * 1.1 WHERE name = 'Product A';
+DELETE FROM order_items WHERE quantity = 1;
+
+SELECT COUNT(*) FROM users;
+SELECT AVG(price) FROM products;
+SELECT MAX(price), MIN(price) FROM products;
+
+CREATE INDEX idx_username ON users (username);
+DROP INDEX idx_username;
+
+ALTER TABLE products ADD COLUMN description TEXT;
+UPDATE products SET description = 'A great product' WHERE name = 'Product A';
+
+CREATE VIEW user_order_counts AS SELECT u.username, COUNT(o.id) AS order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.username;
+SELECT * FROM user_order_counts;
+DROP VIEW user_order_counts;
+
+GRANT SELECT ON products TO PUBLIC;
+REVOKE SELECT ON products FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION total_order_value(order_id INTEGER)
+RETURNS DECIMAL AS $$
+  SELECT SUM(oi.quantity * p.price)
+  FROM order_items oi
+  JOIN products p ON oi.product_id = p.id
+  WHERE oi.order_id = $1;
+$$ LANGUAGE SQL;
+
+SELECT total_order_value(1);
+
+DROP FUNCTION total_order_value(INTEGER);
+
+CREATE TABLE json_test (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO json_test (data) VALUES ('{"name": "John Doe", "age": 30}');
+SELECT data ->> 'name' FROM json_test;
+
+-- Example of WITH RECURSIVE (a simple one to avoid infinite loops)
+WITH RECURSIVE counter(n) AS (
+    SELECT 1
+    UNION ALL
+    SELECT n + 1 FROM counter WHERE n < 5
+)
+SELECT n FROM counter;
+
+
+SELECT generate_series(1, 10);
+
+END;

@@ -1,0 +1,57 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), ('DuckDB'), (NULL), ('');
+
+-- Test various aggregate functions
+SELECT sum(i), avg(i), min(i), max(i), count(i), count(*) FROM integers;
+SELECT sum(i) FILTER (WHERE i > 1) FROM integers;
+
+-- Test string functions
+SELECT lower(s), upper(s), length(s), substring(s, 2, 3) FROM strings;
+SELECT concat(s, '!') FROM strings;
+
+-- Test date/time functions (DuckDB specific)
+SELECT date('2024-01-01'), date_trunc('month', date('2024-03-15'));
+SELECT now(), current_date, current_time;
+
+-- Test arithmetic operations and NULL handling
+SELECT i + 1, i * 2, i / 3, i - 10 FROM integers;
+SELECT i + NULL FROM integers;
+
+-- Test boolean logic
+SELECT i > 1, i < 3, i = 2 FROM integers;
+SELECT i > 1 AND i < 3 FROM integers;
+
+-- Test CASE statements
+SELECT CASE WHEN i > 2 THEN 'large' WHEN i < 2 THEN 'small' ELSE 'medium' END FROM integers;
+
+-- Test joins
+CREATE TABLE more_integers (j INTEGER);
+INSERT INTO more_integers VALUES (2), (3), (4);
+SELECT i, j FROM integers INNER JOIN more_integers ON integers.i = more_integers.j;
+SELECT i, j FROM integers LEFT JOIN more_integers ON integers.i = more_integers.j;
+
+-- Test window functions (DuckDB specific)
+SELECT i, row_number() OVER (ORDER BY i) FROM integers;
+SELECT i, rank() OVER (ORDER BY i) FROM integers;
+
+-- Test unnesting arrays (DuckDB specific)
+CREATE TABLE array_table (arr INTEGER[]);
+INSERT INTO array_table VALUES (LIST(1, 2, 3)), (LIST(4, 5)), (NULL);
+SELECT unnest(arr) FROM array_table;
+
+-- Test JSON functions (DuckDB specific)
+SELECT json('{"a": 1, "b": 2}');
+SELECT json_extract_string('{"a": "hello", "b": "world"}', '$.a');
+
+-- Test DuckDB specific function: pragma_version
+PRAGMA version;
+
+--Test union all with different data types
+CREATE TABLE table1 (col1 INTEGER);
+INSERT INTO table1 VALUES (1), (2);
+CREATE TABLE table2 (col1 VARCHAR);
+INSERT INTO table2 VALUES ('a'), ('b');
+SELECT col1 FROM table1 UNION ALL SELECT col1 FROM table2;

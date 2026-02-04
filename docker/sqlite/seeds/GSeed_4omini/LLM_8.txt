@@ -1,0 +1,16 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT);
+CREATE TABLE posts(id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE VIRTUAL TABLE search_posts USING fts5(content);
+INSERT INTO users VALUES(1, 'alice', 'alice@example.com'), (2, 'bob', 'bob@example.com'), (3, 'charlie', 'charlie@example.com');
+INSERT INTO posts VALUES(1, 1, 'Hello World!'), (2, 1, 'SQLite is great!'), (3, 2, 'Welcome to my blog!');
+INSERT INTO search_posts(content) VALUES('Hello World!'), ('SQLite is great!'), ('Welcome to my blog!');
+CREATE TRIGGER update_search AFTER INSERT ON posts BEGIN
+  INSERT INTO search_posts(content) VALUES(NEW.content);
+END;
+CREATE TRIGGER delete_search AFTER DELETE ON posts BEGIN
+  DELETE FROM search_posts WHERE content = OLD.content;
+END;
+UPDATE users SET email='alice_new@example.com' WHERE username='alice';
+DELETE FROM posts WHERE id=2;
+SELECT * FROM users WHERE email LIKE '%@example.com' ORDER BY username;
+SELECT * FROM search_posts WHERE content MATCH 'SQLite';

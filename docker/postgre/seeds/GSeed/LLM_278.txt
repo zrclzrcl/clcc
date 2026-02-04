@@ -1,0 +1,57 @@
+SHOW server_version;
+
+-- Table creation with various data types
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    in_stock INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    attributes JSONB
+);
+
+-- Inserting sample data
+INSERT INTO products (product_name, description, price, in_stock, attributes) VALUES
+('Laptop', 'High-performance laptop', 1200.50, 10, '{"brand": "Example", "processor": "Intel i7"}'),
+('Mouse', 'Wireless mouse', 25.00, 100, '{"type": "optical", "connectivity": "wireless"}'),
+('Keyboard', 'Mechanical keyboard', 75.00, 50, '{"type": "mechanical", "layout": "US"}');
+
+-- Selecting data
+SELECT * FROM products;
+SELECT product_name, price FROM products WHERE price > 50;
+SELECT product_name, attributes ->> 'brand' AS brand FROM products;
+SELECT AVG(price) FROM products;
+
+-- Updating data
+UPDATE products SET in_stock = 90 WHERE product_name = 'Mouse';
+
+-- Deleting data
+DELETE FROM products WHERE product_name = 'Keyboard';
+
+-- Adding an index
+CREATE INDEX idx_product_name ON products (product_name);
+
+-- Using EXPLAIN
+EXPLAIN SELECT * FROM products WHERE product_name = 'Laptop';
+
+-- Using pg_stat_statements (requires extension)
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+SELECT pg_stat_statements_reset();
+SELECT * FROM products WHERE product_name = 'Laptop';
+SELECT query, calls, total_time FROM pg_stat_statements ORDER BY total_time DESC LIMIT 5;
+
+-- Using UUID (requires extension)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) UNIQUE NOT NULL
+);
+INSERT INTO users (username) VALUES ('test_user');
+SELECT * FROM users;
+
+-- Clean up
+DROP TABLE users;
+DROP TABLE products;
+DROP EXTENSION IF EXISTS "uuid-ossp";
+DROP EXTENSION IF EXISTS pg_stat_statements;

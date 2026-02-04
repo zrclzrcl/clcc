@@ -1,0 +1,40 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    description TEXT,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books') DEFAULT 'Electronics',
+    discount_percentage DECIMAL(5,2) UNSIGNED NULL
+);
+
+INSERT INTO products (name, price, description, category, discount_percentage) VALUES
+('Laptop', 1200.00, 'Powerful laptop for all your needs.', 'Electronics', 0.10),
+('T-Shirt', 25.00, 'Comfortable cotton T-shirt.', 'Clothing', NULL),
+('Coffee Maker', 50.00, 'Makes delicious coffee.', 'Home Goods', 0.05),
+('The Lord of the Rings', 15.00, 'A classic fantasy novel.', 'Books', NULL),
+('Smartphone', 800.00, 'Latest smartphone with advanced features.', 'Electronics', 0.20);
+
+-- Test functions and operators
+SELECT AVG(price), MAX(price), MIN(price) FROM products;
+SELECT name, price * (1 - IFNULL(discount_percentage, 0)) AS discounted_price FROM products;
+
+-- Test GROUP BY and HAVING clauses
+SELECT category, COUNT(*) AS product_count FROM products GROUP BY category HAVING product_count > 1;
+
+-- Test ENUM values
+UPDATE products SET category = 'Clothing' WHERE id = 3;
+
+-- Test UNSIGNED decimal
+UPDATE products SET discount_percentage = 0.35 WHERE id = 1;
+
+-- Test JSON functions
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = JSON_OBJECT('color', 'black', 'weight', '2.5') WHERE id = 1;
+SELECT name, details->>'$.color' AS color FROM products WHERE id = 1;
+
+-- Test Window Functions (MySQL 8.0+)
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Test FULLTEXT index (Requires MySQL 5.6+)
+ALTER TABLE products ADD FULLTEXT(name, description);
+SELECT name FROM products WHERE MATCH (name, description) AGAINST ('laptop powerful' IN NATURAL LANGUAGE MODE);

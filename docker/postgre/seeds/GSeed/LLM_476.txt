@@ -1,0 +1,79 @@
+-- Initial seed for PostgreSQL 18 RC1 fuzzing
+
+-- Basic table creation
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+-- Insert some data
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"key1": "value1", "key2": 123}'),
+('Bob', 20, '{"key1": "value2", "key2": 456}'),
+('Charlie', 30, '{"key1": "value3", "key2": 789}');
+
+-- Simple select query
+SELECT * FROM test_table WHERE value > 15;
+
+-- Update query
+UPDATE test_table SET value = value + 5 WHERE name = 'Alice';
+
+-- Delete query
+DELETE FROM test_table WHERE id = 3;
+
+-- Select with LIKE
+SELECT * FROM test_table WHERE name LIKE 'B%';
+
+-- Select with ORDER BY and LIMIT
+SELECT * FROM test_table ORDER BY value DESC LIMIT 2;
+
+-- Aggregate function
+SELECT AVG(value) FROM test_table;
+
+-- Join example (create a second table first)
+CREATE TABLE second_table (
+    id SERIAL PRIMARY KEY,
+    test_table_id INTEGER REFERENCES test_table(id),
+    description TEXT
+);
+
+INSERT INTO second_table (test_table_id, description) VALUES
+(1, 'Description for Alice'),
+(2, 'Description for Bob');
+
+SELECT * FROM test_table JOIN second_table ON test_table.id = second_table.test_table_id;
+
+-- JSONB operations
+SELECT data -> 'key1' FROM test_table WHERE name = 'Alice';
+SELECT data ->> 'key2' FROM test_table WHERE name = 'Bob';
+UPDATE test_table SET data = jsonb_set(data, '{new_key}', '"new_value"') WHERE name = 'Charlie';
+
+-- Create an index
+CREATE INDEX idx_name ON test_table (name);
+
+-- Vacuum the table
+VACUUM ANALYZE test_table;
+
+-- Explain query
+EXPLAIN SELECT * FROM test_table WHERE value > 20;
+
+-- Create a view
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 0;
+SELECT * FROM test_view;
+DROP VIEW test_view;
+
+-- Alter table
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+
+-- Check constraint
+ALTER TABLE test_table ADD CONSTRAINT value_positive CHECK (value >= 0);
+
+-- Try some error conditions (these might cause crashes, good for fuzzing)
+-- SELECT * FROM non_existent_table;  -- Table does not exist (commented to avoid early failure)
+-- INSERT INTO test_table (name, value) VALUES (NULL, 10); -- Check not null constraint violation (commented to avoid early failure)
+
+-- Cleanup
+DROP TABLE second_table;
+DROP TABLE test_table;

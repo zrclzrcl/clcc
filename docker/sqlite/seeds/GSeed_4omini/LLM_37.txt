@@ -1,0 +1,35 @@
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age >= 0));
+INSERT INTO users (name, age) VALUES ('Alice', 30);
+INSERT INTO users (name, age) VALUES ('Bob', 25);
+INSERT INTO users (name, age) VALUES ('Charlie', -1); -- Edge case: Invalid age
+CREATE TABLE orders (order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL CHECK(amount > 0), FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount) VALUES (1, 100.50);
+INSERT INTO orders (user_id, amount) VALUES (2, 150.75);
+INSERT INTO orders (user_id, amount) VALUES (1, -10.00); -- Edge case: Invalid amount
+CREATE TABLE products (product_id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL CHECK(price >= 0));
+INSERT INTO products (name, price) VALUES ('Gadget', 49.99);
+INSERT INTO products (name, price) VALUES ('Widget', 19.99);
+CREATE TABLE order_items (order_id INTEGER, product_id INTEGER, quantity INTEGER CHECK(quantity > 0), FOREIGN KEY(order_id) REFERENCES orders(order_id), FOREIGN KEY(product_id) REFERENCES products(product_id));
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 2, 3);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (3, 1, 0); -- Edge case: Invalid quantity
+
+SELECT u.name, SUM(o.amount) AS total_spent 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id 
+HAVING total_spent > 0;
+
+SELECT p.name, SUM(oi.quantity) AS total_quantity 
+FROM products p 
+JOIN order_items oi ON p.product_id = oi.product_id 
+GROUP BY p.product_id 
+HAVING total_quantity > 1;
+
+CREATE VIEW user_order_summary AS 
+SELECT u.name, COUNT(o.order_id) AS order_count 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id;
+
+SELECT * FROM user_order_summary WHERE order_count > 0;

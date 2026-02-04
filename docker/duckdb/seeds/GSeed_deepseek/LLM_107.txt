@@ -1,0 +1,31 @@
+CREATE TABLE test_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INT,
+    price FLOAT,
+    created_at DATE,
+    is_active BOOLEAN
+);
+
+INSERT INTO test_types (name, value, price, created_at, is_active) VALUES 
+('', 0, 0.0, '1970-01-01', NULL),
+('test1', 123, 456.78, CURRENT_DATE, TRUE),
+('test2', -123, -456.78, '2024-01-01', FALSE);
+
+ALTER TABLE test_types ADD CONSTRAINT unique_name UNIQUE (name);
+
+CREATE TABLE test_fk (
+    id SERIAL PRIMARY KEY,
+    type_id INT REFERENCES test_types(id)
+);
+
+INSERT INTO test_fk (type_id) VALUES 
+(1),
+(2),
+NULL;
+
+WITH cte AS (
+    SELECT name, value, RANK() OVER (ORDER BY value DESC) as rank
+    FROM test_types
+)
+SELECT * FROM cte WHERE rank <= 2;

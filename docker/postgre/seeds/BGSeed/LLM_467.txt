@@ -1,0 +1,119 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(100)
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 90000.00, '2020-11-01', 'Engineering');
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+SELECT e.name, d.name FROM employees e JOIN departments d ON e.department = d.name;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+DROP INDEX idx_employee_name;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(255);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT name, email FROM employees;
+
+ALTER TABLE employees DROP COLUMN email;
+
+CREATE VIEW employee_salaries AS
+SELECT name, salary FROM employees;
+
+SELECT * FROM employee_salaries WHERE salary > 65000;
+
+DROP VIEW employee_salaries;
+
+CREATE FUNCTION calculate_bonus(salary DECIMAL, percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN salary * percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(50000, 0.10);
+
+DROP FUNCTION calculate_bonus(DECIMAL, DECIMAL);
+
+CREATE TABLE test_range (
+  tsrange TSRANGE
+);
+INSERT INTO test_range VALUES ('[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange);
+SELECT * FROM test_range;
+DROP TABLE test_range;
+
+CREATE TABLE test_jsonb (
+  data JSONB
+);
+INSERT INTO test_jsonb VALUES ('{"name": "John", "age": 30}'::jsonb);
+SELECT data -> 'name' FROM test_jsonb;
+DROP TABLE test_jsonb;
+
+CREATE TABLE test_enum (
+  mood TEXT CHECK (mood IN ('sad', 'ok', 'happy'))
+);
+INSERT INTO test_enum VALUES ('happy');
+SELECT * FROM test_enum;
+DROP TABLE test_enum;
+
+-- Concurrency test
+BEGIN;
+UPDATE employees SET salary = salary + 100 WHERE id = 1;
+SELECT salary FROM employees WHERE id = 1;
+ROLLBACK;
+
+-- Check constraint violation test
+ALTER TABLE employees ADD CONSTRAINT check_salary CHECK (salary > 0);
+INSERT INTO employees (name, salary, hire_date, department) VALUES ('Invalid Employee', -100, '2023-01-01', 'Sales');
+ALTER TABLE employees DROP CONSTRAINT check_salary;
+
+-- Trigger Example
+CREATE OR REPLACE FUNCTION log_salary_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE NOTICE 'Salary changed from % to %', OLD.salary, NEW.salary;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_change_trigger
+BEFORE UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_salary_change();
+
+UPDATE employees SET salary = salary + 500 WHERE id = 1;
+
+DROP TRIGGER salary_change_trigger ON employees;
+DROP FUNCTION log_salary_change();
+
+DROP TABLE employees;
+DROP TABLE departments;

@@ -1,0 +1,83 @@
+-- Initial seed for DuckDB database fuzz testing
+-- This seed includes various SQL statements that exercise different parts of the database engine.
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    is_active BOOLEAN DEFAULT FALSE,
+    score REAL CHECK (score >= 0 AND score <= 100),
+    created_at DATE,
+    data BLOB
+);
+
+-- Insert sample data into the table
+INSERT INTO test_table (name, is_active, score, created_at, data)
+VALUES 
+    ('Alice', TRUE, 95.5, '2023-01-01', X'48656C6C6F'),
+    ('Bob', FALSE, NULL, '2023-02-02', NULL),
+    ('Charlie', TRUE, 75.0, CURRENT_DATE, X'576F726C64');
+
+-- Create an index on the name column for testing query optimization
+CREATE INDEX idx_name ON test_table(name);
+
+-- Create a view that combines data from multiple tables/views
+CREATE VIEW test_view AS 
+SELECT 
+    id,
+    name,
+    CASE WHEN score >= 90 THEN 'A' ELSE 'B' END AS grade
+FROM test_table;
+
+-- Test partitioning functionality
+CREATE TABLE sales (
+    sale_id INTEGER PRIMARY KEY,
+    amount NUMERIC(10,2),
+    sale_date DATE
+) PARTITIONED BY (sale_date);
+
+-- Create a trigger to test database events
+CREATE TABLE audit_log (
+    log_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    table_name VARCHAR(100),
+    operation VARCHAR(50),
+    timestamp DATETIME,
+    user_info VARCHAR(200)
+);
+
+CREATE TRIGGER after_insert_test_table AFTER INSERT ON test_table BEGIN
+INSERT INTO audit_log (table_name, operation, timestamp, user_info)
+VALUES ('test_table', 'INSERT', CURRENT_TIMESTAMP, CURRENT_USER);
+END;
+
+-- Test complex queries with joins and aggregations
+SELECT 
+    t.name,
+    COUNT(*) AS total_sales,
+    SUM(s.amount) AS total_revenue
+FROM test_table t
+LEFT JOIN sales s ON t.id = s.sale_id
+GROUP BY t.name
+HAVING total_revenue > 1000;
+
+-- Test DuckDB-specific functionality (e.g., virtual tables, extensions)
+CREATE VIRTUAL TABLE IF NOT EXISTS json_data (
+    data JSON,
+    extracted_value VARCHAR(255) EXTRACTED FROM 'data.value'
+);
+
+-- Test edge cases with NULL values and boundary conditions
+SELECT 
+    id,
+    name,
+    is_active,
+    score,
+    created_at
+FROM test_table
+WHERE name IS NULL OR score = 100;
+
+-- Test DuckDB-specific features like approximate aggregations
+SELECT 
+    APPROX_COUNT_DISTINCT(name) AS unique_names,
+    APPROX_MEDIAN(score) AS median_score
+FROM test_table;

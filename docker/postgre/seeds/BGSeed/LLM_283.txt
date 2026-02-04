@@ -1,0 +1,176 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    department VARCHAR(255),
+    salary DECIMAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000.00),
+('Bob', 'Engineering', 75000.00),
+('Charlie', 'Sales', 60000.00),
+('David', 'Marketing', 55000.00),
+('Eve', 'Engineering', 80000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+ORDER BY average_salary DESC;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE salary < 52000;
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary
+FROM employees
+WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+CREATE FUNCTION increment_salary(emp_id INTEGER, increment DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    UPDATE employees SET salary = salary + increment WHERE id = emp_id;
+    RETURN (SELECT salary FROM employees WHERE id = emp_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000);
+
+CREATE TYPE employee_info AS (
+    employee_name VARCHAR(255),
+    employee_salary DECIMAL
+);
+
+CREATE FUNCTION get_employee_info(emp_id INTEGER)
+RETURNS employee_info AS $$
+DECLARE
+    info employee_info;
+BEGIN
+    SELECT name, salary INTO info.employee_name, info.employee_salary
+    FROM employees
+    WHERE id = emp_id;
+    RETURN info;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_info(2);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(255) UNIQUE NOT NULL
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Engineering'),
+('Marketing');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+SELECT e.name, d.dept_name
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE MATERIALIZED VIEW high_earners AS
+SELECT name, salary
+FROM employees
+WHERE salary > 70000;
+
+REFRESH MATERIALIZED VIEW high_earners;
+
+SELECT * FROM high_earners;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INTEGER)
+RETURNS DECIMAL AS $$
+DECLARE
+    base_salary DECIMAL;
+    bonus DECIMAL;
+BEGIN
+    SELECT salary INTO base_salary FROM employees WHERE id = emp_id;
+    bonus := base_salary * 0.05;
+    RETURN bonus;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1);
+
+SELECT name, salary, calculate_bonus(id) AS bonus FROM employees;
+
+CREATE RULE employee_insert AS ON INSERT TO departments
+DO INSTEAD NOTHING;
+
+CREATE SEQUENCE employee_sequence START 100;
+
+SELECT nextval('employee_sequence');
+
+CREATE DOMAIN positive_integer AS INTEGER CHECK (VALUE > 0);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    quantity positive_integer
+);
+
+INSERT INTO orders (quantity) VALUES (10);
+
+CREATE TEXT SEARCH CONFIGURATION my_config ( COPY = pg_catalog.english );
+
+ALTER TEXT SEARCH CONFIGURATION my_config
+   ADD MAPPING FOR word, asciiword, hword_asciipart WITH english_stem;
+
+SELECT to_tsvector('my_config', 'The quick brown fox jumps over the lazy dog.');
+
+CREATE UNLOGGED TABLE temp_data (
+    id SERIAL PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO temp_data (value) VALUES ('Temporary Data');
+
+CREATE FUNCTION get_average_salary_for_department(dept_name VARCHAR(255))
+RETURNS DECIMAL AS $$
+DECLARE
+    avg_salary DECIMAL;
+BEGIN
+    SELECT AVG(salary) INTO avg_salary FROM employees WHERE department = dept_name;
+    RETURN avg_salary;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_average_salary_for_department('Sales');
+
+CREATE AGGREGATE my_average(numeric) (
+    sfunc = numeric_avg_accum,
+    stype = internal,
+    finalfunc = numeric_avg
+);
+
+SELECT department, my_average(salary) FROM employees GROUP BY department;
+
+CREATE TABLE test_table (
+  id serial primary key,
+  val text
+);
+
+INSERT INTO test_table(val) VALUES ('test1'), ('test2');
+
+SELECT json_agg(row_to_json(t)) FROM test_table t;
+
+--Test Partitioning Tables
+CREATE TABLE measurement (
+    logdate date NOT NULL,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2024m03 PARTITION OF measurement
+    FOR VALUES FROM ('2024-03-01') TO ('2024-04-01');
+
+INSERT INTO measurement VALUES ('2024-03-15', 50, 10);
+
+SELECT * FROM measurement;

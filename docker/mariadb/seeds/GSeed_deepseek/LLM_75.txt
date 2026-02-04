@@ -1,0 +1,53 @@
+CREATE TABLE t1 (
+    i1 INT,
+    i2 INT NOT NULL,
+    c1 VARCHAR(256),
+    d1 DATE,
+    dt1 DATETIME,
+    f1 FLOAT,
+    txt1 TEXT,
+    json_col JSON,
+    bin_col BINARY(10),
+    e1 ENUM('a', 'b', 'c'),
+    s1 SET('x', 'y', 'z')
+);
+
+INSERT INTO t1 VALUES (
+    9223372036854775807, -- Maximum int value
+    -9223372036854775808, -- Minimum int value
+    'test_string',
+    '2024-01-01', 
+    '2024-01-01 12:34:56',
+    123.45,
+    'This is a text column.',
+    '{"name": "John", "age": 30, "hobbies": ["reading", "music"]}',
+    BINARY('binary_data'),
+    'a',
+    'x,y'
+);
+
+LOAD DATA INFILE '/tmp/test_data.csv' INTO TABLE t1
+FIELDS TERMINATED BY ',' 
+LINES TERMINATED BY '\n';
+
+TRUNCATE t2;
+
+SET NAMES utf8mb4;
+SET sql_mode='STRICT_ALL_TABLES';
+
+SELECT 
+    i1,
+    CONCAT(c1, '_', c2) AS combined_string,
+    DATE_SUB(d1, INTERVAL 5 DAY) AS subtracted_date,
+    CAST(dt1 AS CHAR),
+    JSON_EXTRACT(json_col, '$.hobbies[0]') AS first_hobby,
+    COUNT(*) OVER () AS total_count,
+    SUM(i2) OVER (PARTITION BY e1) AS sum_partition
+FROM t1
+WHERE i1 > 100
+GROUP BY c1
+HAVING COUNT(*) > 5;
+
+CREATE INDEX idx_json ON t1(json_col);
+
+DROP TABLE IF EXISTS t3;

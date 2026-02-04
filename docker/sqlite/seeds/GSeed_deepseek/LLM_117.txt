@@ -1,0 +1,57 @@
+-- Create a table with various data types and constraints to test edge cases
+CREATE TABLE t0(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL DEFAULT 'default_value',
+    value REAL CHECK(value > 0),
+    enabled BOOLEAN DEFAULT FALSE,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data with edge values and NULLs
+INSERT INTO t0 (name, value, enabled) VALUES 
+('Test1', 1.0, TRUE),
+('Test2', 9999.99, FALSE),
+(NULL, NULL, NULL); 
+
+-- Create a table without rowid to test SQLite-specific behavior
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    data TEXT
+) WITHOUT ROWID;
+
+-- Create indexes for testing query optimization
+CREATE INDEX idx_t0_name ON t0(name);
+CREATE UNIQUE INDEX idx_t1_data ON t1(data);
+
+-- Create a trigger to test database triggers
+CREATE TRIGGER trig_t0_update AFTER UPDATE OF enabled ON t0
+BEGIN
+    INSERT INTO t1 SELECT id, 'enabled changed' FROM t0 WHERE enabled = TRUE;
+END;
+
+-- Create a view for testing complex queries
+CREATE VIEW v0 AS
+SELECT 
+    t0.id,
+    t0.name,
+    COUNT(t1.data) as data_count
+FROM t0 LEFT JOIN t1 ON t0.id = t1.id
+GROUP BY t0.id;
+
+-- Insert test data using CTE to test WITH clause functionality
+WITH cte_test AS (
+    SELECT 1 AS col
+)
+INSERT INTO t0 (name, value)
+SELECT 'CTE Test', 42.5 FROM cte_test;
+
+-- Test window functions and advanced SQL features
+SELECT 
+    id,
+    name,
+    ROW_NUMBER() OVER (ORDER BY last_updated DESC) as rank
+FROM t0
+ORDER BY rank;
+
+-- Cleanup test data
+DROP TABLE IF EXISTS t1;

@@ -1,0 +1,145 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(50) NOT NULL,
+    email VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT
+);
+
+INSERT INTO products (product_name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00),
+    ('Monitor', 300.00);
+
+INSERT INTO customers (customer_name, email) VALUES
+    ('Alice Smith', 'alice.smith@example.com'),
+    ('Bob Johnson', 'bob.johnson@example.com');
+
+INSERT INTO orders (customer_id) VALUES
+    (1),
+    (2);
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+    (1, 1, 1),
+    (1, 2, 1),
+    (2, 3, 2),
+    (2, 4, 1);
+
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+UPDATE products SET price = price * 1.1 WHERE product_id = 1;
+
+DELETE FROM products WHERE product_id = 2;
+
+SELECT c.customer_name, o.order_date
+FROM customers c JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT p.product_name, SUM(oi.quantity) AS total_quantity
+FROM products p JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_name
+ORDER BY total_quantity DESC;
+
+CREATE INDEX idx_customer_email ON customers (email);
+
+CREATE VIEW customer_orders AS
+SELECT c.customer_name, COUNT(o.order_id) AS order_count
+FROM customers c LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name;
+
+SELECT * FROM customer_orders;
+
+-- PostgreSQL specific features
+CREATE OR REPLACE FUNCTION discount_price(price DECIMAL, discount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT product_name, discount_price(price, 0.1) AS discounted_price FROM products;
+
+-- Create a materialized view
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT product_name, AVG(price) AS average_price
+FROM products
+GROUP BY product_name;
+
+SELECT * FROM product_summary;
+REFRESH MATERIALIZED VIEW product_summary;
+
+-- Create a table with an array column
+CREATE TABLE product_tags (
+    product_id INT REFERENCES products(product_id),
+    tags TEXT[]
+);
+
+INSERT INTO product_tags (product_id, tags) VALUES
+(1, ARRAY['electronics', 'powerful', 'portable']);
+SELECT * FROM product_tags;
+
+-- User Defined type
+CREATE TYPE inventory_status AS ENUM ('in_stock', 'out_of_stock', 'backordered');
+ALTER TABLE products ADD COLUMN status inventory_status;
+UPDATE products SET status = 'in_stock' WHERE product_id IN (1,3,4);
+
+-- Add a trigger
+CREATE OR REPLACE FUNCTION check_price_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.price < 0 THEN
+    RAISE EXCEPTION 'Price cannot be negative';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER price_check_trigger
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION check_price_update();
+
+-- Example of using a WITH clause (Common Table Expression)
+WITH product_avg AS (
+    SELECT AVG(price) AS avg_price FROM products
+)
+SELECT product_name FROM products, product_avg WHERE price > product_avg.avg_price;
+
+-- Example using window function
+SELECT product_name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Example using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+DROP TABLE IF EXISTS product_tags;
+DROP MATERIALIZED VIEW IF EXISTS product_summary;
+DROP FUNCTION IF EXISTS discount_price(DECIMAL, DECIMAL);
+DROP VIEW IF EXISTS customer_orders;
+DROP INDEX IF EXISTS idx_customer_email;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;
+DROP TYPE IF EXISTS inventory_status;
+DROP FUNCTION IF EXISTS check_price_update();
+DROP TRIGGER IF EXISTS price_check_trigger ON products;

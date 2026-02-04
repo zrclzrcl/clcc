@@ -1,0 +1,81 @@
+CREATE TABLE integers (
+  id INTEGER PRIMARY KEY,
+  value INTEGER
+);
+
+INSERT INTO integers (value) VALUES (1);
+INSERT INTO integers (value) VALUES (2);
+INSERT INTO integers (value) VALUES (3);
+INSERT INTO integers (value) VALUES (NULL);
+
+SELECT * FROM integers WHERE value > 1;
+
+CREATE TABLE strings (
+  id INTEGER PRIMARY KEY,
+  text VARCHAR
+);
+
+INSERT INTO strings (text) VALUES ('hello');
+INSERT INTO strings (text) VALUES ('world');
+INSERT INTO strings (text) VALUES (NULL);
+INSERT INTO strings (text) VALUES ('');
+INSERT INTO strings (text) VALUES ('123');
+
+SELECT text FROM strings WHERE text LIKE 'h%';
+
+CREATE TABLE dates (
+  id INTEGER PRIMARY KEY,
+  date DATE
+);
+
+INSERT INTO dates (date) VALUES ('2023-01-01');
+INSERT INTO dates (date) VALUES ('2023-02-15');
+INSERT INTO dates (date) VALUES (NULL);
+
+SELECT date FROM dates WHERE date BETWEEN '2023-01-01' AND '2023-02-01';
+
+-- DuckDB specific feature: approximate percentile
+SELECT approx_percentile(value, 0.5) FROM integers;
+
+-- DuckDB specific feature: generate series
+SELECT * FROM generate_series(1, 5);
+
+-- Test for list type, a DuckDB specific feature
+CREATE TABLE lists (
+    id INTEGER,
+    my_list INTEGER[]
+);
+
+INSERT INTO lists VALUES (1, [1, 2, 3]);
+INSERT INTO lists VALUES (2, [4, 5, NULL]);
+INSERT INTO lists VALUES (3, NULL);
+
+SELECT my_list[1] FROM lists WHERE id = 1; -- Accessing element in a list
+
+-- UNNEST (DuckDB specific feature for exploding lists)
+SELECT id, value FROM lists, UNNEST(my_list) AS value;
+
+-- JSON support test: DuckDB has good JSON support
+CREATE TABLE json_data (
+    id INTEGER,
+    data JSON
+);
+
+INSERT INTO json_data VALUES (1, '{"name": "John", "age": 30}');
+INSERT INTO json_data VALUES (2, '{"name": "Jane", "age": 25, "city": "New York"}');
+
+SELECT data -> 'name' FROM json_data; -- Accessing JSON elements
+SELECT json_extract_string(data, '$.name') FROM json_data;
+
+-- Trying a geospatial function (DuckDB extension)
+CREATE TABLE points (
+    id INTEGER,
+    geom GEOMETRY
+);
+
+INSERT INTO points VALUES (1, ST_Point(1, 2)); -- Requires spatial extension
+INSERT INTO points VALUES (2, ST_Point(3, 4));
+
+-- Create a view
+CREATE VIEW integer_view AS SELECT * FROM integers WHERE value IS NOT NULL;
+SELECT * FROM integer_view;

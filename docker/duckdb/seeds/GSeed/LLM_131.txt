@@ -1,0 +1,52 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (id, name, department, salary) VALUES
+(1, 'Alice', 'Sales', 50000.00),
+(2, 'Bob', 'Marketing', 60000.00),
+(3, 'Charlie', 'Sales', 55000.00),
+(4, 'David', 'Engineering', 70000.00),
+(5, 'Eve', 'Engineering', 75000.00);
+
+CREATE TABLE departments (
+    department_name VARCHAR PRIMARY KEY,
+    location VARCHAR
+);
+
+INSERT INTO departments (department_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+-- DuckDB window function example with custom ORDER BY and FILTER
+SELECT
+    name,
+    department,
+    salary,
+    AVG(salary) OVER (PARTITION BY department ORDER BY salary DESC FILTER (WHERE salary > 50000)) as avg_dept_salary
+FROM
+    employees;
+
+-- DuckDB UNNEST example
+SELECT * FROM UNNEST(['a', 'b', 'c']);
+
+-- DuckDB string manipulation example
+SELECT string_split('hello,world', ',');
+
+-- DuckDB date/time example with time zone
+SELECT current_timestamp AT TIME ZONE 'UTC';
+
+-- DuckDB JSON functions Example
+SELECT json_extract_string('{"a": "b"}', '$.a');
+
+-- Try a recursive CTE (Common Table Expression)
+WITH RECURSIVE series AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM series WHERE n < 5
+)
+SELECT * FROM series;

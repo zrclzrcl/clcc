@@ -1,0 +1,11 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age >= 0));
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, quantity INTEGER CHECK(quantity > 0), FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(id, name, age) VALUES(1, 'Alice', 30);
+INSERT INTO users(id, name, age) VALUES(2, 'Bob', 25);
+INSERT INTO orders(order_id, user_id, product, quantity) VALUES(1, 1, 'Laptop', 1);
+INSERT INTO orders(order_id, user_id, product, quantity) VALUES(2, 2, 'Mouse', 2);
+CREATE INDEX idx_user_name ON users(name);
+CREATE VIEW user_orders AS SELECT users.name, orders.product FROM users JOIN orders ON users.id = orders.user_id;
+PRAGMA foreign_keys = ON;
+PRAGMA user_version = 1;
+ALTER TABLE users ADD COLUMN email TEXT UNIQUE;

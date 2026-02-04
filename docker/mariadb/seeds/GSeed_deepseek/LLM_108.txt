@@ -1,0 +1,95 @@
+SET GLOBAL sql_mode = 'ANSI,STRICT_TRANS_TABLES';
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    score DECIMAL(5,2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    metadata JSON,
+    UNIQUE KEY unique_name (name)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE test_partitions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region VARCHAR(50),
+    amount DECIMAL(10,2),
+    transaction_date DATE
+) ENGINE=InnoDB PARTITION BY RANGE (YEAR(transaction_date)) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2023),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+CREATE PROCEDURE test_proc()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE v_id INT;
+    DECLARE cur CURSOR FOR SELECT id FROM test_table;
+    
+    OPEN cur;
+    
+    read_loop: LOOP
+        FETCH cur INTO v_id;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        UPDATE test_table SET score = score + 1 WHERE id = v_id;
+    END LOOP;
+    
+    CLOSE cur;
+END;
+
+DELIMITER ; 
+
+CREATE TRIGGER test_trigger AFTER INSERT ON test_table 
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (action, timestamp, user) VALUES ('insert', NOW(), USER());
+END;
+
+INSERT INTO test_table(name, score, created_at, status, metadata) VALUES
+('Test User 1', 99.99, '2024-01-01 00:00:00', 'active', '{"role": "admin", "preferences": {"theme": "dark"}}'),
+('Test User 2', NULL, CURRENT_TIMESTAMP, 'inactive', '{"role": "user"}');
+
+INSERT INTO test_partitions(region, amount, transaction_date) VALUES
+('US', 100.50, '2023-12-31'),
+('EU', 200.75, '2024-01-15');
+
+ANALYZE TABLE test_table;
+
+CREATE INDEX idx_score ON test_table(score);
+
+SELECT 
+    id,
+    name,
+    score,
+    created_at,
+    status,
+    JSON_EXTRACT(metadata, '$.role') AS role
+FROM test_table
+WHERE status = 'active' AND score > 90
+ORDER BY created_at DESC
+LIMIT 10;
+
+SELECT 
+    region,
+    SUM(amount) AS total_amount,
+    COUNT(*) AS transaction_count,
+    YEAR(transaction_date) AS year
+FROM test_partitions
+GROUP BY region, year
+HAVING total_amount > 50
+ORDER BY total_amount DESC;
+
+WITH ranked_scores AS (
+    SELECT 
+        id,
+        name,
+        score,
+        ROW_NUMBER() OVER (ORDER BY score DESC) AS rank
+    FROM test_table
+)
+SELECT * FROM ranked_scores WHERE rank <= 10;
+
+SHOW TABLES;

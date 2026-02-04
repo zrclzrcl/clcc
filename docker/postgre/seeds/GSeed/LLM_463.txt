@@ -1,0 +1,186 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    category VARCHAR(50)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(200) UNIQUE,
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE,
+    total_amount DECIMAL(12, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+    ('Laptop', 1200.00, 'Electronics'),
+    ('Office Chair', 150.00, 'Furniture'),
+    ('Coffee Maker', 75.00, 'Appliances'),
+    ('Wireless Mouse', 25.00, 'Electronics');
+
+INSERT INTO customers (first_name, last_name, email, phone_number) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '555-123-4567'),
+    ('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543');
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+    (1, '2024-01-15', 1350.00),
+    (2, '2024-02-01', 225.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+    (1, 1, 1, 1200.00),
+    (1, 2, 1, 150.00),
+    (2, 3, 3, 75.00);
+
+-- Basic SELECT statements
+SELECT * FROM products;
+SELECT product_name, price FROM products WHERE category = 'Electronics';
+SELECT first_name, last_name FROM customers ORDER BY last_name;
+
+-- JOIN operations
+SELECT o.order_id, c.first_name, c.last_name, o.order_date
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id;
+
+SELECT p.product_name, oi.quantity, oi.unit_price
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+WHERE oi.order_id = 1;
+
+-- Aggregate functions and GROUP BY
+SELECT category, AVG(price) AS average_price
+FROM products
+GROUP BY category;
+
+SELECT customer_id, SUM(total_amount) AS total_spent
+FROM orders
+GROUP BY customer_id
+ORDER BY total_spent DESC;
+
+-- Subqueries
+SELECT product_name, price
+FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+
+SELECT first_name, last_name
+FROM customers
+WHERE customer_id IN (SELECT customer_id FROM orders WHERE order_date > '2024-01-01');
+
+-- UPDATE and DELETE statements
+UPDATE products SET price = price * 1.1 WHERE category = 'Electronics';
+DELETE FROM products WHERE product_name = 'Coffee Maker';
+
+-- Using WITH clause (Common Table Expression)
+WITH high_value_customers AS (
+    SELECT customer_id FROM orders GROUP BY customer_id HAVING SUM(total_amount) > 1000
+)
+SELECT c.first_name, c.last_name
+FROM customers c
+JOIN high_value_customers hvc ON c.customer_id = hvc.customer_id;
+
+-- Using window functions
+SELECT
+    product_name,
+    price,
+    category,
+    RANK() OVER (PARTITION BY category ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+-- Using arrays
+CREATE TABLE array_example (
+    id SERIAL PRIMARY KEY,
+    names TEXT[]
+);
+INSERT INTO array_example (names) VALUES (ARRAY['Alice', 'Bob', 'Charlie']);
+SELECT names[1] FROM array_example WHERE id = 1;
+
+-- Using JSON functions
+CREATE TABLE json_example (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+INSERT INTO json_example (data) VALUES ('{"name": "Example", "value": 123}');
+SELECT data ->> 'name' FROM json_example WHERE id = 1;
+
+-- Using PL/pgSQL functions
+CREATE OR REPLACE FUNCTION get_customer_name(cust_id INT)
+RETURNS VARCHAR(200) AS $$
+BEGIN
+    RETURN (SELECT first_name || ' ' || last_name FROM customers WHERE customer_id = cust_id);
+END;
+$$ LANGUAGE plpgsql;
+SELECT get_customer_name(1);
+
+-- Create an index
+CREATE INDEX idx_product_category ON products(category);
+
+-- Explain analyze
+EXPLAIN ANALYZE SELECT * FROM products WHERE category = 'Electronics';
+
+-- Triggers
+CREATE OR REPLACE FUNCTION log_product_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Product price changed from % to %', OLD.price, NEW.price;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_price_update
+BEFORE UPDATE ON products
+FOR EACH ROW
+WHEN (OLD.price IS DISTINCT FROM NEW.price)
+EXECUTE FUNCTION log_product_changes();
+
+UPDATE products SET price = 1300.00 WHERE product_id = 1;
+
+-- Foreign data wrapper example (requires setup) - Assuming a local postgres server
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+CREATE SERVER IF NOT EXISTS foreign_server
+    FOREIGN DATA WRAPPER postgres_fdw
+    OPTIONS (host 'localhost', port '5432', dbname 'postgres'); -- replace with your db name
+
+CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+    SERVER foreign_server
+    OPTIONS (user 'postgres', password 'password'); -- replace with your credentials
+
+IMPORT FOREIGN SCHEMA public
+    FROM SERVER foreign_server
+    INTO public_import;
+
+-- SELECT * FROM public_import.products; -- requires public_import schema to exist and the products table in the foreign database
+
+-- Partitioned table
+CREATE TABLE measurement (
+    logdate timestamp without time zone NOT NULL,
+    city_id int NOT NULL,
+    temp_c numeric
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2024m01 PARTITION OF measurement
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+CREATE TABLE measurement_y2024m02 PARTITION OF measurement
+    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+
+INSERT INTO measurement (logdate, city_id, temp_c) VALUES ('2024-01-15', 1, 22.5);
+INSERT INTO measurement (logdate, city_id, temp_c) VALUES ('2024-02-10', 2, 15.0);
+
+SELECT * FROM measurement WHERE logdate BETWEEN '2024-01-01' AND '2024-02-28';

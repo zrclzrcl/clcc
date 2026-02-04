@@ -1,0 +1,92 @@
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (name)
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Widget A', 'A high-quality widget', 19.99),
+('Widget B', 'A standard widget', 9.99);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    total DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE customers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL
+);
+
+INSERT INTO customers (first_name, last_name, email) VALUES ('John', 'Doe', 'john.doe@example.com');
+
+INSERT INTO orders (customer_id, order_date, total) VALUES (1, '2023-10-26', 29.98);
+
+-- Example of using JSON functions (MySQL specific, good for fuzzing)
+SELECT JSON_EXTRACT('{"id": 1, "name": "Product C"}', '$.name');
+
+-- Example using spatial functions (MySQL specific)
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY,
+    point GEOMETRY NOT NULL
+);
+INSERT INTO spatial_data (id, point) VALUES (1, ST_GeomFromText('POINT(10 10)'));
+SELECT ST_Distance(point, ST_GeomFromText('POINT(20 20)')) FROM spatial_data WHERE id = 1;
+
+-- Example using window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM
+    products;
+
+-- Trigger example
+DELIMITER //
+CREATE TRIGGER before_product_update
+BEFORE UPDATE ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price < 0 THEN
+        SET NEW.price = 0;
+    END IF;
+END;//
+DELIMITER ;
+
+UPDATE products SET price = -5 WHERE id = 1;
+
+-- Stored procedure example
+DELIMITER //
+CREATE PROCEDURE GetProductPrice(IN productId INT, OUT productPrice DECIMAL(10,2))
+BEGIN
+    SELECT price INTO productPrice FROM products WHERE id = productId;
+END //
+DELIMITER ;
+
+CALL GetProductPrice(1, @price);
+SELECT @price;
+
+-- Partitioning
+CREATE TABLE range_part (
+    id INT,
+    order_date DATE NOT NULL
+)
+PARTITION BY RANGE ( YEAR(order_date) ) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2021),
+    PARTITION p2 VALUES LESS THAN (2022),
+    PARTITION p3 VALUES LESS THAN (2023),
+    PARTITION p4 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO range_part (id, order_date) VALUES (1, '2019-01-01'), (2, '2023-12-31');

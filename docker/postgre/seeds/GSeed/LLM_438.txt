@@ -1,0 +1,122 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 50000.00, 'Sales', '2023-03-10');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2);
+
+UPDATE employees SET bonus = salary * 0.05;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+-- Example of using a PostgreSQL-specific feature: JSONB
+ALTER TABLE employees ADD COLUMN details JSONB;
+
+UPDATE employees SET details = '{"performance": "excellent", "experience": 5}'::jsonb WHERE name = 'Alice Smith';
+
+SELECT name, details -> 'performance' FROM employees;
+
+-- Example of using GENERATE SERIES
+SELECT generate_series(1, 5);
+
+-- Example using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Example using common table expression (CTE)
+WITH AvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department
+)
+SELECT e.name, e.department, e.salary, a.avg_salary
+FROM employees e
+JOIN AvgSalaries a ON e.department = a.department
+WHERE e.salary > a.avg_salary;
+
+-- Example using a stored procedure (function)
+CREATE OR REPLACE FUNCTION get_employee_count_by_department(dept_name VARCHAR)
+RETURNS INTEGER AS $$
+DECLARE
+    emp_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO emp_count FROM employees WHERE department = dept_name;
+    RETURN emp_count;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count_by_department('Sales');
+
+-- Example using triggers
+
+CREATE OR REPLACE FUNCTION prevent_salary_decrease()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < OLD.salary THEN
+        RAISE EXCEPTION 'Salary cannot be decreased!';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_decrease_check
+BEFORE UPDATE OF salary ON employees
+FOR EACH ROW
+EXECUTE FUNCTION prevent_salary_decrease();
+
+--Example using UNLOGGED tables
+
+CREATE UNLOGGED TABLE temp_data (
+    id SERIAL PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO temp_data (value) SELECT md5(random()::text) FROM generate_series(1,1000);
+
+SELECT count(*) FROM temp_data;
+
+DROP TABLE temp_data;
+
+-- Example using advisory locks
+SELECT pg_advisory_lock(1234);
+SELECT pg_advisory_unlock(1234);
+
+-- Example using range types
+CREATE TABLE reservation (room int, during tsrange);
+INSERT INTO reservation VALUES
+    (1108, '[2024-04-01 14:30, 2024-04-01 15:30)');
+
+SELECT * FROM reservation WHERE during @> timestamp '2024-04-01 15:00';
+
+DROP TABLE reservation;
+
+DROP FUNCTION get_employee_count_by_department(VARCHAR);
+
+DROP TRIGGER salary_decrease_check ON employees;
+DROP FUNCTION prevent_salary_decrease();
+
+DROP TABLE employees;

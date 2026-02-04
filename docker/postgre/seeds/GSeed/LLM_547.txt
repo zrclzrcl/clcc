@@ -1,0 +1,177 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER
+);
+
+INSERT INTO test_table (name, value) VALUES ('Alice', 10);
+INSERT INTO test_table (name, value) VALUES ('Bob', 20);
+INSERT INTO test_table (name, value) VALUES ('Charlie', 30);
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = 40 WHERE name = 'Alice';
+
+DELETE FROM test_table WHERE value < 25;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+CREATE INDEX idx_name ON test_table (name);
+
+DROP INDEX idx_name;
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'Updated description' WHERE id = 1;
+
+SELECT id, name, value, description FROM test_table;
+
+DROP TABLE test_table;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Moe', 'happy');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+DROP TABLE person;
+DROP TYPE mood;
+
+CREATE SCHEMA test_schema;
+
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+INSERT INTO test_schema.test_table (name) VALUES ('Test Name');
+
+SELECT * FROM test_schema.test_table;
+
+DROP TABLE test_schema.test_table;
+
+DROP SCHEMA test_schema;
+
+CREATE OR REPLACE FUNCTION add_numbers(a INTEGER, b INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_numbers(5, 3);
+
+DROP FUNCTION add_numbers(INTEGER, INTEGER);
+
+CREATE VIEW my_view AS
+SELECT name, value FROM test_table WHERE value > 10;
+
+SELECT * FROM my_view;
+
+DROP VIEW my_view;
+
+CREATE TABLE parent (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+CREATE TABLE child (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent(id),
+    name VARCHAR(255)
+);
+
+INSERT INTO parent (name) VALUES ('Parent 1');
+INSERT INTO child (parent_id, name) VALUES (1, 'Child 1');
+
+SELECT p.name AS parent_name, c.name AS child_name
+FROM parent p
+JOIN child c ON p.id = c.parent_id;
+
+DROP TABLE child;
+DROP TABLE parent;
+
+CREATE TABLE numbers (num INTEGER);
+INSERT INTO numbers VALUES (1), (2), (3), (4), (5);
+
+SELECT num,
+       CASE
+           WHEN num % 2 = 0 THEN 'Even'
+           ELSE 'Odd'
+       END AS parity
+FROM numbers;
+
+DROP TABLE numbers;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, price) VALUES ('Product A', 19.99);
+INSERT INTO products (name, price) VALUES ('Product B', 29.99);
+INSERT INTO products (name, price) VALUES ('Product C', 9.99);
+
+SELECT name, price
+FROM products
+ORDER BY price DESC
+LIMIT 2;
+
+DROP TABLE products;
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    department VARCHAR(255),
+    salary INTEGER
+);
+
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Sales', 60000);
+INSERT INTO employees (name, department, salary) VALUES ('Bob', 'Marketing', 70000);
+INSERT INTO employees (name, department, salary) VALUES ('Charlie', 'Sales', 65000);
+INSERT INTO employees (name, department, salary) VALUES ('David', 'Marketing', 75000);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+DROP TABLE employees;
+
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO logs (message) VALUES ('Log message 1');
+INSERT INTO logs (message) VALUES ('Log message 2');
+
+SELECT * FROM logs;
+
+DROP TABLE logs;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255)
+);
+
+INSERT INTO users (username, email) VALUES ('johndoe', 'john.doe@example.com');
+
+SELECT * FROM users;
+
+DROP TABLE users;
+
+SELECT version();
+
+SHOW server_version;
+
+SHOW data_directory;

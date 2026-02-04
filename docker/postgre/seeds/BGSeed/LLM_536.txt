@@ -1,0 +1,250 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(255)
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+-- Insert some sample data
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 90000.00, '2020-11-01', 'Engineering'),
+('David Lee', 65000.00, '2022-03-10', 'Sales'),
+('Eve Wilson', 80000.00, '2021-08-01', 'Marketing');
+
+-- Simple SELECT query
+SELECT * FROM employees;
+
+-- SELECT with WHERE clause
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+-- SELECT with ORDER BY
+SELECT name, hire_date FROM employees ORDER BY hire_date DESC;
+
+-- SELECT with GROUP BY and aggregate function
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+-- SELECT with JOIN
+SELECT e.name, e.department, d.location
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+-- UPDATE query
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+-- DELETE query
+DELETE FROM employees WHERE id = 5;
+
+-- INSERT query with explicit column list
+INSERT INTO employees (name, salary, hire_date, department) VALUES ('New Employee', 50000.00, '2023-01-01', 'Sales');
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Common Table Expression (CTE)
+WITH RankedEmployees AS (
+    SELECT
+        name,
+        salary,
+        department,
+        RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+    FROM
+        employees
+)
+SELECT name, salary, department FROM RankedEmployees WHERE salary_rank <= 2;
+
+-- Using CASE statement
+SELECT
+    name,
+    salary,
+    CASE
+        WHEN salary > 80000 THEN 'High'
+        WHEN salary > 60000 THEN 'Medium'
+        ELSE 'Low'
+    END AS salary_level
+FROM
+    employees;
+
+-- Using DISTINCT
+SELECT DISTINCT department FROM employees;
+
+-- Using LIKE operator
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+-- Using ILIKE operator for case-insensitive matching
+SELECT name FROM employees WHERE name ILIKE 'a%';
+
+-- Using BETWEEN operator
+SELECT name, hire_date FROM employees WHERE hire_date BETWEEN '2021-01-01' AND '2022-01-01';
+
+-- Using IN operator
+SELECT name, department FROM employees WHERE department IN ('Sales', 'Marketing');
+
+-- Using NOT IN operator
+SELECT name, department FROM employees WHERE department NOT IN ('Engineering');
+
+-- Using EXISTS operator
+SELECT name FROM departments WHERE EXISTS (SELECT 1 FROM employees WHERE employees.department = departments.name);
+
+-- Using ANY operator
+SELECT name, salary FROM employees WHERE salary > ANY (SELECT salary FROM employees WHERE department = 'Sales');
+
+-- Using ALL operator
+SELECT name, salary FROM employees WHERE salary > ALL (SELECT salary FROM employees WHERE department = 'Sales');
+
+-- Using LATERAL JOIN (requires PostgreSQL 9.3 or later)
+SELECT e.name, s.subordinate_name
+FROM employees e
+LEFT JOIN LATERAL (
+    SELECT name as subordinate_name
+    FROM employees
+    WHERE department = e.department AND salary < e.salary
+    ORDER BY salary DESC
+    LIMIT 1
+) s ON TRUE;
+
+-- Create index
+CREATE INDEX idx_employees_department ON employees (department);
+
+-- Explain query
+EXPLAIN SELECT * FROM employees WHERE department = 'Sales';
+
+-- VACUUM table
+VACUUM employees;
+
+-- ANALYZE table
+ANALYZE employees;
+
+-- Check constraints
+ALTER TABLE employees ADD CONSTRAINT positive_salary CHECK (salary > 0);
+
+-- Foreign key constraints
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department) REFERENCES departments (name);
+
+-- Create view
+CREATE VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary, COUNT(*) AS employee_count
+FROM employees
+GROUP BY department;
+
+-- Select from view
+SELECT * FROM employee_summary;
+
+-- Create materialized view (PostgreSQL 9.3 or later)
+CREATE MATERIALIZED VIEW department_summary AS
+SELECT department, AVG(salary) AS avg_salary, COUNT(*) AS employee_count
+FROM employees
+GROUP BY department;
+
+-- Refresh materialized view
+REFRESH MATERIALIZED VIEW department_summary;
+
+-- Triggers
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Employee % changed salary from % to %', NEW.name, OLD.salary, NEW.salary;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_salary_change
+AFTER UPDATE OF salary ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+UPDATE employees SET salary = 100000 WHERE name = 'Charlie Brown';
+
+-- Create temporary table
+CREATE TEMP TABLE temp_employees AS
+SELECT * FROM employees WHERE department = 'Sales';
+
+SELECT * FROM temp_employees;
+
+DROP TABLE temp_employees;
+
+-- GRANT and REVOKE permissions
+GRANT SELECT ON employees TO PUBLIC;
+REVOKE SELECT ON employees FROM PUBLIC;
+
+-- Functions
+CREATE OR REPLACE FUNCTION calculate_bonus(employee_id INT)
+RETURNS DECIMAL AS $$
+DECLARE
+    bonus DECIMAL;
+    emp_salary DECIMAL;
+BEGIN
+    SELECT salary INTO emp_salary FROM employees WHERE id = employee_id;
+    bonus := emp_salary * 0.10;
+    RETURN bonus;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1);
+
+-- PL/pgSQL looping
+DO $$
+DECLARE
+    i INTEGER := 1;
+BEGIN
+    FOR i IN 1..5 LOOP
+        RAISE NOTICE 'Loop iteration: %', i;
+    END LOOP;
+END $$;
+
+-- Exception handling
+DO $$
+BEGIN
+    RAISE EXCEPTION 'This is a test exception';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Exception caught: % %', SQLERRM, SQLSTATE;
+END $$;
+
+-- Generate UUIDs
+SELECT uuid_generate_v4();
+
+-- Using JSON functions
+SELECT json_build_object('name', name, 'salary', salary) FROM employees;
+
+-- Range types
+CREATE TABLE availability (room int, during tsrange);
+INSERT INTO availability VALUES
+    (1108, '[2010-01-01 14:30, 2010-01-01 15:30)'::tsrange),
+    (1108, '[2010-01-01 16:00, 2010-01-01 17:00)'::tsrange);
+
+SELECT * FROM availability WHERE during @> '2010-01-01 16:30'::timestamp;
+
+-- Array types
+CREATE TABLE array_int (id SERIAL, ints INTEGER[]);
+INSERT INTO array_int (ints) VALUES ('{1,2,3}');
+SELECT ints[1] FROM array_int;
+
+-- Full Text Search
+ALTER TABLE employees ADD COLUMN search_vector tsvector;
+UPDATE employees SET search_vector = to_tsvector('english', name || ' ' || department);
+CREATE INDEX employees_search_idx ON employees USING GIN (search_vector);
+
+SELECT name FROM employees WHERE search_vector @@ to_tsquery('english', 'Sales');
+
+-- Check constraints
+ALTER TABLE employees ADD CONSTRAINT chk_valid_department CHECK (department IN (SELECT name FROM departments));

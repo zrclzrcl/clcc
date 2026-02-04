@@ -1,0 +1,34 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    salary NUMERIC(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees VALUES 
+(1, 'John Doe', 50000.00, '2023-01-15'),
+(2, 'Jane Smith', 60000.00, '2022-05-20'),
+(3, 'Bob Johnson', 55000.00, '2023-03-10');
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name TEXT NOT NULL
+);
+
+INSERT INTO departments VALUES 
+(1, 'Engineering'),
+(2, 'Human Resources'),
+(3, 'Finance');
+
+SELECT e.name AS employee_name, d.dept_name, e.salary, e.hire_date 
+FROM employees e 
+JOIN departments d ON e.id = d.dept_id;
+
+CREATE TABLE salary_report AS
+SELECT 
+    e.name,
+    e.salary,
+    ROW_NUMBER() OVER (ORDER BY e.salary DESC) AS salary_rank
+FROM employees e;
+
+ALTER TABLE departments ADD COLUMN location TEXT;

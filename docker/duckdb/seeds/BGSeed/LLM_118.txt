@@ -1,0 +1,57 @@
+PRAGMA enable_recursive_triggers;
+
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL
+);
+
+-- Create a table to track department budgets
+CREATE TABLE departments (
+    name VARCHAR PRIMARY KEY,
+    budget DECIMAL
+);
+
+-- Insert some initial data
+INSERT INTO departments VALUES ('Sales', 100000);
+INSERT INTO departments VALUES ('Marketing', 75000);
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Sales', 60000);
+INSERT INTO employees (name, department, salary) VALUES ('Bob', 'Marketing', 50000);
+INSERT INTO employees (name, department, salary) VALUES ('Charlie', 'Sales', 70000);
+
+-- Create a view to calculate the average salary per department
+CREATE VIEW avg_salary_per_department AS
+SELECT department, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+
+-- Trigger to ensure salary is not above a certain limit relative to the department budget
+CREATE OR REPLACE TRIGGER salary_limit
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+  SELECT CASE
+    WHEN NEW.salary > (SELECT budget FROM departments WHERE name = NEW.department) * 0.8 THEN
+      RAISE(FAIL, 'Salary exceeds 80% of the department budget')
+    END;
+END;
+
+-- Demonstrate using UNNEST with a list comprehension
+SELECT * FROM UNNEST([1, 2, 3]);
+
+-- Use window functions for ranking employees by salary
+SELECT name, department, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+--Test JSON functionality
+SELECT JSON({'a': 1, 'b': 'test'});
+
+-- Test regex functionality
+SELECT regexp_matches('hello world', 'hello');
+
+-- Test list operations
+SELECT list_value FROM UNNEST([[1,2],[3,4]]) AS t(list_value);
+
+--Test exception
+--RAISE 'This is a test exception';

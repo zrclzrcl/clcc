@@ -1,0 +1,108 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL,
+    department VARCHAR(255)
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+    ('Alice', 50000, 'Sales'),
+    ('Bob', 60000, 'Engineering'),
+    ('Charlie', 70000, 'Marketing');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Engineering';
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 55000;
+
+SELECT * FROM high_earners;
+
+CREATE FUNCTION calculate_bonus(salary DECIMAL) RETURNS DECIMAL AS $$
+BEGIN
+    RETURN salary * 0.1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, salary, calculate_bonus(salary) AS bonus FROM employees;
+
+CREATE TYPE address AS (
+    street VARCHAR(255),
+    city VARCHAR(255),
+    zip_code VARCHAR(10)
+);
+
+CREATE TABLE company (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    hq address
+);
+
+INSERT INTO company (name, hq) VALUES ('Acme Corp', ('123 Main St', 'Anytown', '12345'));
+
+SELECT (hq).city FROM company WHERE name = 'Acme Corp';
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+INSERT INTO orders (customer_id) VALUES (1);
+
+SELECT * FROM orders WHERE order_date BETWEEN '2024-01-01' AND CURRENT_DATE;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '1 year' WHERE id = 1;
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '2 year' WHERE id = 2;
+
+SELECT name, AGE(CURRENT_DATE, hire_date) FROM employees;
+
+CREATE SEQUENCE seq_test START 100;
+SELECT nextval('seq_test');
+
+SELECT setval('seq_test', 200);
+SELECT nextval('seq_test');
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+BEGIN
+        RETURN i + 1;
+END;
+$$ LANGUAGE plpgsql;
+SELECT increment(5);
+
+SELECT version();
+
+SHOW server_version;
+
+SELECT inet_client_addr();
+
+CREATE ROLE test_role;
+DROP ROLE test_role;
+
+CREATE SCHEMA test_schema;
+DROP SCHEMA test_schema;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO PUBLIC;
+REVOKE SELECT ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+
+EXPLAIN SELECT * FROM employees WHERE salary > 50000;
+
+ANALYZE employees;
+
+TRUNCATE TABLE orders;
+
+DROP VIEW high_earners;
+DROP FUNCTION calculate_bonus(DECIMAL);
+DROP TABLE company;
+DROP TYPE address;
+DROP TABLE orders;
+DROP INDEX idx_department;
+DROP TABLE employees;
+DROP FUNCTION increment(INTEGER);

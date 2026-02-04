@@ -1,0 +1,55 @@
+-- Create a table with various data types and constraints for comprehensive testing
+CREATE TABLE main_table (
+    id INTEGER PRIMARY KEY,
+    text_field TEXT NOT NULL,
+    number REAL CHECK (number > 0),
+    blob_data BLOB DEFAULT x'1234',
+    unique_col UNIQUE
+);
+
+-- Insert sample data to test different edge cases
+INSERT INTO main_table VALUES(
+    1, 'test_string', 123.456, x'abcd', 'unique_value'
+);
+INSERT INTO main_table (id, text_field) VALUES(2, NULL); -- Test NULL handling
+
+-- Create a temporary table for testing session-specific data
+CREATE TEMPORARY TABLE temp_data (
+    id INTEGER PRIMARY KEY,
+    value TEXT
+);
+
+-- Insert into temporary table
+INSERT INTO temp_data VALUES(1, 'temp_value');
+
+-- Create an index to test query optimization paths
+CREATE INDEX idx_text_field ON main_table(text_field);
+
+-- Use a CTE for complex queries and testing recursive functionality
+WITH cte AS (
+    SELECT id FROM main_table WHERE text_field LIKE '%test%'
+)
+SELECT * FROM cte;
+
+-- Test window functions for advanced querying
+SELECT 
+    id, 
+    RANK() OVER (ORDER BY number DESC) as rank_num,
+    DENSE_RANK() OVER (PARTITION BY unique_col ORDER BY id) as dense_rank
+FROM main_table;
+
+-- Use transactions to test concurrency and rollback scenarios
+BEGIN;
+INSERT INTO main_table VALUES(3, 'transaction_test', 789.0, x'efgh', 'unique_txn');
+SAVEPOINT sp1;
+UPDATE main_table SET text_field = 'updated_transaction' WHERE id = 3;
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Test DuckDB-specific features like extension functions
+SELECT REPLACE('Hello World', 'World', 'DuckDB') AS modified_string;
+SELECT COALESCE(NULL, 'default_value') AS coalesced_result;
+
+-- Create a virtual table for testing specific execution paths
+CREATE VIRTUAL TABLE vt1 USING duckdb_fts5(text_field);
+INSERT INTO vt1 VALUES(1, 'test_search_query');

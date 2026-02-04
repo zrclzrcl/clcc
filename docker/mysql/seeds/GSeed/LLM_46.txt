@@ -1,0 +1,38 @@
+SET GLOBAL innodb_file_format=Barracuda;
+SET GLOBAL innodb_large_prefix=ON;
+SET GLOBAL innodb_file_per_table=ON;
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    value JSON,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO t1 (name, value) VALUES
+    ('item1', '{"price": 10.99, "quantity": 5}'),
+    ('item2', '{"price": 20.50, "quantity": 2}');
+CREATE INDEX idx_name ON t1 (name(50));
+ALTER TABLE t1 ADD COLUMN description TEXT;
+UPDATE t1 SET description = 'A detailed description of the item' WHERE id = 1;
+SELECT * FROM t1 WHERE JSON_EXTRACT(value, '$.price') > 15;
+CREATE PROCEDURE get_item_price(IN item_id INT, OUT price DECIMAL(10,2))
+BEGIN
+    SELECT JSON_EXTRACT(value, '$.price') INTO price FROM t1 WHERE id = item_id;
+END;
+CALL get_item_price(1, @price);
+SELECT @price;
+CREATE VIEW v1 AS SELECT id, name FROM t1 WHERE id < 3;
+SELECT * FROM v1;
+ANALYZE TABLE t1;
+OPTIMIZE TABLE t1;
+SHOW INDEX FROM t1;
+SHOW CREATE TABLE t1;
+SHOW CREATE VIEW v1;
+FLUSH TABLES WITH READ LOCK;
+UNLOCK TABLES;
+SELECT SLEEP(0.1);
+SET @var1 = 10;
+SELECT @var1;
+PREPARE stmt FROM 'SELECT * FROM t1 WHERE id > ?';
+SET @id = 1;
+EXECUTE stmt USING @id;
+DEALLOCATE PREPARE stmt;

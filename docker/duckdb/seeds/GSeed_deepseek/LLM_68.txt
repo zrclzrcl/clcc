@@ -1,0 +1,53 @@
+-- Create a table with various data types and constraints
+CREATE TABLE t1(a INTEGER NOT NULL, b TEXT, c REAL CHECK(c >= 0), d BOOLEAN DEFAULT FALSE);
+
+-- Create indexes to test different scenarios: conditional, descending, composite, expression-based
+CREATE INDEX idx_a_positive ON t1(a) WHERE a > 0;
+CREATE INDEX idx_b_desc ON t1(b DESC);
+CREATE INDEX idx_ca ON t1(c, a);
+CREATE INDEX idx_d_lower ON t1(LOWER(d));
+
+-- Insert data using CTE to generate test values with transformations and conditions
+WITH gen_data AS (
+    SELECT 
+        row_number() OVER () as id,
+        CASE WHEN value % 2 = 0 THEN value ELSE NULL END as a_val,
+        'test_' || (value % 5) as b_str,
+        value * 0.5 as c_num,
+        value > 10 as d_bool
+    FROM 
+        (SELECT value FROM generate_series(1, 20) AS value)
+)
+INSERT INTO t1(a, b, c, d)
+SELECT a_val, b_str, c_num, d_bool FROM gen_data;
+
+-- Test aggregations, window functions, and grouping sets
+SELECT 
+    COUNT(*) as total_rows,
+    COUNT(a) as non_null_a,
+    SUM(c) as sum_c,
+    MAX(b) as max_b,
+    MIN(d) as min_d,
+    AVG(c) as avg_c,
+    RANK() OVER (ORDER BY c DESC) as rank_desc
+FROM t1;
+
+-- Test complex queries: joins, unions, and advanced functions
+SELECT 
+    a, b, c, d,
+    NTILE(4) OVER (ORDER BY c) as quartile,
+    DENSE_RANK() OVER (PARTITION BY b ORDER BY a) as dense_rank
+FROM t1
+UNION ALL
+SELECT 
+    0 as a, 'default' as b, NULL as c, TRUE as d;
+
+-- Test DuckDB-specific features like array operations and built-in functions
+SELECT 
+    ARRAY_AGG(a) as a_array,
+    LISTAGG(b, ', ') as b_list,
+    APPROXIMATE_MEDIAN(c) as median_c
+FROM t1;
+
+-- Ensure all necessary objects exist before use
+PRAGMA integrity_check;

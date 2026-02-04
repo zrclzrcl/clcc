@@ -1,0 +1,45 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    dept_id INT,
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (dept_id) REFERENCES departments(dept_id);
+
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (emp_name, salary, dept_id, hire_date) VALUES
+('Alice Smith', 60000.00, 1, '2022-01-15'),
+('Bob Johnson', 75000.00, 2, '2021-05-20'),
+('Charlie Brown', 90000.00, 3, '2020-11-01');
+
+-- MariaDB specific feature: JSON column and function usage
+ALTER TABLE employees ADD COLUMN metadata JSON;
+UPDATE employees SET metadata = JSON_OBJECT('bonus', 5000, 'performance', 'Excellent') WHERE emp_name = 'Alice Smith';
+
+-- Test FULLTEXT index
+CREATE FULLTEXT INDEX emp_name_idx ON employees(emp_name);
+SELECT * FROM employees WHERE MATCH(emp_name) AGAINST('Alice' IN NATURAL LANGUAGE MODE);
+
+-- Test stored procedure (basic)
+DELIMITER //
+CREATE PROCEDURE GetEmployeeCount()
+BEGIN
+    SELECT COUNT(*) FROM employees;
+END //
+DELIMITER ;
+CALL GetEmployeeCount();
+
+-- Test window function
+SELECT emp_name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;

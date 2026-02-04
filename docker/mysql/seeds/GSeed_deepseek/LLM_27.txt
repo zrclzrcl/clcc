@@ -1,0 +1,56 @@
+SET sql_mode = 'ANSI_QUOTES';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    score DECIMAL(10, 2)
+);
+INSERT INTO t1 (name, status, score) VALUES
+('Test User 1', 'active', 100.5),
+('Test User 2', 'inactive', NULL),
+('Test User 3', 'active', -100.5);
+ALTER TABLE t1 ADD COLUMN description TEXT;
+SELECT 
+    id,
+    name,
+    created_at AS `creation time`,
+    status,
+    score,
+    RAND() * 100 AS random_score,
+    CONCAT(name, ' (ID: ', id, ')') AS full_name
+FROM t1
+WHERE status = 'active'
+ORDER BY created_at DESC;
+START TRANSACTION;
+INSERT INTO t1 (name, status) VALUES ('Test User 4', 'active');
+ROLLBACK;
+CREATE TABLE t2 (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    action TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+DELIMITER $$
+CREATE TRIGGER after_insert_t1 AFTER INSERT ON t1 
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (table_name, action) VALUES ('t1', NOW());
+END$$
+DELIMITER ;
+INSERT INTO t1 (name, status) VALUES ('Test User 5', 'active');
+SELECT * FROM t2;
+CREATE FUNCTION add_numbers(a INT, b INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN a + b;
+END$$
+DELIMITER ;
+SELECT add_numbers(5, 3) AS result;
+SET GLOBAL event_scheduler = ON;
+CREATE EVENT update_status
+ON SCHEDULE EVERY 1 HOUR
+STARTS NOW() + INTERVAL 1 MINUTE
+DO
+UPDATE t1 SET status = 'inactive' WHERE score < 0;
+SHOW PROCESSLIST;

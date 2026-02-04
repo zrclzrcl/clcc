@@ -1,0 +1,37 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john@example.com'),
+('jane_smith', 'jane@example.com');
+
+INSERT INTO orders (user_id, order_date) VALUES
+(1, '2023-10-01 10:00:00'),
+(1, '2023-10-02 11:15:00'),
+(2, '2023-10-03 09:45:00');
+
+SELECT * FROM users;
+SELECT * FROM orders;
+
+SELECT u.username, COUNT(o.order_id) as order_count 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id 
+HAVING order_count > 0;
+
+UPDATE users SET email = 'john.new@example.com' WHERE username = 'john_doe';
+DELETE FROM orders WHERE order_id = 2;
+
+CREATE INDEX idx_orders_user ON orders(user_id);
+SELECT user_id, COUNT(*) FROM orders GROUP BY user_id ORDER BY COUNT(*) DESC;

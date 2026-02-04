@@ -1,0 +1,106 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+    ('Item 1', 10, '{"a": 1, "b": "hello"}'),
+    ('Item 2', 20, '{"a": 2, "b": "world", "c": true}'),
+    ('Item 3', 30, '{"a": 3, "b": null}');
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = 40 WHERE name = 'Item 1';
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT jsonb_pretty(data) FROM test_table WHERE name = 'Item 2';
+
+SELECT name, data ->> 'b' AS b_value FROM test_table;
+
+SELECT name, data #> '{a}' AS a_value FROM test_table;
+
+CREATE INDEX idx_test_table_name ON test_table (name);
+
+EXPLAIN SELECT * FROM test_table WHERE name = 'Item 2';
+
+SELECT pg_typeof(id), pg_typeof(name), pg_typeof(value), pg_typeof(data) FROM test_table LIMIT 1;
+
+SELECT current_database();
+
+SELECT version();
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 10;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'This is a test item' WHERE name LIKE 'Item%';
+
+SELECT * FROM test_table WHERE description IS NOT NULL;
+
+SELECT count(*) FROM test_table;
+
+SELECT max(value), min(value), avg(value) FROM test_table;
+
+SELECT generate_series(1, 10);
+
+SELECT md5('hello world');
+
+SELECT encode(digest('hello world', 'sha256'), 'hex');
+
+SELECT upper(name), lower(name) FROM test_table;
+
+SELECT substring(name, 1, 4) FROM test_table;
+
+SELECT replace(name, 'Item', 'Object') FROM test_table;
+
+SELECT split_part(name, ' ', 1) FROM test_table;
+
+SELECT to_char(now(), 'YYYY-MM-DD HH24:MI:SS');
+
+SELECT date_trunc('month', now());
+
+SELECT age(timestamp '2024-01-01', timestamp '2023-01-01');
+
+SELECT interval '1 day' + timestamp '2024-01-01';
+
+SELECT CASE
+    WHEN value > 30 THEN 'High'
+    WHEN value > 15 THEN 'Medium'
+    ELSE 'Low'
+END AS value_level, name
+FROM test_table;
+
+SELECT coalesce(description, 'No description') FROM test_table;
+
+SELECT nullif(value, 20) FROM test_table;
+
+SELECT greatest(10, 5, 15), least(10, 5, 15);
+
+SELECT width_bucket(value, 0, 50, 5) FROM test_table;
+
+SELECT setseed(0.5);
+SELECT random();
+
+PREPARE my_query (INTEGER) AS
+SELECT * FROM test_table WHERE value > $1;
+
+EXECUTE my_query(15);
+
+DEALLOCATE my_query;
+
+DROP TABLE test_table;

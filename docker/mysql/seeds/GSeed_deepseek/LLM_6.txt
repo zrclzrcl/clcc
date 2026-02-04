@@ -1,0 +1,50 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, value) VALUES ('Test1', 100.5);
+INSERT INTO test_table (name, value) VALUES ('Test2', 200.75);
+INSERT INTO test_table (name, value) VALUES ('Test3', NULL);
+
+ALTER TABLE test_table ADD COLUMN status ENUM('active', 'inactive') NOT NULL DEFAULT 'active';
+
+CREATE INDEX idx_name ON test_table(name);
+CREATE UNIQUE INDEX idx_value ON test_table(value);
+
+DELIMITER $$
+CREATE FUNCTION get_total_value() RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    SELECT SUM(value) INTO total FROM test_table;
+    RETURN total;
+END$$
+DELIMITER ;
+
+ALTER TABLE test_table ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+CREATE TRIGGER before_update_test_table BEFORE UPDATE ON test_table FOR EACH ROW SET NEW.updated_at = CURRENT_TIMESTAMP;
+
+CREATE TABLE partitioned_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region VARCHAR(50),
+    amount DECIMAL(10, 2)
+) PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO partitioned_table (region, amount) VALUES ('North', 500.0);
+INSERT INTO partitioned_table (region, amount) VALUES ('South', 750.0);
+
+CREATE TRIGGER after_insert_test_table AFTER INSERT ON test_table FOR EACH ROW 
+BEGIN
+    INSERT INTO partitioned_table (region, amount) VALUES ('Global', NEW.value);
+END;
+
+SELECT id, name, value, status FROM test_table WHERE value > 100;
+SELECT region, SUM(amount) AS total_amount FROM partitioned_table GROUP BY region;

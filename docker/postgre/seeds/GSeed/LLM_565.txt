@@ -1,0 +1,207 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE USER test_user WITH PASSWORD 'password';
+CREATE DATABASE test_db WITH OWNER = test_user TABLESPACE = test_tablespace;
+
+-- Connect to the newly created database
+\c test_db test_user
+
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO test_table (name, value) VALUES
+    ('test1', 10),
+    ('test2', 20),
+    ('test3', 30);
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = 50 WHERE name = 'test1';
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+SELECT MAX(value) FROM test_table;
+
+SELECT MIN(value) FROM test_table;
+
+SELECT SUM(value) FROM test_table;
+
+CREATE INDEX idx_test_table_name ON test_table (name);
+
+EXPLAIN SELECT * FROM test_table WHERE name = 'test2';
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'This is a test description' WHERE id = 1;
+
+SELECT id, name, description FROM test_table;
+
+CREATE VIEW test_view AS SELECT id, name FROM test_table WHERE value > 25;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+DROP INDEX idx_test_table_name;
+
+DROP TABLE test_table;
+
+-- Cleanup the database, user, and tablespace (optional, for a clean environment)
+\c postgres postgres
+
+DROP DATABASE test_db;
+DROP USER test_user;
+DROP TABLESPACE test_tablespace;
+
+-- Example using JSONB
+CREATE TABLE jsonb_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO jsonb_test (data) VALUES
+    ('{"name": "item1", "value": 100}'),
+    ('{"name": "item2", "value": 200, "details": {"color": "red", "size": "large"}}');
+
+SELECT data -> 'name' FROM jsonb_test WHERE data ->> 'value' = '200';
+
+SELECT * FROM jsonb_test WHERE data @> '{"details": {"color": "red"}}';
+
+CREATE INDEX idx_jsonb_test_data ON jsonb_test USING gin (data jsonb_path_ops);
+
+DROP TABLE jsonb_test;
+
+-- Example using array
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES
+    (ARRAY['tag1', 'tag2', 'tag3']),
+    (ARRAY['tag2', 'tag4']);
+
+SELECT * FROM array_test WHERE 'tag2' = ANY(tags);
+
+SELECT * FROM array_test WHERE tags @> ARRAY['tag1']::TEXT[];
+
+DROP TABLE array_test;
+
+-- Example using uuid
+CREATE TABLE uuid_test (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255)
+);
+
+INSERT INTO uuid_test (name) VALUES ('uuid_test1');
+
+SELECT * FROM uuid_test;
+
+DROP TABLE uuid_test;
+
+-- Examples using window functions
+CREATE TABLE sales (
+    product VARCHAR(50),
+    year INTEGER,
+    sales_amount DECIMAL(10, 2)
+);
+
+INSERT INTO sales (product, year, sales_amount) VALUES
+    ('ProductA', 2021, 1000.00),
+    ('ProductA', 2022, 1200.00),
+    ('ProductB', 2021, 800.00),
+    ('ProductB', 2022, 900.00);
+
+SELECT
+    product,
+    year,
+    sales_amount,
+    RANK() OVER (PARTITION BY product ORDER BY sales_amount DESC) as sales_rank
+FROM sales;
+
+DROP TABLE sales;
+
+-- Example using common table expressions (CTEs)
+WITH yearly_sales AS (
+    SELECT
+        product,
+        year,
+        sales_amount
+    FROM sales
+)
+SELECT
+    product,
+    AVG(sales_amount)
+FROM yearly_sales
+GROUP BY product;
+
+-- Example with generate_series
+SELECT generate_series(1, 10);
+SELECT generate_series(timestamp '2024-01-01', timestamp '2024-01-10', interval '1 day');
+
+-- Example using pg_sleep
+SELECT pg_sleep(1);
+
+-- Example using inet and cidr types
+CREATE TABLE ip_test (
+    id SERIAL PRIMARY KEY,
+    ip_address INET,
+    network CIDR
+);
+
+INSERT INTO ip_test (ip_address, network) VALUES
+    ('192.168.1.1', '192.168.1.0/24'),
+    ('10.0.0.1', '10.0.0.0/16');
+
+SELECT * FROM ip_test WHERE ip_address <<= network;
+
+DROP TABLE ip_test;
+
+-- Example using range types
+CREATE TABLE range_test (
+    id SERIAL PRIMARY KEY,
+    int_range INT4RANGE,
+    ts_range TSRANGE
+);
+
+INSERT INTO range_test (int_range, ts_range) VALUES
+    ('[10,20]', '[2024-01-01, 2024-01-10]');
+
+SELECT * FROM range_test WHERE int_range && int4range(15, 25);
+
+DROP TABLE range_test;
+
+-- Example using enum types
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE enum_test (
+    id SERIAL PRIMARY KEY,
+    current_mood mood
+);
+
+INSERT INTO enum_test (current_mood) VALUES ('happy');
+
+SELECT * FROM enum_test;
+
+DROP TABLE enum_test;
+DROP TYPE mood;
+
+-- Example using foreign data wrappers (requires setup)
+
+CREATE EXTENSION file_fdw;
+CREATE SERVER local_file FOREIGN DATA WRAPPER file_fdw;
+CREATE FOREIGN TABLE test_foreign_table (line text) SERVER local_file OPTIONS (filename '/tmp/test_file.txt', format 'text');
+-- Ensure /tmp/test_file.txt exists
+
+SELECT * FROM test_foreign_table;
+
+DROP FOREIGN TABLE test_foreign_table;
+DROP SERVER local_file;
+DROP EXTENSION file_fdw;

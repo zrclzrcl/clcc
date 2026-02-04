@@ -1,0 +1,114 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+CREATE TABLE employee_department (
+    employee_id INTEGER REFERENCES employees(id),
+    department_id INTEGER REFERENCES departments(id),
+    PRIMARY KEY (employee_id, department_id)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, age, salary, hire_date) VALUES
+('Alice Smith', 30, 60000.00, '2020-01-15'),
+('Bob Johnson', 40, 80000.00, '2018-05-20'),
+('Charlie Brown', 25, 50000.00, '2022-03-10');
+
+INSERT INTO employee_department (employee_id, department_id)
+SELECT e.id, d.id FROM employees e, departments d WHERE e.name = 'Alice Smith' AND d.name = 'Sales';
+
+INSERT INTO employee_department (employee_id, department_id)
+SELECT e.id, d.id FROM employees e, departments d WHERE e.name = 'Bob Johnson' AND d.name = 'Marketing';
+
+UPDATE employees SET salary = 85000.00 WHERE name = 'Bob Johnson';
+
+DELETE FROM employees WHERE age > 45;
+
+SELECT * FROM employees WHERE salary > 55000.00;
+
+SELECT d.name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employee_department ed ON d.id = ed.department_id
+LEFT JOIN employees e ON ed.employee_id = e.id
+GROUP BY d.name;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(255);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT name, age FROM employees ORDER BY age DESC LIMIT 2;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT MAX(salary) AS max_salary, MIN(salary) AS min_salary FROM employees;
+
+SELECT d.name as department_name, AVG(e.salary) as average_salary
+FROM departments d
+JOIN employee_department ed ON d.id = ed.department_id
+JOIN employees e ON ed.employee_id = e.id
+GROUP BY d.name;
+
+-- Using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Using Common Table Expression (CTE)
+WITH AverageSalaries AS (
+    SELECT d.name as department_name, AVG(e.salary) as average_salary
+    FROM departments d
+    JOIN employee_department ed ON d.id = ed.department_id
+    JOIN employees e ON ed.employee_id = e.id
+    GROUP BY d.name
+)
+SELECT e.name, e.salary, a.department_name, a.average_salary
+FROM employees e
+JOIN employee_department ed ON e.id = ed.employee_id
+JOIN departments d ON ed.department_id = d.id
+JOIN AverageSalaries a ON d.name = a.department_name
+WHERE e.salary > a.average_salary;
+
+-- Transactions
+BEGIN;
+UPDATE employees SET salary = salary * 1.10 WHERE department_id IN (SELECT id FROM departments WHERE name = 'Sales');
+INSERT INTO employees (name, age, salary, hire_date) VALUES ('Eve Green', 28, 52000.00, '2023-07-01');
+COMMIT;
+
+-- Using generate_series
+SELECT generate_series(1, 10);
+
+-- Test exclusion constraints - requires extension
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE TABLE reservations (
+    room_id INTEGER,
+    during tsrange,
+    EXCLUDE USING gist (room_id WITH =, during WITH &&)
+);
+
+INSERT INTO reservations VALUES (1, '[2024-01-01,2024-01-05]');
+INSERT INTO reservations VALUES (1, '[2024-01-03,2024-01-07]'); -- should fail due to overlap
+INSERT INTO reservations VALUES (2, '[2024-01-03,2024-01-07]'); -- should succeed
+
+-- Using pg_sleep
+SELECT pg_sleep(0.1);
+
+-- Test JSONB functionality
+ALTER TABLE employees ADD COLUMN metadata JSONB;
+UPDATE employees SET metadata = '{"title": "Software Engineer", "level": 3}';
+SELECT name, metadata ->> 'title' FROM employees;
+SELECT * FROM employees WHERE metadata @> '{"level": 3}';

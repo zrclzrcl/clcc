@@ -1,0 +1,44 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    value REAL DEFAULT 0.0,
+    data BLOB,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE TRIGGER trg_t1_update AFTER UPDATE ON t1 BEGIN
+    INSERT INTO audit VALUES(OLD.id, NEW.name, datetime('now'));
+END;
+
+INSERT INTO t1(name, value, data) 
+VALUES 
+    ('Test1', 100.5, x'deadbeef'),
+    ('Test2', NULL, NULL),
+    ('Test3', -99999.99, x'cafebabe');
+
+CREATE TABLE audit(
+    id INTEGER,
+    name TEXT,
+    timestamp DATETIME
+);
+
+SELECT t1.id, t1.name, t1.value, t2.description 
+FROM t1 
+JOIN (
+    SELECT id, description FROM t2 WHERE value > 0
+) AS t2 ON t1.id = t2.id 
+WHERE t1.last_updated >= datetime('now', '-7 days') 
+ORDER BY t1.value DESC;
+
+WITH cte AS (
+    SELECT name, ROW_NUMBER() OVER (ORDER BY name) as rn 
+    FROM t1
+)
+SELECT * FROM cte WHERE rn % 2 = 0;
+
+UPDATE t1 SET value = value + (
+    SELECT AVG(value) FROM t1 WHERE name LIKE 'Test%'
+);
+
+DELETE FROM t1 WHERE value < 0;

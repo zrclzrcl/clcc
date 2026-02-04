@@ -1,0 +1,84 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES
+('John', 'Doe', 60000.00, 1),
+('Jane', 'Smith', 75000.00, 2),
+('Peter', 'Jones', 90000.00, 3);
+
+-- Using Window functions
+SELECT emp_id, first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Using Common Table Expression (CTE)
+WITH HighSalaryEmployees AS (
+    SELECT emp_id, first_name, last_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Using stored procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment(IN dept_id_param INT)
+BEGIN
+    SELECT emp_id, first_name, last_name, salary
+    FROM employees
+    WHERE department_id = dept_id_param;
+END //
+DELIMITER ;
+
+CALL GetEmployeesByDepartment(1);
+
+-- Using user-defined function
+DELIMITER //
+CREATE FUNCTION CalculateBonus(salary DECIMAL(10, 2))
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE bonus DECIMAL(10, 2);
+    SET bonus = salary * 0.10;
+    RETURN bonus;
+END //
+DELIMITER ;
+
+SELECT emp_id, first_name, last_name, salary, CalculateBonus(salary) AS bonus FROM employees;
+
+-- Spatial data type example
+CREATE TABLE cities (
+    city_name VARCHAR(50),
+    location POINT SRID 0
+);
+
+INSERT INTO cities (city_name, location) VALUES
+('London', ST_GeomFromText('POINT(0.1278 51.5074)')),
+('Paris', ST_GeomFromText('POINT(2.3522 48.8566)'));
+
+SELECT city_name FROM cities WHERE ST_Distance_Sphere(location, ST_GeomFromText('POINT(0.11 51.48)')) < 20000;
+
+-- Optimizer hints
+SELECT /*+ BNL(employees) */ * FROM employees WHERE salary > 50000;
+
+-- MariaDB-specific feature: sequence
+CREATE SEQUENCE seq_employee START WITH 4 INCREMENT BY 1;
+INSERT INTO employees (first_name, last_name, salary, department_id) VALUES ('Test', 'Employee', 50000, 1);
+SELECT LAST_INSERT_ID();
+
+DROP SEQUENCE seq_employee;

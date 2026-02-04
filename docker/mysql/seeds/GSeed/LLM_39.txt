@@ -1,0 +1,62 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+CREATE TABLE `test_table` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `age` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data` JSON DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FULLTEXT INDEX `name_idx` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO `test_table` (`name`, `age`, `data`) VALUES
+('John Doe', 30, '{"city": "New York", "occupation": "Software Engineer"}'),
+('Jane Smith', 25, '{"city": "Los Angeles", "occupation": "Data Scientist"}');
+
+SELECT * FROM `test_table` WHERE JSON_EXTRACT(data, '$.city') = 'New York';
+
+UPDATE `test_table` SET `age` = 31 WHERE `name` = 'John Doe';
+
+ALTER TABLE `test_table` ADD COLUMN `location` POINT SRID 4326;
+
+UPDATE `test_table` SET `location` = ST_GeomFromText('POINT(40.7128 -74.0060)', 4326) WHERE `name` = 'John Doe';
+
+CREATE PROCEDURE `sp_insert_test_data`(IN p_name VARCHAR(255), IN p_age INT, IN p_city VARCHAR(255))
+BEGIN
+    INSERT INTO `test_table` (`name`, `age`, `data`) VALUES (p_name, p_age, JSON_OBJECT('city', p_city));
+END;
+
+CALL `sp_insert_test_data`('Alice Johnson', 28, 'Chicago');
+
+CREATE FUNCTION `calculate_age_group`(p_age INT) RETURNS VARCHAR(50) DETERMINISTIC
+BEGIN
+    DECLARE age_group VARCHAR(50);
+    IF p_age < 18 THEN
+        SET age_group = 'Under 18';
+    ELSEIF p_age >= 18 AND p_age < 65 THEN
+        SET age_group = 'Adult';
+    ELSE
+        SET age_group = 'Senior';
+    END IF;
+    RETURN age_group;
+END;
+
+SELECT `name`, `age`, `calculate_age_group`(`age`) AS `age_group` FROM `test_table`;
+
+CREATE TRIGGER `test_table_before_insert` BEFORE INSERT ON `test_table`
+FOR EACH ROW
+BEGIN
+    SET NEW.`created_at` = NOW();
+END;
+
+ANALYZE TABLE `test_table`;
+
+SHOW CREATE TABLE `test_table`;
+
+DROP PROCEDURE IF EXISTS `sp_insert_test_data`;
+DROP FUNCTION IF EXISTS `calculate_age_group`;
+DROP TRIGGER IF EXISTS `test_table_before_insert`;

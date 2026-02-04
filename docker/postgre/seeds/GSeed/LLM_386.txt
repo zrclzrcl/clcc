@@ -1,0 +1,166 @@
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    emp_name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    dept_id INT
+);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(100) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'Los Angeles'),
+    ('Engineering', 'San Francisco');
+
+INSERT INTO employees (emp_name, salary, dept_id) VALUES
+    ('Alice Smith', 60000.00, 1),
+    ('Bob Johnson', 75000.00, 2),
+    ('Charlie Brown', 90000.00, 3),
+    ('David Lee', 65000.00, 1),
+    ('Eve Wilson', 80000.00, 2);
+
+CREATE INDEX idx_dept_id ON employees (dept_id);
+
+SELECT emp_name, salary FROM employees WHERE salary > 70000.00;
+
+SELECT e.emp_name, d.dept_name
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+UPDATE employees SET salary = salary * 1.1 WHERE dept_id = 3;
+
+DELETE FROM employees WHERE emp_id = 4;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE - INTERVAL '1 year' * (emp_id % 5);
+
+SELECT emp_name, hire_date FROM employees ORDER BY hire_date DESC;
+
+CREATE VIEW employee_summary AS
+SELECT d.dept_name, AVG(e.salary) AS avg_salary
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY d.dept_name;
+
+SELECT * FROM employee_summary;
+
+CREATE FUNCTION increment_salary(emp_id INT, increment DECIMAL)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE employees SET salary = salary + increment WHERE employees.emp_id = increment_salary.emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000);
+
+SELECT emp_name, salary FROM employees WHERE emp_id = 1;
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(255),
+    operation VARCHAR(50),
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'INSERT');
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'UPDATE');
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'DELETE');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+INSERT INTO employees (emp_name, salary, dept_id) VALUES ('New Employee', 50000, 1);
+UPDATE employees SET salary = 70000 WHERE emp_name = 'Bob Johnson';
+DELETE FROM employees WHERE emp_name = 'Charlie Brown';
+
+SELECT * FROM audit_log;
+
+-- Use of generate_series for bulk insertion
+INSERT INTO employees (emp_name, salary, dept_id)
+SELECT 'Generated Employee ' || i, 50000 + (i * 1000), (i % 3) + 1
+FROM generate_series(1, 10) AS i;
+
+-- Table with inheritance
+CREATE TABLE managers (
+    bonus DECIMAL(10, 2)
+) INHERITS (employees);
+
+INSERT INTO managers (emp_name, salary, dept_id, bonus) VALUES ('Manager One', 100000, 1, 20000);
+
+SELECT * FROM employees WHERE emp_name = 'Manager One';
+
+-- Window function example
+SELECT
+    emp_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Common Table Expression (CTE) example
+WITH RankedEmployees AS (
+    SELECT
+        emp_name,
+        salary,
+        RANK() OVER (ORDER BY salary DESC) as salary_rank
+    FROM employees
+)
+SELECT emp_name, salary FROM RankedEmployees WHERE salary_rank <= 3;
+
+-- Materialized view example
+CREATE MATERIALIZED VIEW high_earners AS
+SELECT emp_name, salary FROM employees WHERE salary > 75000;
+
+REFRESH MATERIALIZED VIEW high_earners;
+
+SELECT * FROM high_earners;
+
+-- Aggregate functions with filtering
+SELECT
+    dept_id,
+    AVG(salary) FILTER (WHERE salary > 60000) AS avg_high_salary
+FROM employees
+GROUP BY dept_id;
+
+-- Table partitioning example
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    sale_date DATE NOT NULL,
+    amount DECIMAL(10, 2)
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_y2023 PARTITION OF sales
+FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+INSERT INTO sales (sale_date, amount) VALUES ('2023-05-15', 150.00);
+INSERT INTO sales (sale_date, amount) VALUES ('2024-05-15', 200.00); -- will not be inserted
+
+SELECT * FROM sales;
+
+-- Clean up
+DROP MATERIALIZED VIEW IF EXISTS high_earners;
+DROP FUNCTION IF EXISTS increment_salary(INT, DECIMAL);
+DROP TRIGGER IF EXISTS employee_audit ON employees;
+DROP FUNCTION IF EXISTS log_employee_changes();
+DROP TABLE IF EXISTS sales_y2023;
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS managers;
+DROP VIEW IF EXISTS employee_summary;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;

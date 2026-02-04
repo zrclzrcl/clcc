@@ -1,0 +1,82 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE jobs (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(50),
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments(id);
+ALTER TABLE employees ADD CONSTRAINT fk_job FOREIGN KEY (job_id) REFERENCES jobs(id);
+
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Sales Representative', 40000, 70000);
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Marketing Manager', 60000, 100000);
+INSERT INTO jobs (title, min_salary, max_salary) VALUES ('Software Engineer', 80000, 150000);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 55000, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 2, 80000, 2);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2022-05-10', 3, 120000, 3);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Alice', 'Brown', 'alice.brown@example.com', '2023-02-20', 1, 60000, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Bob', 'Williams', 'bob.williams@example.com', '2023-04-05', 3, 90000, 3);
+
+SELECT * FROM employees WHERE salary > 75000 ORDER BY last_name;
+SELECT first_name, last_name FROM employees WHERE department_id = (SELECT id FROM departments WHERE name = 'Sales');
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = (SELECT id FROM departments WHERE name = 'Engineering');
+DELETE FROM employees WHERE hire_date < '2022-02-01';
+SELECT COUNT(*) FROM employees;
+SELECT department_id, AVG(salary) FROM employees GROUP BY department_id;
+SELECT d.name, COUNT(e.id) FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.name;
+SELECT e.first_name, e.last_name, j.title FROM employees e INNER JOIN jobs j ON e.job_id = j.id WHERE j.min_salary > 50000;
+SELECT e.first_name, e.last_name FROM employees e WHERE EXISTS (SELECT 1 FROM departments d WHERE d.id = e.department_id AND d.name = 'Marketing');
+SELECT e.first_name, e.last_name FROM employees e WHERE NOT EXISTS (SELECT 1 FROM departments d WHERE d.id = e.department_id AND d.name = 'Sales');
+SELECT first_name, last_name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+SELECT first_name, last_name, salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+SELECT first_name, last_name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS row_num FROM employees;
+SELECT department_id, SUM(salary) OVER (PARTITION BY department_id) AS dept_salary FROM employees;
+SELECT first_name, last_name, salary, LAG(salary, 1, 0) OVER (ORDER BY hire_date) AS previous_salary FROM employees;
+SELECT first_name, last_name, salary, LEAD(salary, 1, 0) OVER (ORDER BY hire_date) AS next_salary FROM employees;
+SELECT first_name, last_name, NTILE(4) OVER (ORDER BY salary) AS salary_quartile FROM employees;
+CREATE INDEX idx_last_name ON employees (last_name);
+EXPLAIN SELECT * FROM employees WHERE last_name = 'Smith';
+SELECT version();
+SHOW server_version;
+SELECT inet_client_addr();
+SELECT inet_server_addr();
+SELECT pg_backend_pid();
+SELECT current_database();
+SELECT current_schema();
+SELECT current_user;
+SELECT session_user;
+SELECT system_user;
+SELECT pg_cancel_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();
+SELECT * FROM pg_locks;
+SELECT * FROM pg_stat_activity;
+SELECT * FROM pg_settings WHERE name LIKE '%memory%';
+SELECT pg_size_pretty(pg_database_size(current_database()));
+SELECT pg_tablespace_databases(oid), spcname FROM pg_tablespace;
+SELECT pg_typeof(id), pg_typeof(first_name), pg_typeof(hire_date), pg_typeof(salary) FROM employees LIMIT 1;
+
+DROP INDEX idx_last_name;
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TABLE jobs;

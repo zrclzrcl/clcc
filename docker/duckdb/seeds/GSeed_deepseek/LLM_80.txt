@@ -1,0 +1,101 @@
+CREATE TABLE test_fuzz (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value DOUBLE,
+    status BOOLEAN,
+    data BLOB,
+    timestamp TIMESTAMP,
+    description TEXT COLLATE NOCASE,
+    created_at DATE,
+    updated_at DATETIME,
+    duration INTERVAL DAY TO SECOND,
+    amount DECIMAL(10, 2)
+);
+
+INSERT INTO test_fuzz VALUES(
+    1,
+    'Test Record',
+    1234.56789,
+    true,
+    X'ABCDEF123456',
+    '2024-01-01 12:34:56',
+    'This is a test description',
+    '2024-01-01',
+    '2024-01-01 12:34:56.789',
+    INTERVAL '1 day 2 hours',
+    1234.56
+);
+
+INSERT INTO test_fuzz VALUES(
+    2,
+    NULL,
+    -9876.54321,
+    false,
+    X'1234ABCD',
+    '2024-02-29 00:00:01',
+    NULL,
+    '2024-02-29',
+    '2024-02-29 23:59:59.999',
+    INTERVAL '-3 days 4 hours',
+    -9876.54
+);
+
+SELECT 
+    id,
+    name,
+    CASE 
+        WHEN value > 1000 THEN 'High'
+        WHEN value < 0 THEN 'Negative'
+        ELSE 'Normal'
+    END AS value_category,
+    status,
+    data,
+    timestamp,
+    description,
+    created_at,
+    updated_at,
+    duration,
+    amount
+FROM test_fuzz
+WHERE 
+    (value > 1000 AND status = true) OR 
+    (amount < 0 AND description IS NOT NULL)
+GROUP BY id, name, value, status, data, timestamp, description, created_at, updated_at, duration, amount
+HAVING 
+    COUNT(*) >= 2 AND 
+    SUM(amount) > 1000.00
+ORDER BY 
+    id DESC,
+    name ASC NULLS FIRST;
+
+SELECT 
+    MIN(id),
+    MAX(value),
+    COUNT(DISTINCT status),
+    AVG(amount),
+    SUM(duration)
+FROM test_fuzz
+WHERE description LIKE 'This%'
+GROUP BY created_at, updated_at
+HAVING 
+    COUNT(*) > 1 AND 
+    SUM(amount) != 0;
+
+(SELECT id FROM test_fuzz WHERE name IS NULL)
+INTERSECT
+(SELECT id FROM test_fuzz WHERE description = 'Test');
+
+SELECT 
+    TRIM(name),
+    UPPER(description),
+    ROUND(value, 2),
+    ABS(amount),
+    EXTRACT(YEAR FROM timestamp),
+    created_at + INTERVAL '1 day',
+    updated_at - duration,
+    CASE 
+        WHEN value IS NULL THEN 'N/A'
+        ELSE CAST(value AS TEXT)
+    END
+FROM test_fuzz
+WHERE status = true;

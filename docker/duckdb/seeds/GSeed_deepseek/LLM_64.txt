@@ -1,0 +1,46 @@
+-- Create a table with various data types including NULL values
+CREATE TABLE test_table (
+    id INTEGER,
+    name TEXT,
+    price FLOAT,
+    date DATE,
+    in_stock BOOLEAN
+);
+
+-- Insert sample data with different data types and NULL values
+INSERT INTO test_table VALUES (1, 'apple', 0.99, '2023-01-01', TRUE);
+INSERT INTO test_table VALUES (2, 'banana', 0.59, '2023-01-02', FALSE);
+INSERT INTO test_table VALUES (3, NULL, NULL, NULL, NULL);
+INSERT INTO test_table VALUES (4, 'orange', 1.29, '2023-01-03', TRUE);
+
+-- Create an index on the id column for faster lookups
+CREATE INDEX idx_id ON test_table(id);
+
+-- Create a view that aggregates data from the table
+CREATE VIEW v_test AS
+SELECT name, SUM(price) as total_price
+FROM test_table
+WHERE in_stock = TRUE
+GROUP BY name;
+
+-- Use a common table expression (CTE)
+WITH cte AS (
+    SELECT * FROM test_table WHERE price > 1.0
+)
+SELECT * FROM cte;
+
+-- Test window functions
+SELECT id, name, ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) as row_num
+FROM test_table;
+
+-- Test UNION ALL operation
+SELECT id, name FROM test_table
+UNION ALL
+SELECT id, name FROM test_table WHERE in_stock = FALSE;
+
+-- Test a subquery in the SELECT clause
+SELECT 
+    id,
+    name,
+    (SELECT SUM(price) FROM test_table WHERE id > t.id) as sum_future_prices
+FROM test_table t;

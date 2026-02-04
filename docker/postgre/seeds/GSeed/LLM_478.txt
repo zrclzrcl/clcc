@@ -1,0 +1,125 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(100),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+    ('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+    ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+    ('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+    ('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+    ('Eve Williams', 65000.00, 'Marketing', '2022-09-05');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 60000 ORDER BY salary DESC;
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 65000;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+EXPLAIN ANALYZE SELECT * FROM employees WHERE name LIKE 'A%';
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees WHERE salary > 65000;
+
+DROP VIEW sales_employees;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(8, 2);
+
+UPDATE employees SET bonus = salary * 0.05 WHERE department = 'Engineering';
+
+SELECT name, salary, bonus, salary + bonus AS total_compensation FROM employees ORDER BY total_compensation DESC;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_salary DECIMAL, dept VARCHAR) RETURNS DECIMAL AS $$
+BEGIN
+    IF dept = 'Engineering' THEN
+        RETURN emp_salary * 0.10;
+    ELSE
+        RETURN emp_salary * 0.05;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, salary, calculate_bonus(salary, department) AS bonus FROM employees;
+
+DROP FUNCTION calculate_bonus(DECIMAL, VARCHAR);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+ALTER TABLE employees ADD COLUMN dept_id INT;
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+ALTER TABLE employees ADD CONSTRAINT fk_dept_id FOREIGN KEY (dept_id) REFERENCES departments(dept_id);
+
+SELECT e.name, d.dept_name
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, COUNT(*) AS employee_count, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+SELECT * FROM employee_summary;
+
+DROP MATERIALIZED VIEW employee_summary;
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(255),
+    operation VARCHAR(50),
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION audit_employees()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'INSERT');
+        RETURN NEW;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'DELETE');
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employees_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE audit_employees();
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('New Employee', 50000, 'Sales', '2024-01-01');
+UPDATE employees SET salary = 62000 WHERE name = 'Alice Smith';
+DELETE FROM employees WHERE name = 'Bob Johnson';
+
+SELECT * FROM audit_log;
+
+DROP TRIGGER employees_audit ON employees;
+DROP FUNCTION audit_employees();
+DROP TABLE audit_log;
+DROP TABLE employees;
+DROP TABLE departments;

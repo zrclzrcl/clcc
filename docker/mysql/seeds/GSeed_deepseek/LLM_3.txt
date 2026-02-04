@@ -1,0 +1,45 @@
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department_id INT,
+    salary DECIMAL(10, 2),
+    hire_date DATETIME,
+    status ENUM('active', 'inactive') DEFAULT 'active'
+);
+
+INSERT INTO employees (name, department_id, salary, hire_date)
+VALUES
+    ('John Doe', 1, 75000.00, '2023-01-01'),
+    ('Jane Smith', 2, 85000.00, '2023-02-15'),
+    ('Bob Johnson', 1, NULL, '2023-03-10'),
+    ('Alice Brown', 3, 90000.00, NULL);
+
+SELECT name, salary FROM employees WHERE salary > 80000 ORDER BY salary DESC LIMIT 2;
+
+UPDATE employees SET salary = 85000.00 WHERE id = 3;
+
+DELETE FROM employees WHERE department_id = 2 AND status = 'active';
+
+SELECT department_id, COUNT(*) as total_employees, MAX(salary) as max_salary
+FROM employees
+GROUP BY department_id
+HAVING COUNT(*) > 1;
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL
+);
+
+INSERT INTO departments (dept_id, dept_name)
+VALUES (1, 'Engineering'), (2, 'Marketing'), (3, 'Sales');
+
+SELECT e.name AS employee_name, d.dept_name AS department
+FROM employees e
+JOIN departments d ON e.department_id = d.dept_id
+WHERE e.status = 'active';
+
+SELECT * FROM employees WHERE BINARY name LIKE 'A%';
+
+CREATE INDEX idx_hire_date ON employees(hire_date);
+
+SELECT TRIM(name) AS trimmed_name, NOW() AS current_time FROM employees;

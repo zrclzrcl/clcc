@@ -1,0 +1,54 @@
+-- Create tables with various data types and constraints
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    data BLOB,
+    flag BOOLEAN DEFAULT FALSE,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table for testing foreign keys and relationships
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    quantity INTEGER CHECK (quantity >= 0)
+);
+
+-- Create a table with unique constraints and indexes
+CREATE TABLE t3 (
+    id SERIAL PRIMARY KEY,
+    code TEXT UNIQUE,
+    description TEXT,
+    price REAL DEFAULT 0.0
+);
+CREATE INDEX idx_t3_code ON t3(code);
+
+-- Insert test data with edge cases
+INSERT INTO t1 VALUES 
+(1, 'Test Name', 123.45, X'010203', TRUE, CURRENT_TIMESTAMP),
+(2, NULL, -999.99, NULL, FALSE, '2023-01-01 00:00:00'),
+(3, 'Edge Case', 0.0, X'0000FF', NULL, DEFAULT);
+
+-- Insert into t2 with foreign key references
+INSERT INTO t2 VALUES 
+(1, 1, 100),
+(2, 2, -1); -- This should trigger a constraint violation
+
+-- Alter table to add a column and rename an existing one
+ALTER TABLE t1 ADD COLUMN new_col TEXT DEFAULT 'default_value';
+ALTER TABLE t3 RENAME COLUMN description TO details;
+
+-- Create a view with a complex query including CTEs
+WITH cte AS (
+    SELECT id, name FROM t1 WHERE flag = TRUE
+)
+SELECT * FROM cte UNION ALL 
+SELECT id, name FROM t2 WHERE quantity > 0;
+
+-- Test window functions and advanced queries
+SELECT 
+    id,
+    ROW_NUMBER() OVER (ORDER BY timestamp DESC) as rn,
+    RANK() OVER (PARTITION BY flag ORDER BY value ASC) as rnk
+FROM t1;

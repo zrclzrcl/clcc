@@ -1,0 +1,93 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    json_data JSONB
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments (id);
+
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id, json_data)
+VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 60000.00, 1, '{"title": "Sales Representative", "level": "Junior"}');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id, json_data)
+VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-05-20', 75000.00, 2, '{"title": "Marketing Manager", "level": "Senior"}');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id, json_data)
+VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 80000.00, 3, '{"title": "Software Engineer", "level": "Mid"}');
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = 85000.00 WHERE id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT first_name, last_name FROM employees ORDER BY last_name;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT AVG(salary) FROM employees;
+
+ALTER TABLE employees ADD COLUMN phone_number VARCHAR(20);
+
+UPDATE employees SET phone_number = '555-123-4567' WHERE id = 2;
+
+-- Using array types
+CREATE TABLE product_tags (
+    product_id INTEGER,
+    tags TEXT[]
+);
+
+INSERT INTO product_tags (product_id, tags) VALUES (1, '{"electronics", "gadgets"}');
+INSERT INTO product_tags (product_id, tags) VALUES (2, '{"clothing", "fashion"}');
+
+SELECT * FROM product_tags WHERE 'electronics' = ANY(tags);
+
+-- Testing date/time functions
+SELECT NOW();
+SELECT AGE(hire_date) FROM employees;
+
+-- Testing JSONB functions
+SELECT json_data ->> 'title' FROM employees;
+SELECT * FROM employees WHERE json_data @> '{"level": "Senior"}';
+
+-- Create another table for more complex queries
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (1, '2024-01-01', 100.00);
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (2, '2024-01-05', 250.00);
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (1, '2024-01-10', 50.00);
+
+-- A more complex query involving joins and aggregations
+SELECT d.name, COUNT(e.id) AS employee_count, AVG(e.salary) AS average_salary
+FROM departments d
+LEFT JOIN employees e ON d.id = e.department_id
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+-- Using generate_series for fuzzing with sequence data
+SELECT generate_series(1, 10);
+
+-- Using pg_sleep to test timing issues
+SELECT pg_sleep(0.1);

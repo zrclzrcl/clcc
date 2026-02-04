@@ -1,0 +1,183 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET autocommit=0;
+
+-- Create tables with various data types and constraints
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+CREATE TABLE jobs (
+    job_id INT PRIMARY KEY AUTO_INCREMENT,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY AUTO_INCREMENT,
+    address VARCHAR(100),
+    postal_code VARCHAR(20),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    country VARCHAR(50)
+);
+
+-- Add foreign key constraints
+ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+ALTER TABLE employees ADD FOREIGN KEY (manager_id) REFERENCES employees(emp_id);
+ALTER TABLE departments ADD FOREIGN KEY (location_id) REFERENCES locations(location_id);
+
+-- Insert some sample data
+INSERT INTO locations (address, postal_code, city, state, country) VALUES
+('123 Main St', '12345', 'Anytown', 'CA', 'USA'),
+('456 Oak Ave', '67890', 'Springfield', 'IL', 'USA');
+
+INSERT INTO departments (department_name, location_id) VALUES
+('Sales', 1),
+('Marketing', 2);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES
+('Sales Representative', 40000, 80000),
+('Marketing Manager', 60000, 120000);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 50000, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-03-20', 2, 70000, 2);
+
+-- Test various SQL features
+
+-- Subquery in SELECT clause
+SELECT emp_id, first_name, (SELECT department_name FROM departments WHERE department_id = employees.department_id) AS department FROM employees;
+
+-- Aggregate function with GROUP BY and HAVING
+SELECT department_id, AVG(salary) AS avg_salary FROM employees GROUP BY department_id HAVING AVG(salary) > 50000;
+
+-- Window function
+SELECT emp_id, first_name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Using a stored procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment(IN dept_id INT)
+BEGIN
+    SELECT * FROM employees WHERE department_id = dept_id;
+END //
+DELIMITER ;
+CALL GetEmployeesByDepartment(1);
+
+-- Using a user-defined function
+DELIMITER //
+CREATE FUNCTION CalculateBonus(salary DECIMAL(10, 2), commission DECIMAL(4, 2))
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE bonus DECIMAL(10, 2);
+    SET bonus = salary * commission;
+    RETURN bonus;
+END //
+DELIMITER ;
+SELECT emp_id, first_name, salary, commission_pct, CalculateBonus(salary, commission_pct) AS bonus FROM employees;
+
+-- Using a trigger
+CREATE TABLE employee_audit (
+    audit_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER EmployeeSalaryUpdate
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF OLD.salary <> NEW.salary THEN
+        INSERT INTO employee_audit (emp_id, old_salary, new_salary) VALUES (OLD.emp_id, OLD.salary, NEW.salary);
+    END IF;
+END //
+DELIMITER ;
+
+UPDATE employees SET salary = 55000 WHERE emp_id = 1;
+
+-- Test JSON functionality (MySQL 5.7 and later)
+ALTER TABLE employees ADD COLUMN personal_info JSON;
+UPDATE employees SET personal_info = JSON_OBJECT('address', '123 Elm St', 'city', 'Anytown') WHERE emp_id = 1;
+SELECT emp_id, first_name, personal_info->>'$.address' AS address FROM employees;
+
+-- Fulltext search
+ALTER TABLE employees ADD FULLTEXT INDEX name_idx (first_name, last_name);
+SELECT emp_id, first_name, last_name FROM employees WHERE MATCH(first_name, last_name) AGAINST ('John Doe');
+
+-- Common Table Expression (CTE)
+WITH DepartmentAvgSalary AS (
+    SELECT department_id, AVG(salary) AS avg_salary FROM employees GROUP BY department_id
+)
+SELECT e.emp_id, e.first_name, d.department_name, das.avg_salary
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+JOIN DepartmentAvgSalary das ON e.department_id = das.department_id
+WHERE e.salary > das.avg_salary;
+
+-- Spatial Data Types (requires SRID specification)
+CREATE TABLE places (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  location GEOMETRY /* Add SRID=4326 if needed for spatial functions */
+);
+
+INSERT INTO places (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 20)')); /* Add SRID=4326 if needed for spatial functions */
+SELECT name, ST_AsText(location) FROM places;
+
+-- Partitioning (Range Partitioning)
+CREATE TABLE sales (
+    sale_id INT,
+    sale_date DATE,
+    amount DECIMAL(10,2)
+)
+PARTITION BY RANGE ( YEAR(sale_date) ) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO sales (sale_id, sale_date, amount) VALUES
+(1, '2020-01-01', 100.00),
+(2, '2021-05-15', 200.00),
+(3, '2022-12-31', 300.00),
+(4, '2023-06-30', 400.00);
+
+SELECT * FROM sales PARTITION (p2020);
+
+-- Savepoint and Rollback within transaction
+SAVEPOINT after_inserts;
+UPDATE employees SET salary = 60000 WHERE emp_id = 1;
+ROLLBACK TO after_inserts;
+
+COMMIT;
+
+-- Clean up stored routine
+DROP PROCEDURE IF EXISTS GetEmployeesByDepartment;
+DROP FUNCTION IF EXISTS CalculateBonus;
+DROP TRIGGER IF EXISTS EmployeeSalaryUpdate;
+
+SET sql_mode=@old_sql_mode;
+SET autocommit=1;

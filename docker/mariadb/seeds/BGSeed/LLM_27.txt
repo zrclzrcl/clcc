@@ -1,0 +1,67 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO users (username, email) VALUES ('testuser1', 'test1@example.com');
+INSERT INTO products (name, description, price) VALUES ('Test Product 1', 'This is a test product.', 19.99);
+INSERT INTO orders (user_id, total) VALUES (1, 19.99);
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 19.99);
+
+ANALYZE TABLE users, products, orders, order_items;
+LOCK TABLES users READ, products READ, orders WRITE, order_items WRITE;
+UNLOCK TABLES;
+
+-- MariaDB specific syntax example
+SET @innodb_deadlock_detect = 1;
+
+-- Stored procedure example
+DELIMITER //
+CREATE PROCEDURE GetUserOrders (IN userId INT)
+BEGIN
+    SELECT * FROM orders WHERE user_id = userId;
+END //
+DELIMITER ;
+
+CALL GetUserOrders(1);
+
+-- Create index with specific engine
+CREATE INDEX idx_username ON users (username) USING BTREE;
+
+-- Example of using JSON functions (MariaDB 10.2+)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "red", "size": "medium"}' WHERE id = 1;
+SELECT JSON_EXTRACT(details, '$.color') FROM products WHERE id = 1;
+
+-- Example of using a virtual column (MariaDB 5.2+)
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10,2) GENERATED ALWAYS AS (price * 0.9) VIRTUAL;
+SELECT discounted_price from products WHERE id=1;

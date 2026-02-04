@@ -1,0 +1,19 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+
+CREATE VIEW value_view AS SELECT value FROM integers WHERE value > 15;
+
+SELECT value FROM value_view ORDER BY value DESC;
+
+-- DuckDB specific: Using UNNEST with a sequence
+SELECT * FROM UNNEST(SEQUENCE(1, 5));
+
+-- DuckDB specific: List type example
+CREATE TABLE lists (id INTEGER, values INTEGER[]);
+INSERT INTO lists VALUES (1, [1, 2, 3]);
+SELECT list_sum(values) FROM lists;

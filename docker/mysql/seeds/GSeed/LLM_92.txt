@@ -1,0 +1,50 @@
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE `products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text,
+  `price` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FULLTEXT KEY `name` (`name`,`description`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `products` (`name`, `description`, `price`) VALUES
+('Awesome Widget', 'The best widget you\'ll ever own.', 19.99),
+('Deluxe Gadget', 'A gadget for the discerning user.', 49.95);
+
+CREATE TABLE `orders` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11) NOT NULL,
+  `order_date` date NOT NULL,
+  `total_amount` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Simulate an error scenario
+INSERT INTO `orders` (`customer_id`, `order_date`, `total_amount`) VALUES
+(1, '2024-01-01', 100.00),
+(99999, '2024-01-02', 50.00); -- Intentionally invalid customer_id
+
+-- Test spatial data types (MySQL specific)
+CREATE TABLE `spatial_data` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `location` POINT NOT NULL SRID 0
+) ENGINE=InnoDB;
+
+INSERT INTO `spatial_data` (`location`) VALUES (ST_GeomFromText('POINT(10 10)'));
+
+-- Test JSON data types (MySQL specific)
+CREATE TABLE `json_data` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `data` JSON
+) ENGINE=InnoDB;
+
+INSERT INTO `json_data` (`data`) VALUES ('{"name": "John Doe", "age": 30}');
+
+SELECT * FROM products WHERE MATCH(name, description) AGAINST ('widget' IN NATURAL LANGUAGE MODE);
+
+SELECT id, ST_AsText(location) FROM spatial_data;

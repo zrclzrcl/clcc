@@ -1,0 +1,122 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN NOT NULL CHECK(is_active IN (0, 1)),
+    data BLOB
+);
+CREATE INDEX idx_t1_name ON t1(name);
+INSERT INTO t1 VALUES 
+    (1, 'Alice', '2024-01-01 00:00:00', 1, X'68656C6C6F'),
+    (2, 'Bob', '2024-01-02 00:00:00', 0, NULL),
+    (3, 'Charlie', '2024-01-03 00:00:00', 1, X'74657374');
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id) ON DELETE CASCADE,
+    value DECIMAL(10, 2),
+    UNIQUE(t1_id, value)
+);
+INSERT INTO t2 VALUES 
+    (1, 1, 100.5),
+    (2, 1, 200.5),
+    (3, 2, 300.5);
+CREATE TABLE t3(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    created_at DATE DEFAULT CURRENT_DATE,
+    status TEXT CHECK(status IN ('active', 'inactive', 'pending'))
+);
+INSERT INTO t3 VALUES 
+    (1, 'Project Alpha', '2024-01-01', 'active'),
+    (2, 'Project Beta', '2024-01-02', 'inactive'),
+    (3, 'Project Gamma', '2024-01-03', 'pending');
+CREATE TABLE t4(
+    id INTEGER PRIMARY KEY,
+    t3_id INTEGER REFERENCES t3(id),
+    amount NUMERIC(15, 5) DEFAULT 0.0
+);
+INSERT INTO t4 VALUES 
+    (1, 1, 1000.25),
+    (2, 2, -500.75),
+    (3, 3, 0.0);
+CREATE TABLE t5(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+INSERT INTO t5 VALUES 
+    (1, 'Item A', 'Description for Item A', '2024-01-01 00:00:00+00'),
+    (2, 'Item B', 'Description for Item B', '2024-01-02 00:00:00+00'),
+    (3, 'Item C', 'Description for Item C', '2024-01-03 00:00:00+00');
+CREATE VIEW v1 AS SELECT t1.name, t2.value FROM t1 JOIN t2 ON t1.id = t2.t1_id;
+CREATE MATERIALIZED VIEW mv1 AS SELECT t3.name, SUM(t4.amount) as total_amount FROM t3 LEFT JOIN t4 ON t3.id = t4.t3_id GROUP BY t3.name;
+CREATE TABLE t6(
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+INSERT INTO t6 VALUES 
+    (1, '{"name": "John", "age": 30, "city": "New York"}'),
+    (2, '{"name": "Jane", "age": 25, "city": "Paris"}');
+CREATE TABLE t7(
+    id INTEGER PRIMARY KEY,
+    time_bucket TIMESTAMP,
+    value DECIMAL(10, 2)
+);
+INSERT INTO t7 VALUES 
+    ('2024-01-01 00:00:00', 100.5),
+    ('2024-01-02 00:00:00', 200.5),
+    ('2024-01-03 00:00:00', 300.5);
+CREATE INDEX idx_t7_time_bucket ON t7(time_bucket);
+CREATE TABLE t8(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSONB
+);
+INSERT INTO t8 VALUES 
+    (1, 'Record 1', '2024-01-01 00:00:00', '{"key": "value", "array": [1, 2, 3]}'),
+    (2, 'Record 2', '2024-01-02 00:00:00', '{"key": "another value"}');
+CREATE TRIGGER trg_t1_insert AFTER INSERT ON t1
+BEGIN
+    INSERT INTO t8 VALUES (new.id, new.name, new.created_at, '{"id": new.id, "name": new.name}');
+END;
+SELECT 
+    t1.id,
+    t1.name,
+    t2.value,
+    t3.status,
+    t4.amount,
+    t5.description,
+    t6.data,
+    t7.time_bucket,
+    t8.data
+FROM 
+    t1
+JOIN 
+    t2 ON t1.id = t2.t1_id
+LEFT JOIN 
+    t3 ON t2.t1_id = t3.id
+LEFT JOIN 
+    t4 ON t3.id = t4.t3_id
+LEFT JOIN 
+    t5 ON t4.id = t5.id
+LEFT JOIN 
+    t6 ON t5.id = t6.id
+LEFT JOIN 
+    t7 ON t6.id = t7.id
+LEFT JOIN 
+    t8 ON t7.id = t8.id;
+SELECT * FROM v1;
+SELECT * FROM mv1;
+ANALYZE TABLE t1;
+ANALYZE TABLE t2;
+ANALYZE TABLE t3;
+ANALYZE TABLE t4;
+ANALYZE TABLE t5;
+ANALYZE TABLE t6;
+ANALYZE TABLE t7;
+ANALYZE TABLE t8;
+ANALYZE TABLE v1;
+ANALYZE TABLE mv1;

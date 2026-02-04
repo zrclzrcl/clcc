@@ -1,0 +1,50 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 50000.00, '2022-01-15'),
+('Bob', 'Marketing', 60000.00, '2021-07-20'),
+('Charlie', 'Engineering', 75000.00, '2023-03-10');
+
+CREATE INDEX idx_department ON employees (department);
+
+-- Test aggregate functions and window functions
+SELECT department, AVG(salary) OVER (PARTITION BY department) AS avg_salary FROM employees;
+
+-- Test date functions and string functions
+SELECT name, strftime('%Y', hire_date) AS hire_year FROM employees WHERE substr(name, 1, 1) = 'A';
+
+-- Test DuckDB specific features: Install and Load extension
+INSTALL spatial;
+LOAD spatial;
+
+-- Test spatial functions
+CREATE TABLE points (id INTEGER, geom GEOMETRY);
+INSERT INTO points VALUES (1, ST_Point(1, 2));
+INSERT INTO points VALUES (2, ST_Point(3, 4));
+
+SELECT id, ST_AsText(geom) FROM points WHERE ST_Distance(geom, ST_Point(0,0)) < 5;
+
+-- Test complex query with JOIN and GROUP BY
+CREATE TABLE departments (dept_id INTEGER PRIMARY KEY, dept_name VARCHAR);
+INSERT INTO departments VALUES (1, 'Sales');
+INSERT INTO departments VALUES (2, 'Marketing');
+INSERT INTO departments VALUES (3, 'Engineering');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER;
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'Engineering';
+
+SELECT d.dept_name, AVG(e.salary) FROM employees e JOIN departments d ON e.dept_id = d.dept_id GROUP BY d.dept_name HAVING AVG(e.salary) > 55000;
+
+-- Test Vacuum
+VACUUM;
+
+-- Test Copy from CSV
+COPY employees FROM 'employees.csv' (DELIMITER ',', HEADER); --employees.csv does not actually exist, this will error.  The fuzzer will need to provide the actual CSV.  This tests error handling.

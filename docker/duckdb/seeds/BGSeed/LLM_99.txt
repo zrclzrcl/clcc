@@ -1,0 +1,40 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL);
+
+-- Test various data types and NULL handling
+SELECT i, s FROM integers CROSS JOIN strings WHERE i IS NOT NULL AND s IS NOT NULL;
+SELECT i, s FROM integers LEFT JOIN strings ON i = LENGTH(s);
+SELECT SUM(i), AVG(i), COUNT(i), MIN(i), MAX(i) FROM integers;
+SELECT s, COUNT(*) FROM strings GROUP BY s HAVING COUNT(*) > 0;
+
+-- Test DuckDB-specific features like UUIDs
+CREATE TABLE uuids (id UUID);
+INSERT INTO uuids VALUES (uuid()), (uuid()), (NULL);
+SELECT id, typeof(id) FROM uuids;
+SELECT COUNT(DISTINCT id) FROM uuids WHERE id IS NOT NULL;
+
+-- Test LIST and STRUCT types.
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES (LIST(1, 2, 3)), (LIST(4, 5, NULL)), (NULL);
+SELECT l, l[1], ARRAY_LENGTH(l) FROM lists;
+
+CREATE TABLE structs (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO structs VALUES (STRUCT(1, 'a')), (STRUCT(2, 'b')), (NULL);
+SELECT s, s.a, s.b FROM structs;
+
+--Test UNNEST functionality
+SELECT * FROM UNNEST(LIST(1, 2, 3));
+
+-- Test string functions and LIKE
+SELECT s FROM strings WHERE s LIKE 'a%';
+SELECT s, UPPER(s), LOWER(s), SUBSTRING(s, 1, 1) FROM strings;
+
+-- Test Date/Time functions
+SELECT CURRENT_TIMESTAMP, CURRENT_DATE, CURRENT_TIME;
+SELECT DATE('2024-01-01') + INTERVAL '1 day';
+
+-- Attempt to trigger a division by zero error. Should gracefully return NULL
+SELECT 1 / 0;

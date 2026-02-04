@@ -1,0 +1,31 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department_id INTEGER,
+    salary REAL CHECK(salary > 0),
+    joining_date DATE DEFAULT CURRENT_DATE,
+    FOREIGN KEY(department_id) REFERENCES departments(id)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO departments (id, name) VALUES (1, 'HR'), (2, 'Engineering'), (3, 'Sales');
+
+INSERT INTO employees (id, name, department_id, salary, joining_date) 
+VALUES (1, 'Alice', 1, 50000, '2021-05-15'),
+       (2, 'Bob', 2, 70000, '2020-08-21'),
+       (3, 'Charlie', 3, 60000, '2019-03-10'),
+       (4, 'David', NULL, 45000, '2022-01-01');
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 2;
+
+DELETE FROM employees WHERE id = 4;
+
+SELECT id, name FROM employees WHERE joining_date < '2021-01-01';
+
+SELECT d.name, COUNT(e.id) as employee_count 
+FROM departments d LEFT JOIN employees e ON d.id = e.department_id 
+GROUP BY d.name;

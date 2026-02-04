@@ -1,0 +1,122 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+-- Test spatial data types
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY,
+    geom GEOMETRY NOT NULL,
+    SPATIAL INDEX(geom)
+) ENGINE=InnoDB;
+
+INSERT INTO spatial_data (id, geom) VALUES
+(1, ST_GeomFromText('POINT(1 1)')),
+(2, ST_GeomFromText('LINESTRING(1 1,2 2)')),
+(3, ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))'));
+
+SELECT id, ST_AsText(geom) FROM spatial_data;
+
+-- Test JSON data type
+CREATE TABLE json_data (
+    id INT PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (id, data) VALUES
+(1, '{"name": "John Doe", "age": 30, "city": "New York"}'),
+(2, '{"products": ["A", "B", "C"]}');
+
+SELECT id, JSON_EXTRACT(data, '$.name') FROM json_data;
+
+-- Test window functions
+CREATE TABLE sales (
+    product VARCHAR(50),
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+);
+
+INSERT INTO sales (product, sale_date, amount) VALUES
+('A', '2023-01-01', 100.00),
+('A', '2023-01-02', 150.00),
+('B', '2023-01-01', 200.00),
+('B', '2023-01-02', 250.00);
+
+SELECT
+    product,
+    sale_date,
+    amount,
+    RANK() OVER (PARTITION BY product ORDER BY amount DESC) AS rank
+FROM sales;
+
+-- Test stored procedures and functions
+DELIMITER //
+CREATE PROCEDURE GetTotalSales(IN product_name VARCHAR(50), OUT total DECIMAL(10, 2))
+BEGIN
+    SELECT SUM(amount) INTO total FROM sales WHERE product = product_name;
+END //
+DELIMITER ;
+
+CALL GetTotalSales('A', @total_a);
+SELECT @total_a;
+
+DELIMITER //
+CREATE FUNCTION CalculateTax(price DECIMAL(10, 2), tax_rate DECIMAL(5, 2)) RETURNS DECIMAL(10, 2)
+BEGIN
+    RETURN price * (1 + tax_rate);
+END //
+DELIMITER ;
+
+SELECT CalculateTax(100, 0.08);
+
+-- Test common table expressions (CTEs)
+WITH RECURSIVE NumberSeries AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM NumberSeries WHERE n < 10
+)
+SELECT * FROM NumberSeries;
+
+-- Test user-defined variables
+SET @my_variable = 10;
+SELECT @my_variable;
+
+-- Test fulltext index
+CREATE TABLE articles (
+    id INT PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    FULLTEXT INDEX (title, content)
+);
+
+INSERT INTO articles (id, title, content) VALUES
+(1, 'MariaDB Fuzzing', 'This article discusses fuzzing MariaDB databases.'),
+(2, 'Database Security', 'Security considerations for database systems.');
+
+SELECT * FROM articles WHERE MATCH (title, content) AGAINST ('fuzzing');
+
+-- Test temporal data types
+
+CREATE TABLE temporal_test (
+  id INT PRIMARY KEY,
+  ts TIMESTAMP,
+  dt DATETIME,
+  d DATE,
+  t TIME
+);
+
+INSERT INTO temporal_test (id, ts, dt, d, t) VALUES
+(1, NOW(), NOW(), CURDATE(), CURTIME());
+
+SELECT * FROM temporal_test;
+
+-- Test column compression
+
+CREATE TABLE compressed_table (
+  id INT PRIMARY KEY,
+  data TEXT COMPRESSION='zlib'
+) ENGINE=InnoDB;
+
+INSERT INTO compressed_table (id, data) VALUES
+(1, REPEAT('This is some long text to compress. ', 1000));
+
+SELECT id, LENGTH(data) FROM compressed_table; -- Check length of the data

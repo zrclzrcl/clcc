@@ -1,0 +1,55 @@
+CREATE TABLE integers AS SELECT i AS a FROM range(10);
+CREATE TABLE strings AS SELECT i::VARCHAR AS b FROM range(10);
+CREATE TABLE floats AS SELECT i::DOUBLE AS c FROM range(10);
+CREATE TABLE dates AS SELECT date '2024-01-01' + i AS d FROM range(10);
+CREATE TABLE timestamps AS SELECT timestamp '2024-01-01 00:00:00' + interval '1 day' * i AS e FROM range(10);
+
+CREATE TABLE mixed (
+    a INTEGER,
+    b VARCHAR,
+    c DOUBLE,
+    d DATE,
+    e TIMESTAMP
+);
+
+INSERT INTO mixed SELECT * FROM integers, strings, floats, dates, timestamps LIMIT 5;
+
+-- Test DuckDB specific features: JSON
+CREATE TABLE json_data (data JSON);
+INSERT INTO json_data VALUES ('{"name": "John", "age": 30, "city": "New York"}');
+
+-- Test DuckDB specific features: UUID
+CREATE TABLE uuid_data (id UUID);
+INSERT INTO uuid_data VALUES (uuid());
+
+-- Test DuckDB specific features: ENUM
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE enum_table (feeling mood);
+INSERT INTO enum_table VALUES ('sad'), ('ok'), ('happy');
+
+-- Test DuckDB specific features: LIST
+CREATE TABLE list_table (int_list INTEGER[]);
+INSERT INTO list_table VALUES (list(1, 2, 3)), (list(4, 5, 6));
+
+-- Test DuckDB specific features: STRUCT
+CREATE TABLE struct_table AS SELECT struct_pack(a := 1, b := 'test') AS my_struct;
+
+-- Test DuckDB extensions: install and load httpfs.  Assume it's installed
+-- INSTALL httpfs;  -- Omitted, as installation may not be allowed.
+-- LOAD httpfs;     -- Omitted, loading might not be allowed
+
+-- Test aggregate functions
+SELECT avg(a), sum(a), min(a), max(a), count(a) FROM integers;
+
+-- Test window functions
+SELECT a, row_number() OVER (ORDER BY a) FROM integers;
+
+-- Test common table expressions (CTEs)
+WITH average_value AS (SELECT avg(a) AS avg_a FROM integers)
+SELECT a FROM integers WHERE a > (SELECT avg_a FROM average_value);
+
+-- Test joins
+SELECT * FROM integers INNER JOIN strings ON integers.a = CAST(strings.b AS INTEGER);
+
+-- Vacuum the database
+VACUUM;

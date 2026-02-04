@@ -1,0 +1,12 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_users_email ON users(email);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, quantity INTEGER CHECK(quantity > 0), FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TRIGGER after_order_insert AFTER INSERT ON orders BEGIN UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.user_id; END;
+CREATE VIEW user_orders AS SELECT users.id, users.name, COUNT(orders.id) AS order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.id;
+ALTER TABLE users ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+CREATE VIRTUAL TABLE search USING fts5(content);
+INSERT INTO search(content) VALUES('This is a test document for full-text search.');
+CREATE TRIGGER search_after_insert AFTER INSERT ON users BEGIN INSERT INTO search(content) VALUES(NEW.name || ' ' || NEW.email); END;
+DROP INDEX IF EXISTS idx_users_email;
+CREATE TEMP TABLE temp_table(x INTEGER);
+INSERT INTO temp_table SELECT id FROM users WHERE created_at < date('now', '-30 days');

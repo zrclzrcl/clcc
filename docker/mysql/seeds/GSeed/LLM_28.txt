@@ -1,0 +1,127 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = '';
+-- Test different data types and constraints
+CREATE TABLE test_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    decimal_val DECIMAL(10, 2),
+    float_val FLOAT,
+    double_val DOUBLE,
+    bit_val BIT(8),
+    date_val DATE,
+    datetime_val DATETIME,
+    timestamp_val TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_val TIME,
+    year_val YEAR,
+    char_val CHAR(10),
+    varchar_val VARCHAR(255),
+    binary_val BINARY(10),
+    varbinary_val VARBINARY(255),
+    tiny_blob TINYBLOB,
+    blob_val BLOB,
+    medium_blob MEDIUMBLOB,
+    long_blob LONGBLOB,
+    tiny_text TINYTEXT,
+    text_val TEXT,
+    medium_text MEDIUMTEXT,
+    long_text LONGTEXT,
+    enum_val ENUM('value1', 'value2', 'value3'),
+    set_val SET('option1', 'option2', 'option3'),
+    json_val JSON,
+    point_val POINT SRID 0,
+    geometry_val GEOMETRY SRID 0
+);
+
+-- Test INSERT statements with different values
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, decimal_val, float_val, double_val, bit_val, date_val, datetime_val, time_val, year_val, char_val, varchar_val, binary_val, varbinary_val, tiny_text, text_val, medium_text, long_text, enum_val, set_val, json_val) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 12345678.90, 123.45, 1234.5678, b'10101010', '2023-10-26', '2023-10-26 10:30:00', '10:30:00', 2023, 'char1', 'varchar1', 'binary1', 'varbinary1', 'tinytext1', 'text1', 'mediumtext1', 'longtext1', 'value2', 'option1,option3', '{"key1": "value1", "key2": 123}');
+
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, decimal_val, float_val, double_val, bit_val, date_val, datetime_val, time_val, year_val, char_val, varchar_val, binary_val, varbinary_val, tiny_text, text_val, medium_text, long_text, enum_val, set_val, json_val) VALUES
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -9876543.21, -45.67, -8765.4321, b'01010101', '2024-01-01', '2024-01-01 00:00:00', '00:00:00', 2024, 'char2', 'varchar2', 'binary2', 'varbinary2', 'tinytext2', 'text2', 'mediumtext2', 'longtext2', 'value1', 'option2', '{"key3": "value3", "key4": 456}');
+
+-- Test UPDATE statements
+UPDATE test_types SET varchar_val = 'updated_varchar' WHERE id = 1;
+UPDATE test_types SET json_val = JSON_SET(json_val, '$.key5', 'value5') WHERE id = 2;
+
+-- Test DELETE statements
+DELETE FROM test_types WHERE id = 1;
+
+-- Test SELECT statements
+SELECT * FROM test_types;
+SELECT json_val->'$.key1' FROM test_types WHERE id = 2;
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN input_id INT)
+BEGIN
+    SELECT * FROM test_types WHERE id = input_id;
+END //
+DELIMITER ;
+
+CALL test_procedure(2);
+
+-- Test function
+DELIMITER //
+CREATE FUNCTION test_function (input_int INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN input_int * 2;
+END //
+DELIMITER ;
+
+SELECT test_function(5);
+
+-- Test index
+CREATE INDEX idx_varchar ON test_types (varchar_val);
+
+-- Test FULLTEXT index
+CREATE FULLTEXT INDEX idx_text ON test_types (text_val);
+
+-- Search FULLTEXT Index
+SELECT * FROM test_types WHERE MATCH (text_val) AGAINST ('text2');
+
+-- Test partitioning (hash)
+CREATE TABLE test_partition_hash (
+    id INT PRIMARY KEY,
+    data VARCHAR(255)
+) PARTITION BY HASH(id) PARTITIONS 4;
+
+INSERT INTO test_partition_hash (id, data) VALUES (1, 'data1'), (2, 'data2'), (3, 'data3'), (4, 'data4');
+SELECT * FROM test_partition_hash;
+DROP TABLE test_partition_hash;
+
+-- Test partitioning (range)
+
+CREATE TABLE test_partition_range (
+    id INT PRIMARY KEY,
+    data VARCHAR(255)
+) PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (2),
+    PARTITION p1 VALUES LESS THAN (4),
+    PARTITION p2 VALUES LESS THAN (6)
+);
+
+INSERT INTO test_partition_range (id, data) VALUES (1, 'data1'), (2, 'data2'), (3, 'data3'), (4, 'data4'),(5, 'data5');
+SELECT * FROM test_partition_range;
+DROP TABLE test_partition_range;
+
+-- Spatial Function Tests
+INSERT INTO test_types (point_val, geometry_val) VALUES (ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))'));
+SELECT ST_AsText(point_val), ST_AsText(geometry_val) FROM test_types WHERE id = 2;
+SELECT ST_Distance(ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('POINT(2 2)'));
+
+-- Test user-defined variable.
+SET @my_var = 100;
+SELECT @my_var;
+
+-- Test system variable
+SELECT @@sql_mode;
+SET sql_mode = @old_sql_mode;
+DROP PROCEDURE IF EXISTS test_procedure;
+DROP FUNCTION IF EXISTS test_function;
+DROP TABLE IF EXISTS test_types;

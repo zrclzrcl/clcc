@@ -1,0 +1,86 @@
+PRAGMA foreign_keys=ON;
+
+-- Create a table with various data types
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    in_stock BOOLEAN,
+    created_at TIMESTAMP
+);
+
+-- Insert some sample data
+INSERT INTO products (name, description, price, in_stock, created_at) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.50, TRUE, CURRENT_TIMESTAMP),
+('Mouse', 'Wireless mouse for comfortable use', 25.99, TRUE, CURRENT_TIMESTAMP),
+('Keyboard', 'Ergonomic keyboard for efficient typing', 75.00, FALSE, CURRENT_TIMESTAMP);
+
+-- Create another table with a foreign key
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    order_date DATE
+);
+
+-- Insert some sample orders
+INSERT INTO orders (product_id, quantity, order_date) VALUES
+(1, 1, '2023-10-26'),
+(2, 2, '2023-10-27'),
+(3, 1, '2023-10-28');
+
+-- Test window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM
+    products;
+
+-- Test string functions
+SELECT
+    name,
+    UPPER(name) AS uppercase_name,
+    LENGTH(name) AS name_length
+FROM
+    products;
+
+-- Test date functions
+SELECT
+    order_date,
+    DATE_TRUNC('month', order_date) AS month_start
+FROM
+    orders;
+
+-- Test a JOIN operation
+SELECT
+    p.name,
+    o.quantity
+FROM
+    products p
+JOIN
+    orders o ON p.id = o.product_id;
+
+-- Test a CASE statement
+SELECT
+    name,
+    CASE
+        WHEN in_stock THEN 'Available'
+        ELSE 'Out of Stock'
+    END AS availability
+FROM
+    products;
+
+-- Test DuckDB-specific functions
+SELECT duckdb_version();
+
+-- Test list functions
+CREATE TABLE list_table (id INTEGER, my_list INTEGER[]);
+INSERT INTO list_table VALUES (1, [1,2,3]);
+SELECT list_extract(my_list, 1) FROM list_table;
+
+--Test JSON functions
+CREATE TABLE json_table (id INTEGER, my_json JSON);
+INSERT INTO json_table VALUES (1, '{"name": "John", "age": 30}');
+SELECT json_extract_string(my_json, 'name') FROM json_table;

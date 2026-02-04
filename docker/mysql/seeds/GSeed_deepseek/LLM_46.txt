@@ -1,0 +1,61 @@
+SET optimizer_switch='index_merge=on,query_cache=off';
+
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, description) VALUES ('Test1', 'First entry'), ('Test2', 'Second entry');
+
+DELIMITER $$
+CREATE TRIGGER update_trigger AFTER UPDATE ON test_table 
+FOR EACH ROW 
+BEGIN
+    INSERT INTO log_table (id, action_time) VALUES (OLD.id, NOW());
+END$$
+DELIMITER ;
+
+CREATE PROCEDURE process_data()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE var_name VARCHAR(255);
+    DECLARE cur CURSOR FOR SELECT name FROM test_table;
+    
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO var_name;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        INSERT INTO temp_table VALUES (var_name);
+    END LOOP;
+    CLOSE cur;
+END$$
+
+ALTER TABLE test_table ADD INDEX name_index (name);
+
+CREATE FULLTEXT INDEX desc_index ON test_table(description);
+
+ALTER TABLE test_table PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (100),
+    PARTITION p1 VALUES LESS THAN (200),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+EXPLAIN SELECT t1.name, t2.description FROM test_table t1 JOIN another_table t2 ON t1.id = t2.id WHERE t1.name LIKE 'Test%';
+
+INSERT INTO another_table (id, value) SELECT id, name FROM test_table WHERE description IS NOT NULL;
+
+UPDATE test_table SET description = CONCAT(description, ' Updated') WHERE id IN (SELECT id FROM test_table LIMIT 5);
+
+DELETE FROM another_table WHERE value = '';
+
+SELECT * FROM test_table ORDER BY created_at DESC LIMIT 10;
+
+START TRANSACTION;
+    INSERT INTO test_table (name) VALUES ('TransactionTest');
+    COMMIT;
+
+SELECT COUNT(*) AS total_records FROM test_table;

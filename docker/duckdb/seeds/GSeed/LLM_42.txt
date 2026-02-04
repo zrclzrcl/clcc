@@ -1,0 +1,49 @@
+PRAGMA threads=4;
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), ('duckdb');
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-01-02'), ('2023-01-03');
+CREATE TABLE floats (f FLOAT);
+INSERT INTO floats VALUES (1.1), (2.2), (3.3);
+CREATE TABLE nested (lst INTEGER[]);
+INSERT INTO nested VALUES (LIST(1,2,3)), (LIST(4,5,6)), (LIST(7,8,9));
+SELECT i FROM integers WHERE i > 2;
+SELECT s FROM strings WHERE s LIKE 'd%';
+SELECT d FROM dates WHERE d BETWEEN '2023-01-01' AND '2023-01-02';
+SELECT f FROM floats WHERE f < 3.0;
+SELECT lst FROM nested WHERE 2 IN lst;
+SELECT SUM(i) FROM integers;
+SELECT COUNT(*) FROM strings;
+SELECT MIN(d) FROM dates;
+SELECT MAX(f) FROM floats;
+SELECT UNNEST(lst) FROM nested;
+CREATE VIEW int_view AS SELECT i * 2 AS doubled FROM integers;
+SELECT doubled FROM int_view WHERE doubled < 10;
+COPY integers TO 'integers.csv' (HEADER, DELIMITER ',');
+COPY integers FROM 'integers.csv' (HEADER, DELIMITER ',');
+CREATE TABLE test AS SELECT * FROM integers UNION ALL SELECT * FROM integers;
+SELECT * FROM test;
+CREATE TABLE test_bool AS SELECT i > 2 AS b FROM integers;
+SELECT * FROM test_bool;
+-- DuckDB-specific: UUID and JSON support
+CREATE TABLE uuids (u UUID);
+INSERT INTO uuids VALUES (UUID());
+SELECT u FROM uuids;
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}');
+SELECT j FROM jsons;
+SELECT j->'a' FROM jsons;
+CREATE TABLE blobs (b BLOB);
+INSERT INTO blobs VALUES (decode('deadbeef', 'hex'));
+SELECT encode(b, 'hex') from blobs;
+-- Test window functions
+SELECT i, AVG(i) OVER () FROM integers;
+-- Test date functions
+SELECT CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP;
+SELECT DATE_TRUNC('month', CURRENT_DATE);
+SELECT LAST_DAY(CURRENT_DATE);
+-- Test string functions
+SELECT UPPER('hello'), LOWER('WORLD'), LENGTH('duckdb');
+SELECT STRFTIME('%Y-%m-%d %H:%M:%S', CURRENT_TIMESTAMP);

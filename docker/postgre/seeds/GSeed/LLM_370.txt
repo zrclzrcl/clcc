@@ -1,0 +1,146 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+    order_date TIMESTAMPTZ DEFAULT now(),
+    total_amount DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    shipping_address TEXT
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL
+);
+
+CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+CREATE INDEX idx_order_items_order_id ON order_items (order_id);
+CREATE INDEX idx_order_items_product_id ON order_items (product_id);
+CREATE INDEX idx_products_name ON products (name);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00),
+('Keyboard', 'Ergonomic keyboard', 75.00),
+('Monitor', '27-inch monitor', 300.00),
+('Webcam', 'HD webcam', 50.00);
+
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave'),
+('David', 'Lee', 'david.lee@example.com', '555-123-4567', '789 Pine Ln');
+
+INSERT INTO orders (customer_id, total_amount, shipping_address) VALUES
+(1, 1225.00, '123 Main St'),
+(2, 375.00, '456 Oak Ave');
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 4, 1, 300.00),
+(2, 3, 1, 75.00);
+
+SELECT * FROM products WHERE price > 50;
+
+UPDATE products SET price = price * 1.1 WHERE name = 'Laptop';
+
+DELETE FROM products WHERE name = 'Webcam';
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.first_name = 'John';
+
+SELECT p.name, SUM(oi.quantity) AS total_quantity
+FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+GROUP BY p.name
+ORDER BY total_quantity DESC;
+
+CREATE VIEW customer_order_summary AS
+SELECT c.first_name, c.last_name, COUNT(o.id) AS total_orders, SUM(o.total_amount) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.first_name, c.last_name;
+
+SELECT * FROM customer_order_summary WHERE total_orders > 0;
+
+ALTER TABLE products ADD COLUMN weight DECIMAL(5,2);
+
+UPDATE products SET weight = 2.5 WHERE name = 'Laptop';
+UPDATE products SET weight = 0.1 WHERE name = 'Mouse';
+UPDATE products SET weight = 1.2 WHERE name = 'Keyboard';
+UPDATE products SET weight = 5.0 WHERE name = 'Monitor';
+
+SELECT name, weight FROM products WHERE weight IS NOT NULL;
+
+-- Trigger to update order total
+CREATE OR REPLACE FUNCTION update_order_total()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE orders
+    SET total_amount = (
+        SELECT SUM(quantity * unit_price)
+        FROM order_items
+        WHERE order_id = NEW.order_id
+    )
+    WHERE id = NEW.order_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_items_after_insert
+AFTER INSERT ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION update_order_total();
+
+CREATE TRIGGER order_items_after_update
+AFTER UPDATE ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION update_order_total();
+
+CREATE TRIGGER order_items_after_delete
+AFTER DELETE ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION update_order_total();
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (1, 3, 2, 75.00);
+
+EXPLAIN ANALYZE SELECT * FROM products WHERE price > 50;
+
+PREPARE list_products AS
+SELECT id, name, price FROM products WHERE price < $1;
+
+EXECUTE list_products(100);
+
+DEALLOCATE list_products;
+
+DROP VIEW customer_order_summary;
+DROP TRIGGER order_items_after_insert ON order_items;
+DROP TRIGGER order_items_after_update ON order_items;
+DROP TRIGGER order_items_after_delete ON order_items;
+DROP FUNCTION update_order_total();
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE customers;
+DROP TABLE products;

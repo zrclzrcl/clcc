@@ -1,0 +1,117 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+CREATE TABLE `employees` (
+  `emp_no` int NOT NULL,
+  `birth_date` date NOT NULL,
+  `first_name` varchar(14) NOT NULL,
+  `last_name` varchar(16) NOT NULL,
+  `gender` enum('M','F') NOT NULL,
+  `hire_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE `departments` (
+  `dept_no` char(4) NOT NULL,
+  `dept_name` varchar(40) NOT NULL,
+  PRIMARY KEY (`dept_no`),
+  UNIQUE KEY `dept_name` (`dept_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE `dept_emp` (
+  `emp_no` int NOT NULL,
+  `dept_no` char(4) NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`,`dept_no`),
+  KEY `dept_no` (`dept_no`),
+  CONSTRAINT `dept_emp_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE,
+  CONSTRAINT `dept_emp_ibfk_2` FOREIGN KEY (`dept_no`) REFERENCES `departments` (`dept_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE `salaries` (
+  `emp_no` int NOT NULL,
+  `salary` int NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`,`from_date`),
+  CONSTRAINT `salaries_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE `titles` (
+  `emp_no` int NOT NULL,
+  `title` varchar(50) NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date DEFAULT NULL,
+  PRIMARY KEY (`emp_no`,`title`,`from_date`),
+  CONSTRAINT `titles_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE `dept_manager` (
+  `dept_no` char(4) NOT NULL,
+  `emp_no` int NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  PRIMARY KEY (`dept_no`,`emp_no`),
+  KEY `emp_no` (`emp_no`),
+  CONSTRAINT `dept_manager_ibfk_1` FOREIGN KEY (`dept_no`) REFERENCES `departments` (`dept_no`) ON DELETE CASCADE,
+  CONSTRAINT `dept_manager_ibfk_2` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+INSERT INTO departments (dept_no, dept_name) VALUES ('d001', 'Marketing'), ('d002', 'Finance');
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (10001, '1953-09-02', 'Georgi', 'Facello', 'M', '1986-06-26'), (10002, '1964-06-02', 'Bezalel', 'Simmel', 'F', '1985-11-21');
+INSERT INTO dept_emp (emp_no, dept_no, from_date, to_date) VALUES (10001, 'd001', '1986-06-26', '9999-01-01'), (10002, 'd002', '1986-06-26', '9999-01-01');
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES (10001, 60117, '1986-06-26', '1987-06-26'), (10002, 65828, '1996-08-03', '1997-08-03');
+INSERT INTO titles (emp_no, title, from_date, to_date) VALUES (10001, 'Senior Engineer', '1986-06-26', '9999-01-01'), (10002, 'Staff', '1996-08-03', '9999-01-01');
+INSERT INTO dept_manager (dept_no, emp_no, from_date, to_date) VALUES ('d001', 10001, '1986-06-26', '9999-01-01'), ('d002', 10002, '1986-06-26', '9999-01-01');
+
+ALTER TABLE employees ADD COLUMN favorite_color ENUM('red', 'green', 'blue');
+UPDATE employees SET favorite_color = 'blue' WHERE emp_no % 2 = 0;
+UPDATE employees SET favorite_color = 'red' WHERE emp_no % 3 = 0;
+UPDATE employees SET favorite_color = 'green' WHERE emp_no % 5 = 0;
+
+SELECT emp_no, first_name, last_name FROM employees WHERE gender = 'F' AND birth_date BETWEEN '1960-01-01' AND '1970-01-01' ORDER BY last_name LIMIT 10;
+SELECT dept_name, COUNT(*) FROM departments INNER JOIN dept_emp ON departments.dept_no = dept_emp.dept_no GROUP BY dept_name;
+SELECT e.first_name, e.last_name, s.salary FROM employees e INNER JOIN salaries s ON e.emp_no = s.emp_no WHERE s.salary > 70000 ORDER BY s.salary DESC LIMIT 5;
+
+CREATE VIEW employee_salaries AS SELECT e.first_name, e.last_name, s.salary FROM employees e INNER JOIN salaries s ON e.emp_no = s.emp_no;
+SELECT * FROM employee_salaries WHERE salary > 80000;
+
+CREATE PROCEDURE get_employee_count_by_dept(IN dept_code CHAR(4), OUT employee_count INT)
+BEGIN
+    SELECT COUNT(*) INTO employee_count FROM dept_emp WHERE dept_no = dept_code;
+END;
+
+CALL get_employee_count_by_dept('d001', @employee_count);
+SELECT @employee_count;
+
+CREATE FUNCTION calculate_bonus(salary INT) RETURNS INT DETERMINISTIC
+BEGIN
+  DECLARE bonus INT;
+  SET bonus = salary * 0.1;
+  RETURN bonus;
+END;
+
+SELECT emp_no, first_name, calculate_bonus(salary) AS bonus FROM employees INNER JOIN salaries ON employees.emp_no = salaries.emp_no;
+
+CREATE INDEX idx_lastname ON employees (last_name);
+
+ANALYZE TABLE employees;
+CHECK TABLE employees;
+OPTIMIZE TABLE employees;
+
+-- Attempt to create a partition.  Will likely fail without extra setup but tests error handling.
+ALTER TABLE employees PARTITION BY RANGE ( YEAR(birth_date) ) (
+    PARTITION p0 VALUES LESS THAN (1960),
+    PARTITION p1 VALUES LESS THAN (1970),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Add a spatial index.  Requires spatial data types, testing potential errors.
+ALTER TABLE employees ADD COLUMN location POINT;
+ALTER TABLE employees ADD SPATIAL INDEX(location);
+
+SHOW INDEXES FROM employees;
+
+FLUSH TABLES;

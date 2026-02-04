@@ -1,0 +1,115 @@
+-- Seed for PostgreSQL 18 RC1 Fuzzing
+
+-- 1. Basic Table Creation and Manipulation
+CREATE TABLE fuzz_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT,
+    value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO fuzz_table (data, value) VALUES ('initial data', 123);
+INSERT INTO fuzz_table (data, value) VALUES ('another row', 456);
+UPDATE fuzz_table SET value = 789 WHERE data = 'initial data';
+DELETE FROM fuzz_table WHERE value < 500;
+SELECT * FROM fuzz_table;
+
+-- 2. Data Types and Constraints
+CREATE TABLE fuzz_types (
+    int_col INTEGER,
+    float_col REAL,
+    bool_col BOOLEAN,
+    char_col CHAR(10),
+    varchar_col VARCHAR(50),
+    text_col TEXT,
+    date_col DATE,
+    time_col TIME,
+    timestamp_col TIMESTAMP,
+    json_col JSONB,
+    enum_col TEXT CHECK (enum_col IN ('A', 'B', 'C'))
+);
+
+INSERT INTO fuzz_types (int_col, float_col, bool_col, char_col, varchar_col, text_col, date_col, time_col, timestamp_col, json_col, enum_col) VALUES
+(1, 1.23, TRUE, 'abc', 'short text', 'longer text', '2024-01-01', '10:00:00', '2024-01-01 10:00:00', '{"key": "value"}', 'A');
+
+-- 3. Indexes and Constraints
+CREATE INDEX idx_fuzz_table_value ON fuzz_table (value);
+ALTER TABLE fuzz_table ADD CONSTRAINT unique_data UNIQUE (data);
+
+-- 4. Transactions
+BEGIN;
+UPDATE fuzz_table SET value = 999 WHERE id = 1;
+SELECT * FROM fuzz_table;
+ROLLBACK;
+SELECT * FROM fuzz_table;
+
+BEGIN;
+DELETE FROM fuzz_table WHERE id = 2;
+SELECT * FROM fuzz_table;
+COMMIT;
+SELECT * FROM fuzz_table;
+
+-- 5. Functions and Aggregates
+SELECT COUNT(*) FROM fuzz_table;
+SELECT AVG(value) FROM fuzz_table;
+SELECT MAX(value) FROM fuzz_table;
+SELECT SUM(value) FROM fuzz_table;
+SELECT data, LENGTH(data) FROM fuzz_table;
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- 6.  Advanced Features
+CREATE VIEW fuzz_view AS SELECT id, data FROM fuzz_table WHERE value > 500;
+SELECT * FROM fuzz_view;
+
+CREATE MATERIALIZED VIEW fuzz_materialized_view AS SELECT id, data FROM fuzz_table WHERE value > 0;
+SELECT * FROM fuzz_materialized_view;
+REFRESH MATERIALIZED VIEW fuzz_materialized_view;
+
+-- 7.  Concurrency and Locking
+LOCK TABLE fuzz_table IN SHARE MODE;
+
+-- 8.  Temporary Tables and Sequences
+CREATE TEMP TABLE temp_fuzz_table (id INTEGER);
+INSERT INTO temp_fuzz_table VALUES (1);
+SELECT * FROM temp_fuzz_table;
+
+CREATE SEQUENCE fuzz_sequence START 1;
+SELECT nextval('fuzz_sequence');
+
+-- 9. Prepared Statements
+PREPARE my_query AS SELECT * FROM fuzz_table WHERE value > $1;
+EXECUTE my_query(100);
+DEALLOCATE my_query;
+
+-- 10.  Recursive Queries (Common Table Expressions)
+WITH RECURSIVE number_series AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM number_series WHERE n < 5
+)
+SELECT * FROM number_series;
+
+-- 11.  Arrays
+CREATE TABLE fuzz_array_table (
+    id SERIAL PRIMARY KEY,
+    int_array INTEGER[],
+    text_array TEXT[]
+);
+INSERT INTO fuzz_array_table (int_array, text_array) VALUES (ARRAY[1,2,3], ARRAY['a', 'b', 'c']);
+SELECT int_array[1] FROM fuzz_array_table;
+
+-- 12.  JSONB functions
+SELECT jsonb_pretty('{"a": 1, "b": [2,3]}');
+SELECT jsonb_path_exists('{"a": 1, "b": [2,3]}', '$.b[*]');
+
+-- 13.  Try to cause errors
+SELECT 1/0;
+SELECT * FROM non_existent_table;
+DROP TABLE fuzz_table; -- Causes errors if views/mat views use it. Let it happen.

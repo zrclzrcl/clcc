@@ -1,0 +1,22 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, total DECIMAL, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TRIGGER after_order_insert AFTER INSERT ON orders BEGIN
+    UPDATE users SET email = (SELECT 'updated_' || username || '@example.com' FROM users WHERE id = NEW.user_id) WHERE id = NEW.user_id;
+END;
+
+WITH updated_users AS (
+    SELECT username FROM users WHERE username LIKE 'user%'
+)
+SELECT username, (SELECT COUNT(*) FROM orders WHERE user_id = users.id) AS order_count
+FROM users
+WHERE username IN (SELECT username FROM updated_users)
+ORDER BY order_count DESC;
+
+CREATE INDEX idx_username ON users(username);
+CREATE VIEW user_order_summary AS
+SELECT users.username, COUNT(orders.order_id) AS total_orders
+FROM users LEFT JOIN orders ON users.id = orders.user_id
+GROUP BY users.username;
+
+SELECT * FROM user_order_summary WHERE total_orders > 0;
+DELETE FROM users WHERE id IN (SELECT user_id FROM orders WHERE total < 10);

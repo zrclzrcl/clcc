@@ -1,0 +1,32 @@
+SET NAMES utf8mb4;
+SET collation_connection='utf8mb4_general_ci';
+CREATE TABLE IF NOT EXISTS `test_table` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) DEFAULT NULL,
+  `value` JSON DEFAULT NULL,
+  `ts` TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `test_table` (`name`, `value`) VALUES
+('Item 1', '{"key1": "value1", "key2": 123}'),
+('Item 2', '{"key3": "value2", "key4": 456}');
+
+CREATE OR REPLACE VIEW `test_view` AS
+SELECT `id`, `name`, JSON_EXTRACT(`value`, '$.key1') AS `key1` FROM `test_table`;
+
+-- Example of using a MariaDB-specific function: JSON_ARRAYAGG
+SELECT JSON_ARRAYAGG(`name`) FROM `test_table`;
+
+-- Example using window functions
+SELECT `name`, ROW_NUMBER() OVER (ORDER BY `id`) AS row_num FROM `test_table`;
+
+-- Trigger example
+DELIMITER //
+CREATE TRIGGER `test_table_before_insert` BEFORE INSERT ON `test_table`
+FOR EACH ROW
+BEGIN
+    IF JSON_VALID(NEW.value) = 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid JSON format';
+    END IF;
+END;//
+DELIMITER ;

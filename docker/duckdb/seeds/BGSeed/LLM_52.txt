@@ -1,0 +1,57 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL), ('');
+
+CREATE TABLE floats (f FLOAT);
+INSERT INTO floats VALUES (1.1), (2.2), (3.3), (NULL);
+
+-- Test array/list functionality
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES ([1,2,3]), ([4,5,NULL]), (NULL), ([]);
+
+-- Test struct functionality
+CREATE TYPE struct_type AS (a INTEGER, b VARCHAR);
+CREATE TABLE structs (s struct_type);
+INSERT INTO structs VALUES ((1, 'abc')), ((2, 'def')), (NULL);
+
+-- Test JSON functionality (DuckDB-specific)
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}'), ('[1, 2, 3]'), (NULL);
+
+-- Test date/time functionality
+CREATE TABLE dates (d DATE, t TIME, ts TIMESTAMP);
+INSERT INTO dates VALUES ('2023-10-26', '12:34:56', '2023-10-26 12:34:56');
+INSERT INTO dates VALUES (NULL, NULL, NULL);
+
+-- Test aggregate functions
+SELECT sum(i), avg(f), string_agg(s, ','), list_value(l) FROM integers, floats, strings, lists;
+
+-- Test window functions (DuckDB enhanced)
+SELECT i, row_number() OVER (ORDER BY i), lag(i) OVER (ORDER BY i) FROM integers;
+
+-- Test unnesting arrays
+SELECT i, UNNEST(l) FROM integers, lists;
+
+-- Test joins (DuckDB supports different join types)
+CREATE TABLE t1 (id INTEGER, val VARCHAR);
+CREATE TABLE t2 (id INTEGER, num INTEGER);
+INSERT INTO t1 VALUES (1, 'one'), (2, 'two'), (3, 'three');
+INSERT INTO t2 VALUES (1, 10), (2, 20), (4, 40);
+
+SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id;
+SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id;
+SELECT * FROM t1 RIGHT JOIN t2 ON t1.id = t2.id;
+SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.id = t2.id;
+
+--Test correlated subqueries
+SELECT * FROM integers i1 WHERE EXISTS (SELECT 1 FROM integers i2 WHERE i1.i = i2.i * 2);
+
+--Test case statements
+SELECT i, CASE WHEN i > 2 THEN 'large' WHEN i IS NULL THEN 'null' ELSE 'small' END FROM integers;
+
+-- Test DuckDB extensions (e.g., install and use a specific extension if appropriate for the testing environment) - Removed for safety
+
+-- Example of a DuckDB-specific function (UUID generation)
+SELECT uuid();

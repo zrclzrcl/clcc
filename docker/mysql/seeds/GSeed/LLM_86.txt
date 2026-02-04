@@ -1,0 +1,110 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+CREATE TABLE `users` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `profile_data` JSON NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  FULLTEXT KEY `username_fulltext` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+INSERT INTO `users` (`username`, `email`, `password`, `profile_data`) VALUES
+('testuser1', 'test1@example.com', 'password123', '{"age": 30, "city": "New York"}'),
+('testuser2', 'test2@example.com', 'securepass', '{"age": 25, "city": "Los Angeles", "interests": ["music", "hiking"]}'),
+('testuser3', NULL, 'supersecret', NULL);
+
+CREATE TABLE `products` (
+  `product_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `product_name` VARCHAR(100) NOT NULL,
+  `description` TEXT,
+  `price` DECIMAL(10,2) NOT NULL,
+  `category` ENUM('electronics', 'clothing', 'books') DEFAULT 'electronics',
+  `stock_quantity` INT(11) DEFAULT 0,
+  `attributes` JSON NULL,
+  PRIMARY KEY (`product_id`),
+  SPATIAL INDEX(attributes)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `products` (`product_name`, `description`, `price`, `category`, `stock_quantity`, `attributes`) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.50, 'electronics', 10, '{"brand": "Dell", "ram": "16GB", "storage": "512GB SSD"}'),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 'clothing', 50, '{"color": "blue", "size": "M"}'),
+('The Hitchhiker\'s Guide to the Galaxy', 'A science fiction comedy series', 15.75, 'books', 20, '{"author": "Douglas Adams", "pages": 224}');
+
+CREATE TABLE `orders` (
+  `order_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `user_id` INT(11) NOT NULL,
+  `order_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `total_amount` DECIMAL(10,2) NOT NULL,
+  `shipping_address` VARCHAR(255) NULL,
+  PRIMARY KEY (`order_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `orders` (`user_id`, `total_amount`, `shipping_address`) VALUES
+(1, 1225.50, '123 Main St, Anytown'),
+(2, 25.00, '456 Elm St, Somecity');
+
+CREATE TRIGGER `update_stock` AFTER INSERT ON `orders`
+FOR EACH ROW
+UPDATE `products` SET `stock_quantity` = `stock_quantity` - 1
+WHERE `product_id` = 1;
+
+CREATE VIEW `user_order_summary` AS
+SELECT u.username, COUNT(o.order_id) AS total_orders, SUM(o.total_amount) AS total_spent
+FROM `users` u
+LEFT JOIN `orders` o ON u.id = o.user_id
+GROUP BY u.username;
+
+ALTER TABLE `users` ADD COLUMN `points` INT DEFAULT 0;
+
+CREATE FUNCTION `calculate_discount`(`price` DECIMAL(10,2), `discount_percent` INT) RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+  DECLARE discount DECIMAL(10,2);
+  SET discount = price * (discount_percent / 100.0);
+  RETURN discount;
+END;
+
+SELECT calculate_discount(100, 10);
+
+ANALYZE TABLE `users`;
+ANALYZE TABLE `products`;
+ANALYZE TABLE `orders`;
+
+CHECK TABLE `users`;
+CHECK TABLE `products`;
+CHECK TABLE `orders`;
+
+REPAIR TABLE `users` QUICK;
+REPAIR TABLE `products` QUICK;
+REPAIR TABLE `orders` QUICK;
+
+SHOW CREATE TABLE `users`;
+SHOW CREATE TABLE `products`;
+SHOW CREATE TABLE `orders`;
+
+SELECT * FROM user_order_summary;
+
+SELECT * FROM `users` WHERE MATCH(username) AGAINST ('test' IN BOOLEAN MODE);
+
+-- Test JSON functions
+SELECT JSON_EXTRACT(profile_data, '$.age') AS age FROM users WHERE username = 'testuser1';
+SELECT JSON_INSERT(profile_data, '$.country', 'USA') FROM users WHERE username = 'testuser3';
+
+-- Test Spatial Data
+CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY);
+INSERT INTO spatial_data (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+SELECT ST_AsText(geom) FROM spatial_data;
+
+-- Test Compression
+CREATE TABLE compressed_table (id INT PRIMARY KEY, data TEXT) ENGINE=InnoDB COMPRESSION="zlib";
+INSERT INTO compressed_table (id, data) VALUES (1, REPEAT('A', 10000));
+
+SELECT * FROM compressed_table;

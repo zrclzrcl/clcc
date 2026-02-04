@@ -1,0 +1,118 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE ROLE test_role LOGIN PASSWORD 'test_password';
+CREATE SCHEMA test_schema;
+
+-- Basic table creation and manipulation
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+INSERT INTO test_schema.test_table (name, value) VALUES ('Test 1', 10);
+INSERT INTO test_schema.test_table (name, value) VALUES ('Test 2', 20);
+UPDATE test_schema.test_table SET value = 30 WHERE name = 'Test 1';
+DELETE FROM test_schema.test_table WHERE value = 20;
+SELECT * FROM test_schema.test_table;
+
+-- Table with different data types
+CREATE TABLE test_schema.data_types_table (
+    id SERIAL PRIMARY KEY,
+    smallint_col SMALLINT,
+    integer_col INTEGER,
+    bigint_col BIGINT,
+    numeric_col NUMERIC(10, 2),
+    real_col REAL,
+    double_precision_col DOUBLE PRECISION,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    text_col TEXT,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    boolean_col BOOLEAN,
+    bytea_col BYTEA
+);
+
+INSERT INTO test_schema.data_types_table (smallint_col, integer_col, bigint_col, numeric_col, real_col, double_precision_col, char_col, varchar_col, text_col, date_col, timestamp_col, boolean_col, bytea_col)
+VALUES (10, 1000, 1000000, 1234.56, 1.23, 123.456, 'char', 'varchar', 'text', '2024-01-01', '2024-01-01 12:00:00', TRUE, E'\\xDEADBEEF');
+
+SELECT * FROM test_schema.data_types_table;
+
+-- Index creation
+CREATE INDEX idx_test_table_name ON test_schema.test_table (name);
+
+-- View creation
+CREATE VIEW test_schema.test_view AS SELECT id, name FROM test_schema.test_table WHERE value > 10;
+SELECT * FROM test_schema.test_view;
+
+-- Function creation
+CREATE OR REPLACE FUNCTION test_schema.add_values(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT test_schema.add_values(5, 10);
+
+-- Trigger creation
+CREATE OR REPLACE FUNCTION test_schema.before_insert_trigger() RETURNS TRIGGER AS $$
+BEGIN
+    NEW.name := UPPER(NEW.name);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_insert_test_table
+BEFORE INSERT ON test_schema.test_table
+FOR EACH ROW
+EXECUTE FUNCTION test_schema.before_insert_trigger();
+
+INSERT INTO test_schema.test_table (name, value) VALUES ('trigger test', 40);
+SELECT * FROM test_schema.test_table WHERE name = 'TRIGGER TEST';
+
+-- Grant and Revoke
+GRANT SELECT ON test_schema.test_table TO test_role;
+REVOKE SELECT ON test_schema.test_table FROM test_role;
+
+-- Alter table operations
+ALTER TABLE test_schema.test_table ADD COLUMN description TEXT;
+ALTER TABLE test_schema.test_table ALTER COLUMN value TYPE BIGINT;
+ALTER TABLE test_schema.test_table RENAME COLUMN description TO details;
+
+-- Constraints
+ALTER TABLE test_schema.test_table ADD CONSTRAINT value_positive CHECK (value >= 0);
+
+-- Partitioned Table
+CREATE TABLE test_schema.partitioned_table (
+    logdate date not null,
+    logcontent text
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE test_schema.partitioned_table_y2024m01 PARTITION OF test_schema.partitioned_table
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+INSERT INTO test_schema.partitioned_table (logdate, logcontent) VALUES ('2024-01-15', 'Test log');
+SELECT * FROM test_schema.partitioned_table;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW test_schema.materialized_view AS SELECT * FROM test_schema.test_table;
+REFRESH MATERIALIZED VIEW test_schema.materialized_view;
+SELECT * FROM test_schema.materialized_view;
+
+-- Foreign Data Wrapper (requires postgres_fdw extension)
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+
+-- Cleanup
+DROP MATERIALIZED VIEW IF EXISTS test_schema.materialized_view;
+DROP TRIGGER IF EXISTS before_insert_test_table ON test_schema.test_table;
+DROP FUNCTION IF EXISTS test_schema.before_insert_trigger();
+DROP FUNCTION IF EXISTS test_schema.add_values(INTEGER, INTEGER);
+DROP VIEW IF EXISTS test_schema.test_view;
+DROP INDEX IF EXISTS idx_test_table_name;
+DROP TABLE IF EXISTS test_schema.partitioned_table_y2024m01;
+DROP TABLE IF EXISTS test_schema.partitioned_table;
+DROP TABLE IF EXISTS test_schema.data_types_table;
+DROP TABLE IF EXISTS test_schema.test_table;
+DROP SCHEMA IF EXISTS test_schema CASCADE;
+DROP ROLE IF EXISTS test_role;
+DROP TABLESPACE IF EXISTS test_tablespace;

@@ -1,0 +1,88 @@
+SET sql_mode = 'ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE `users` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(255) NOT NULL UNIQUE,
+  `email` VARCHAR(255),
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO `users` (`username`, `email`) VALUES ('testuser1', 'test1@example.com'), ('testuser2', 'test2@example.com');
+
+CREATE TABLE `products` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `price` DECIMAL(10, 2) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+INSERT INTO `products` (`name`, `price`) VALUES ('Product A', 19.99), ('Product B', 29.99);
+
+CREATE TABLE `orders` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `order_date` DATE NOT NULL,
+  `total_amount` DECIMAL(10, 2) NOT NULL,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `orders` (`user_id`, `order_date`, `total_amount`) VALUES (1, '2024-01-01', 49.98), (2, '2024-01-02', 29.99);
+
+CREATE TABLE `order_items` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `order_id` INT NOT NULL,
+  `product_id` INT NOT NULL,
+  `quantity` INT NOT NULL,
+  `price` DECIMAL(10, 2) NOT NULL,
+  FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`),
+  FOREIGN KEY (`product_id`) REFERENCES `products`(`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `order_items` (`order_id`, `product_id`, `quantity`, `price`) VALUES (1, 1, 1, 19.99), (1, 2, 1, 29.99), (2, 2, 1, 29.99);
+
+-- Spatial data example
+CREATE TABLE `locations` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `location` POINT NOT NULL SRID 0,
+  SPATIAL INDEX(`location`)
+) ENGINE=MyISAM;  -- Spatial indexes require MyISAM or InnoDB (MySQL 5.7.6+)
+
+INSERT INTO `locations` (`name`, `location`) VALUES ('Location A', ST_GeomFromText('POINT(10 20)')), ('Location B', ST_GeomFromText('POINT(30 40)'));
+
+-- JSON data example
+CREATE TABLE `settings` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `settings_data` JSON,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `settings` (`user_id`, `settings_data`) VALUES (1, '{"theme": "dark", "notifications": true}'), (2, '{"theme": "light", "notifications": false}');
+
+-- Generated column example
+ALTER TABLE `products` ADD COLUMN `discounted_price` DECIMAL(10, 2) GENERATED ALWAYS AS (`price` * 0.9) STORED;
+
+-- Partitioned Table example
+CREATE TABLE `logs` (
+  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `log_date` DATE NOT NULL,
+  `message` TEXT
+)
+PARTITION BY RANGE (YEAR(`log_date`)) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO `logs` (`log_date`, `message`) VALUES ('2020-12-31', 'Log message 1'), ('2021-01-01', 'Log message 2');
+
+SHOW CREATE TABLE `users`;
+SHOW CREATE TABLE `products`;
+SHOW CREATE TABLE `orders`;
+SHOW CREATE TABLE `order_items`;
+SHOW CREATE TABLE `locations`;
+SHOW CREATE TABLE `settings`;
+SHOW CREATE TABLE `logs`;

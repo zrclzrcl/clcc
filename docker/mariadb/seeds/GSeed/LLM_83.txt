@@ -1,0 +1,83 @@
+SET @orig_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_ALL_TABLES';
+
+-- Create a table with various data types and constraints.
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT UNSIGNED,
+    salary DECIMAL(10, 2),
+    birthdate DATE,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    json_col JSON,
+    spatial_point POINT SRID 4326
+);
+
+-- Insert some initial data, including NULL values and boundary conditions.
+INSERT INTO test_table (name, age, salary, birthdate, enum_col, json_col, spatial_point) VALUES
+('Alice', 30, 50000.00, '1993-01-15', 'value1', '{"key1": "value1", "key2": 123}', ST_GeomFromText('POINT(10 20)', 4326)),
+('Bob', 25, 60000.50, '1998-05-20', 'value2', '{"key3": true, "key4": null}', ST_GeomFromText('POINT(30 40)', 4326)),
+('Charlie', NULL, 75000.75, '1988-12-01', 'value3', '{"key5": [1, 2, 3], "key6": "string"}', ST_GeomFromText('POINT(50 60)', 4326)),
+('David', 40, NULL, '1983-07-10', NULL, NULL, ST_GeomFromText('POINT(70 80)', 4326)),
+('Eve', 1, 9999999.99, '2022-01-01', 'value1', '{"key7": {"nested": "object"}}', ST_GeomFromText('POINT(90 100)', 4326));
+
+-- Test some edge cases with INSERT
+INSERT INTO test_table (name, age, salary, birthdate, enum_col, json_col, spatial_point) VALUES ('EdgeCase', 0, -100.00, '1900-01-01', 'value1', '1', ST_GeomFromText('POINT(0 0)', 4326));
+INSERT INTO test_table (name, age, salary, birthdate, enum_col, json_col, spatial_point) VALUES ('MaxValues', 4294967295, 9999999.99, '9999-12-31', 'value2', '{"key": "very long string very long string very long string very long string very long string very long string very long string very long string very long string very long string "}', ST_GeomFromText('POINT(180 90)', 4326));
+
+-- Perform some UPDATE operations to modify the data.
+UPDATE test_table SET salary = salary * 1.1 WHERE age > 30;
+UPDATE test_table SET enum_col = 'value3' WHERE name LIKE 'A%';
+UPDATE test_table SET json_col = JSON_SET(json_col, '$.new_key', 'new_value') WHERE id = 1;
+
+-- Demonstrate spatial function usage.
+SELECT ST_Distance_Sphere(spatial_point, ST_GeomFromText('POINT(11 21)', 4326)) AS distance FROM test_table WHERE id = 1;
+
+-- Demonstrate JSON function usage.
+SELECT json_col->'$.key1' FROM test_table WHERE id = 1;
+SELECT JSON_EXTRACT(json_col, '$.key1') FROM test_table WHERE id = 1;
+
+-- Perform a SELECT query with various conditions and ordering.
+SELECT id, name, age, salary, birthdate, enum_col, json_col, ST_AsText(spatial_point) FROM test_table WHERE age IS NOT NULL AND salary > 50000 ORDER BY age DESC, name ASC LIMIT 5;
+
+-- Create a secondary index.
+CREATE INDEX idx_name ON test_table (name);
+
+-- ANALYZE TABLE for optimizer hints.
+ANALYZE TABLE test_table;
+
+-- Test partitioning
+CREATE TABLE test_partitioned (
+    id INT,
+    name VARCHAR(255),
+    value INT
+)
+PARTITION BY RANGE (value) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (30),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO test_partitioned (id, name, value) VALUES (1, 'A', 5), (2, 'B', 15), (3, 'C', 25), (4, 'D', 35);
+
+SELECT * FROM test_partitioned PARTITION (p0);
+
+-- Test stored procedure (simple example)
+DELIMITER //
+CREATE PROCEDURE simple_proc (IN input_val INT, OUT output_val INT)
+BEGIN
+    SET output_val = input_val * 2;
+END //
+DELIMITER ;
+
+CALL simple_proc(10, @result);
+SELECT @result;
+
+-- Cleanup (commented out for fuzzing to keep the table)
+-- DROP TABLE test_table;
+-- DROP TABLE test_partitioned;
+-- DROP PROCEDURE simple_proc;
+
+SET sql_mode=@orig_sql_mode;

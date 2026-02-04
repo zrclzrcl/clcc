@@ -1,0 +1,133 @@
+-- Initial seed for PostgreSQL fuzzing (REL_18_RC1)
+
+-- Comments for schema, table, view, index, and functions
+COMMENT ON SCHEMA public IS 'Default public schema';
+
+-- Create a table with various data types
+CREATE TABLE data_types_table (
+    id SERIAL PRIMARY KEY,
+    small_int SMALLINT,
+    integer_val INTEGER,
+    big_int BIGINT,
+    decimal_val DECIMAL(10, 2),
+    numeric_val NUMERIC(12, 4),
+    real_val REAL,
+    double_precision_val DOUBLE PRECISION,
+    smallserial SMALLSERIAL,
+    serial_val SERIAL,
+    bigserial BIGSERIAL,
+    money_val MONEY,
+    char_val CHAR(10),
+    varchar_val VARCHAR(50),
+    text_val TEXT,
+    bytea_val BYTEA,
+    timestamp_val TIMESTAMP,
+    timestamp_tz_val TIMESTAMPTZ,
+    date_val DATE,
+    time_val TIME,
+    time_tz_val TIMETZ,
+    boolean_val BOOLEAN,
+    uuid_val UUID DEFAULT gen_random_uuid(),
+    jsonb_val JSONB,
+    xml_val XML,
+    int_array INTEGER[],
+    text_array TEXT[]
+);
+COMMENT ON TABLE data_types_table IS 'Table containing various data types';
+
+-- Insert some data into the table
+INSERT INTO data_types_table (small_int, integer_val, big_int, decimal_val, numeric_val, real_val, double_precision_val, money_val, char_val, varchar_val, text_val, bytea_val, timestamp_val, timestamp_tz_val, date_val, time_val, time_tz_val, boolean_val, jsonb_val, xml_val, int_array, text_array) VALUES
+(1, 12345, 1234567890, 1234.56, 9876.5432, 1.23, 4.56789, 9.99, 'test', 'test varchar', 'test text', '\xdeadbeef', '2023-10-26 10:00:00', '2023-10-26 10:00:00+00', '2023-10-26', '10:00:00', '10:00:00+00', TRUE, '{"key": "value"}', '<root><element>data</element></root>', '{1,2,3}', '{"a", "b", "c"}');
+INSERT INTO data_types_table (small_int, integer_val, big_int, decimal_val, numeric_val, real_val, double_precision_val, money_val, char_val, varchar_val, text_val, bytea_val, timestamp_val, timestamp_tz_val, date_val, time_val, time_tz_val, boolean_val, jsonb_val, xml_val, int_array, text_array) VALUES
+(2, 67890, 9876543210, 6789.01, 4321.9876, 2.34, 8.90123, 19.99, 'xxxx', 'another varchar', 'more text', '\x00000000', '2023-10-27 12:00:00', '2023-10-27 12:00:00+00', '2023-10-27', '12:00:00', '12:00:00+00', FALSE, '{"another_key": "another_value"}', '<root><another_element>more data</another_element></root>', '{4,5,6}', '{"d", "e", "f"}');
+
+-- Create a view
+CREATE VIEW data_types_view AS
+SELECT id, varchar_val, jsonb_val FROM data_types_table;
+COMMENT ON VIEW data_types_view IS 'View on data_types_table';
+
+-- Create an index
+CREATE INDEX idx_varchar ON data_types_table (varchar_val);
+COMMENT ON INDEX idx_varchar ON data_types_table IS 'Index on varchar_val column';
+
+-- Create a function
+CREATE OR REPLACE FUNCTION add_one(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+COMMENT ON FUNCTION add_one(i INTEGER) IS 'Simple function to add one to an integer';
+
+-- Use generate_series
+SELECT generate_series(1, 10);
+
+-- Create a table with a foreign key
+CREATE TABLE another_table (
+    id SERIAL PRIMARY KEY,
+    data_types_id INTEGER REFERENCES data_types_table(id),
+    some_data TEXT
+);
+
+-- Insert into another_table
+INSERT INTO another_table (data_types_id, some_data) SELECT id, 'some data' FROM data_types_table LIMIT 1;
+
+-- Select with join
+SELECT * FROM data_types_table JOIN another_table ON data_types_table.id = another_table.data_types_id;
+
+-- Update statement
+UPDATE data_types_table SET varchar_val = 'updated value' WHERE id = 1;
+
+-- Delete statement
+DELETE FROM another_table WHERE id = 1;
+
+-- Try to use an extension (if available). Create extension only if it doesn't already exist.
+DO $$ BEGIN
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+EXCEPTION
+    WHEN duplicate_object THEN
+        RAISE NOTICE 'pgcrypto already exists, skipping';
+END $$;
+SELECT gen_random_uuid();
+
+-- Alter table statement
+ALTER TABLE data_types_table ADD COLUMN new_column TEXT;
+
+-- Add constraint
+ALTER TABLE data_types_table ADD CONSTRAINT positive_int CHECK (integer_val > 0);
+
+-- Create trigger
+CREATE OR REPLACE FUNCTION trigger_func() RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Trigger fired!';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER example_trigger
+BEFORE INSERT ON data_types_table
+FOR EACH ROW EXECUTE PROCEDURE trigger_func();
+
+-- Create rule
+CREATE OR REPLACE RULE prevent_delete AS ON DELETE TO data_types_table
+DO INSTEAD NOTHING;
+
+-- Create a sequence
+CREATE SEQUENCE my_sequence;
+SELECT nextval('my_sequence');
+SELECT currval('my_sequence');
+SELECT setval('my_sequence', 10);
+
+-- Check different functions
+SELECT pg_typeof(10);
+SELECT pg_encoding_to_char(0);
+SELECT inet_client_addr();
+SELECT inet_client_port();
+
+-- Create domain
+CREATE DOMAIN my_domain AS TEXT CHECK (VALUE ~ '[A-Za-z]+');
+-- Using Domain
+CREATE TABLE domain_table(
+  name my_domain
+);
+INSERT INTO domain_table VALUES('test');
+--INSERT INTO domain_table VALUES('123'); -- This will throw error because the domain constarint is not satisfied.

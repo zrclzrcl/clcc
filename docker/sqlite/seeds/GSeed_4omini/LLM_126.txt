@@ -1,0 +1,39 @@
+CREATE TABLE "employees" (
+    "employee_id" INTEGER PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "hire_date" DATE,
+    "salary" REAL CHECK(salary > 0),
+    "department_id" INTEGER,
+    FOREIGN KEY(department_id) REFERENCES "departments"(department_id)
+);
+
+CREATE TABLE "departments" (
+    "department_id" INTEGER PRIMARY KEY,
+    "department_name" TEXT NOT NULL UNIQUE
+);
+
+INSERT INTO "departments" (department_name) VALUES ('Human Resources'), ('Engineering'), ('Marketing');
+
+INSERT INTO "employees" (name, hire_date, salary, department_id) VALUES 
+('Alice Smith', '2023-01-10', 75000, 1),
+('Bob Johnson', '2022-11-05', 85000, 2),
+('Charlie Brown', '2023-02-20', 65000, 3),
+('Diana Prince', '2023-03-30', 70000, 1);
+
+SELECT e.name, d.department_name 
+FROM employees e 
+JOIN departments d ON e.department_id = d.department_id 
+WHERE e.salary > 70000;
+
+UPDATE employees 
+SET salary = salary * 1.1 
+WHERE hire_date < '2023-01-01';
+
+DELETE FROM employees 
+WHERE employee_id = 4;
+
+SELECT * FROM sqlite_master 
+WHERE type = 'table' 
+AND name NOT LIKE 'sqlite_%';
+
+PRAGMA foreign_keys = ON;

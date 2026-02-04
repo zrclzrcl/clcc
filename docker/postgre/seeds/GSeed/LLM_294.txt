@@ -1,0 +1,77 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    value INTEGER,
+    description TEXT
+);
+
+INSERT INTO test_table (name, value, description) VALUES
+('Item 1', 10, 'Description for Item 1'),
+('Item 2', 20, 'Description for Item 2'),
+('Item 3', NULL, 'Description for Item 3');
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = 30 WHERE name = 'Item 1';
+
+DELETE FROM test_table WHERE id = 3;
+
+CREATE INDEX idx_test_table_name ON test_table (name);
+
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+
+SELECT name, value FROM test_table ORDER BY value DESC;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 5;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+CREATE FUNCTION increment_value(val INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN val + 1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_value(5);
+
+DROP FUNCTION increment_value(INTEGER);
+
+CREATE TABLE parent_table (
+    id SERIAL PRIMARY KEY,
+    parent_name VARCHAR(50)
+);
+
+CREATE TABLE child_table (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent_table(id),
+    child_name VARCHAR(50)
+);
+
+INSERT INTO parent_table (parent_name) VALUES ('Parent 1'), ('Parent 2');
+INSERT INTO child_table (parent_id, child_name) VALUES (1, 'Child 1'), (1, 'Child 2'), (2, 'Child 3');
+
+SELECT p.parent_name, c.child_name
+FROM parent_table p
+JOIN child_table c ON p.id = c.parent_id;
+
+CREATE OR REPLACE FUNCTION get_children(p_parent_id INTEGER)
+RETURNS SETOF child_table AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM child_table WHERE parent_id = p_parent_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_children(1);
+
+DROP FUNCTION get_children(INTEGER);
+
+DROP TABLE child_table;
+DROP TABLE parent_table;
+DROP INDEX idx_test_table_name;
+DROP TABLE test_table;

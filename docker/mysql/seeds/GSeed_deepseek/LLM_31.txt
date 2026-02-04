@@ -1,0 +1,63 @@
+-- Session variables setup
+SET time_zone = '+03:00';
+SET default_week_format = 6;
+
+-- Create test tables with various data types
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive'),
+    data BLOB,
+    UNIQUE KEY unique_name (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS test_table_myisam (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    INDEX fulltext_content (content)
+) ENGINE=MyISAM;
+
+-- Insert sample data with edge cases
+INSERT INTO test_table (name, description, created_at, status, data)
+VALUES 
+('', 'Empty name', '2023-01-01 00:00:00', 'active', NULL),
+('Test Name', REPEAT('a', 255), '9999-12-31 23:59:59', 'inactive', CAST('binary data' AS BINARY)),
+('', '', '2023-01-01 00:00:00', 'active', '');
+
+-- Complex queries
+SELECT t1.id, t2.name 
+FROM test_table t1 
+JOIN (
+    SELECT id, name FROM test_table WHERE status = 'active' LIMIT 5 OFFSET 2
+) t2 ON t1.id = t2.id 
+WHERE t1.description LIKE '%test%' 
+UNION 
+SELECT NULL AS id, 'dummy' AS name;
+
+-- Test edge cases and potential vulnerabilities
+SELECT BINARY 'a' = 'A'; -- Case-sensitive comparison
+SELECT UUID(), RAND(), SLEEP(0.5); -- Testing functions that may affect execution time
+
+-- Stored procedure for testing
+DELIMITER $$
+CREATE PROCEDURE test_proc()
+BEGIN
+    DECLARE var INT DEFAULT 1;
+    IF var > 0 THEN
+        INSERT INTO test_table (name) VALUES ('stored proc');
+    END IF;
+END$$
+DELIMITER ;
+
+-- Trigger for testing
+CREATE TRIGGER test_trigger BEFORE INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    SET NEW.created_at = CURRENT_TIMESTAMP();
+END;
+
+-- Cleanup
+SELECT SLEEP(1); -- Testing timing functions

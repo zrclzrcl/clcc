@@ -1,0 +1,18 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product_name TEXT, order_date DATE);
+INSERT INTO users(name, age) VALUES('Alice', 30), ('Bob', 25);
+INSERT INTO orders(user_id, product_name, order_date) VALUES(1, 'Laptop', '2023-01-15'), (2, 'Phone', '2023-02-20');
+SELECT u.name, COUNT(o.order_id) AS order_count 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id 
+HAVING order_count > 0;
+
+CREATE INDEX idx_user_name ON users(name);
+UPDATE users SET age = age + 1 WHERE name = 'Alice';
+DELETE FROM orders WHERE order_id = 1;
+
+PRAGMA foreign_keys=ON;
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, product_name TEXT UNIQUE);
+INSERT INTO products(product_name) VALUES('Headphones'), ('Monitor');
+SELECT * FROM products WHERE product_name IS NOT NULL ORDER BY product_name DESC;

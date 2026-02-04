@@ -1,0 +1,68 @@
+-- Create a table with various data types including integer, text, float, and date
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value FLOAT,
+    timestamp DATE
+);
+
+-- Create another table referencing the first to test joins and relationships
+CREATE TABLE t2(
+    id REFERENCES t1(id),
+    category TEXT,
+    quantity INTEGER
+);
+
+-- Insert sample data into t1
+INSERT INTO t1 VALUES
+(1, 'Alice', 100.5, '2023-01-01'),
+(2, 'Bob', 200.75, '2023-01-02'),
+(3, 'Charlie', 150.0, '2023-01-03');
+
+-- Insert sample data into t2
+INSERT INTO t2 VALUES
+(1, 'A', 10),
+(2, 'B', 20),
+(3, 'C', 30);
+
+-- Create a CTE to calculate total quantity per category
+WITH category_totals AS (
+    SELECT category, SUM(quantity) as total_quantity
+    FROM t2
+    GROUP BY category
+)
+SELECT 
+    t1.id,
+    t1.name,
+    t2.quantity,
+    ct.total_quantity
+FROM 
+    t1
+JOIN 
+    t2 ON t1.id = t2.id
+JOIN 
+    category_totals ct ON t2.category = ct.category
+WHERE 
+    t1.timestamp >= '2023-01-01' AND t1.timestamp <= '2023-01-03'
+ORDER BY 
+    t1.id;
+
+-- Use a window function to calculate running total
+SELECT 
+    id,
+    name,
+    quantity,
+    SUM(quantity) OVER (ORDER BY id) as running_total
+FROM 
+    t1
+JOIN 
+    t2 ON t1.id = t2.id
+WHERE 
+    name LIKE 'A%';
+
+-- Test UNION ALL with different SELECT statements
+SELECT * FROM (
+    SELECT id, name FROM t1 WHERE value > 150.0
+) UNION ALL (
+    SELECT id, category FROM t2 WHERE quantity >= 20
+);

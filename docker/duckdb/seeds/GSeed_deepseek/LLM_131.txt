@@ -1,0 +1,62 @@
+CREATE TABLE t1(
+    id INTEGER,
+    name VARCHAR(50),
+    score DECIMAL(10, 2),
+    date DATE,
+    active BOOLEAN
+);
+
+INSERT INTO t1 VALUES 
+    (1, 'Alice', 98.5, '2023-10-01', true),
+    (2, 'Bob', 87.2, '2023-10-02', false),
+    (3, 'Charlie', null, '2023-10-03', true),
+    (4, 'David', 95.0, null, false);
+
+CREATE TABLE t2(
+    product_id INTEGER,
+    product_name VARCHAR(50),
+    category VARCHAR(50),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO t2 VALUES
+    (1, 'Laptop', 'Electronics', 999.99),
+    (2, 'Smartphone', 'Electronics', 699.99),
+    (3, 'Tablet', 'Electronics', 299.99),
+    (4, 'Headphones', 'Audio', 149.99);
+
+CREATE TABLE t3(
+    order_id INTEGER,
+    customer_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    order_date DATE
+);
+
+INSERT INTO t3 VALUES
+    (1, 1, 1, 2, '2023-10-01'),
+    (2, 2, 2, 1, '2023-10-02'),
+    (3, 3, 3, 3, '2023-10-03'),
+    (4, 4, 4, 5, '2023-10-04');
+
+SELECT 
+    t1.name,
+    t2.product_name,
+    t3.quantity,
+    ROW_NUMBER() OVER (PARTITION BY t1.id ORDER BY t3.order_date) AS row_num,
+    COUNT(DISTINCT t2.product_id) OVER () AS total_products,
+    SUM(t1.score) OVER (ORDER BY t1.date) AS cumulative_score
+FROM 
+    t1
+LEFT JOIN 
+    t3 ON t1.id = t3.customer_id
+LEFT JOIN 
+    t2 ON t3.product_id = t2.product_id
+WHERE 
+    t1.active IS true
+GROUP BY 
+    t1.name, t2.product_name, t3.quantity
+HAVING 
+    COUNT(t2.product_id) > 1
+ORDER BY 
+    row_num DESC;

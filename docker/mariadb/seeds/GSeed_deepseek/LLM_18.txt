@@ -1,0 +1,82 @@
+-- Initial seed for MariaDB database fuzz testing.
+
+-- Set optimizer_switch to enable various optimization strategies
+SET optimizer_switch='index_merge=on,index_merge_union=on,index_merge_sort_union=on,materialization=on,semijoin=on,firstmatch=on,lastmatch=off';
+
+-- Create a table with unique constraints and foreign keys for testing edge cases
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    CONSTRAINT fk_status CHECK (status IN ('active', 'inactive'))
+);
+
+-- Create a table for testing joins and relationships
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, status) VALUES 
+('test1', 'active'),
+('test2', 'inactive'),
+('test3', 'active');
+
+-- Test ON DUPLICATE KEY UPDATE functionality
+INSERT INTO t1 (id, name, status) VALUES (4, 'test4', 'active') ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+-- Create a stored procedure for testing complex logic
+DELIMITER //
+CREATE PROCEDURE test_proc()
+BEGIN
+    DECLARE count INT;
+    SELECT COUNT(*) INTO count FROM t1 WHERE status = 'active';
+    INSERT INTO t2 (t1_id, value) VALUES (count, 100.50);
+END//
+DELIMITER ;
+
+-- Test triggers for row-level operations
+CREATE TRIGGER after_insert_t1 AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, value) VALUES (NEW.id, 0.00);
+END;
+
+-- Test event scheduling
+CREATE EVENT test_event
+ON SCHEDULE EVERY 1 HOUR
+DO
+    UPDATE t1 SET status = 'inactive' WHERE status = 'active';
+
+-- Test complex queries with joins and subqueries
+SELECT t1.name, t2.value 
+FROM t1 
+JOIN t2 ON t1.id = t2.t1_id 
+WHERE t1.status = 'active' AND t2.value > 50.00;
+
+-- Test transactions
+START TRANSACTION;
+    UPDATE t1 SET status = 'inactive' WHERE id = 1;
+    SAVEPOINT sp1;
+    DELETE FROM t2 WHERE t1_id = 1;
+ROLLBACK TO sp1;
+COMMIT;
+
+-- Flush and show status for performance testing
+FLUSH STATUS;
+SHOW STATUS LIKE 'Handler%';
+
+-- Test JSON functions specific to MariaDB
+SET @json_data = '{"name": "test", "value": 100}';
+SELECT JSON_EXTRACT(@json_data, '$.name') AS name, JSON_EXTRACT(@json_data, '$.value') AS value;
+
+-- Test stored procedure execution
+CALL test_proc();
+
+-- Cleanup (uncomment if needed)
+-- DROP TABLE t1, t2;
+-- DROP PROCEDURE test_proc;
+-- DROP EVENT test_event;

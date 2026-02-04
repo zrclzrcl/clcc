@@ -1,0 +1,98 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2) NOT NULL,
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id),
+    CONSTRAINT salary_check CHECK (salary > 0)
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering'),
+('Finance'),
+('Human Resources');
+
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, dept_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567', '2022-01-15', 1, 60000.00, 0.10, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', '2022-03-01', 2, 75000.00, 0.15, 2),
+('Robert', 'Jones', 'robert.jones@example.com', '555-246-8013', '2022-05-20', 3, 90000.00, NULL, 3),
+('Alice', 'Brown', 'alice.brown@example.com', '555-135-7924', '2022-07-01', 4, 80000.00, 0.05, 4),
+('Michael', 'Davis', 'michael.davis@example.com', '555-864-2079', '2022-09-10', 5, 65000.00, NULL, 5);
+
+SELECT * FROM employees;
+SELECT first_name, last_name FROM employees WHERE dept_id = 1;
+SELECT * FROM employees ORDER BY salary DESC;
+SELECT AVG(salary) FROM employees;
+SELECT COUNT(*) FROM employees WHERE commission_pct IS NOT NULL;
+SELECT dept_name FROM departments WHERE dept_id IN (SELECT dept_id FROM employees WHERE salary > 70000);
+UPDATE employees SET salary = salary * 1.10 WHERE dept_id = 3;
+DELETE FROM employees WHERE emp_id = 5;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+ANALYZE employees;
+VACUUM employees;
+
+SELECT version();
+SHOW server_version;
+SHOW data_directory;
+
+CREATE OR REPLACE FUNCTION greet(name TEXT) RETURNS TEXT AS $$
+BEGIN
+  RETURN 'Hello, ' || name || '!';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT greet('World');
+
+-- Using window functions
+SELECT emp_id, first_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Using Common Table Expressions (CTEs)
+WITH high_earners AS (
+  SELECT emp_id, first_name, salary
+  FROM employees
+  WHERE salary > 70000
+)
+SELECT * FROM high_earners;
+
+-- Try a full outer join
+CREATE TABLE t1 (id int, name text);
+CREATE TABLE t2 (id int, value int);
+INSERT INTO t1 VALUES (1, 'a'), (2, 'b');
+INSERT INTO t2 VALUES (1, 10), (3, 30);
+SELECT * FROM t1 FULL OUTER JOIN t2 ON t1.id = t2.id;
+DROP TABLE t1;
+DROP TABLE t2;
+
+-- Trigger example
+CREATE OR REPLACE FUNCTION prevent_negative_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_salary_before_insert
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION prevent_negative_salary();

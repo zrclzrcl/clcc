@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER CHECK(age > 0));
+INSERT INTO users(name, age) VALUES('Alice', 30), ('Bob', 25), ('Charlie', 35);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL CHECK(amount >= 0),
+FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (2, 200.75), (1, 50.00);
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, description TEXT, price REAL CHECK(price > 0));
+INSERT INTO products(description, price) VALUES('Laptop', 999.99), ('Smartphone', 499.99);
+SELECT u.name, SUM(o.amount) AS total_spent FROM users u
+JOIN orders o ON u.id = o.user_id
+GROUP BY u.id HAVING total_spent > 100;
+SELECT p.description, COUNT(o.order_id) AS order_count FROM products p
+LEFT JOIN orders o ON o.user_id IN (SELECT u.id FROM users u WHERE u.age > 28)
+GROUP BY p.product_id;

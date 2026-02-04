@@ -1,0 +1,22 @@
+CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (username, password) VALUES ('user1', 'password1');
+INSERT INTO users (username, password) VALUES ('user2', 'password2');
+INSERT INTO users (username, password) VALUES ('user3', 'password3');
+
+CREATE TABLE posts (post_id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id));
+INSERT INTO posts (user_id, content) VALUES (1, 'This is the first post.');
+INSERT INTO posts (user_id, content) VALUES (2, 'Hello World!');
+INSERT INTO posts (user_id, content) VALUES (1, 'Another post from user1.');
+
+CREATE TABLE comments (comment_id INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (post_id) REFERENCES posts(post_id), FOREIGN KEY (user_id) REFERENCES users(id));
+INSERT INTO comments (post_id, user_id, content) VALUES (1, 2, 'Great post!');
+INSERT INTO comments (post_id, user_id, content) VALUES (3, 1, 'Thanks for sharing!');
+
+CREATE VIEW user_posts AS SELECT u.username, p.content FROM users u JOIN posts p ON u.id = p.user_id;
+CREATE VIEW post_comments AS SELECT p.post_id, p.content AS post_content, c.content AS comment_content FROM posts p LEFT JOIN comments c ON p.post_id = c.post_id;
+
+PRAGMA foreign_keys=ON;
+SELECT * FROM user_posts WHERE username = 'user1';
+SELECT COUNT(*) FROM comments WHERE post_id = 1;
+UPDATE users SET password = 'new_password' WHERE username = 'user2';
+DELETE FROM posts WHERE post_id = 2;

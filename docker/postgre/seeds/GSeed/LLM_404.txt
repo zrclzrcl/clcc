@@ -1,0 +1,158 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT
+);
+
+INSERT INTO products (name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00),
+('Monitor', 300.00);
+
+INSERT INTO customers (first_name, last_name, email) VALUES
+('Alice', 'Smith', 'alice.smith@example.com'),
+('Bob', 'Johnson', 'bob.johnson@example.com');
+
+INSERT INTO orders (customer_id) VALUES
+(1),
+(2);
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+(1, 1, 1),
+(1, 2, 1),
+(2, 3, 2),
+(2, 4, 1);
+
+-- Using WITH clause for CTE
+WITH high_price_products AS (
+    SELECT product_id, name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT * FROM high_price_products ORDER BY price DESC;
+
+-- Using window functions
+SELECT
+    product_id,
+    name,
+    price,
+    AVG(price) OVER () AS average_price
+FROM products;
+
+-- Using NULLIF and COALESCE
+SELECT
+    product_id,
+    name,
+    price,
+    COALESCE(NULLIF(price, 0), 100) AS adjusted_price
+FROM products;
+
+-- Using DISTINCT ON
+SELECT DISTINCT ON (customer_id)
+    customer_id,
+    order_date
+FROM orders
+ORDER BY customer_id, order_date DESC;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10, 2);
+
+-- Using LATERAL JOIN
+SELECT c.customer_id, c.first_name, o.order_id
+FROM customers c
+LEFT JOIN LATERAL (
+    SELECT order_id
+    FROM orders
+    WHERE customer_id = c.customer_id
+    ORDER BY order_date DESC
+    LIMIT 1
+) o ON TRUE;
+
+-- Using JSON functions
+SELECT json_build_object('product_id', product_id, 'name', name) AS product_json
+FROM products;
+
+-- Create index with expression
+CREATE INDEX idx_lower_email ON customers (lower(email));
+
+-- Create materialized view
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT name, AVG(price) AS avg_price
+FROM products
+GROUP BY name;
+
+-- Refresh materialized view
+REFRESH MATERIALIZED VIEW product_summary;
+
+-- Using range type
+CREATE TABLE meeting (
+    room TEXT,
+    during TSRANGE
+);
+INSERT INTO meeting VALUES
+    ('403', '[2010-12-10 10:00, 2010-12-11 11:00)');
+
+SELECT * FROM meeting WHERE during @> '2010-12-11 10:30'::timestamp;
+
+-- Check constraint
+ALTER TABLE products ADD CONSTRAINT positive_price CHECK (price >= 0);
+
+-- Rule example
+CREATE RULE products_insert AS ON INSERT TO products
+DO ALSO (SELECT 1);
+
+-- Trigger example
+CREATE OR REPLACE FUNCTION check_quantity()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.quantity < 1 THEN
+        RAISE EXCEPTION 'Quantity must be at least 1';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_items_check_quantity
+BEFORE INSERT OR UPDATE ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION check_quantity();
+
+-- Using unnest
+SELECT unnest(ARRAY[1,2,3,4]);
+
+-- Check inheritance
+CREATE TABLE base_table (id int);
+CREATE TABLE derived_table () INHERITS (base_table);
+INSERT INTO base_table VALUES (1);
+INSERT INTO derived_table VALUES (2);
+SELECT * FROM base_table;
+
+-- Drop table
+DROP TABLE IF EXISTS derived_table;
+DROP TABLE IF EXISTS base_table;
+DROP MATERIALIZED VIEW IF EXISTS product_summary;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+DROP TABLE IF EXISTS products;

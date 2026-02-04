@@ -1,0 +1,46 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    data BLOB,
+    value REAL CHECK(value > 0),
+    enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    duration INTERVAL
+);
+
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE CLUSTERED INDEX idx_t1_value ON t1(value);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id) ON DELETE CASCADE,
+    name TEXT UNIQUE,
+    count INTEGER DEFAULT 0
+);
+
+INSERT INTO t1 VALUES 
+(1, 'Test Record', X'010203', 100.5, TRUE, CURRENT_TIMESTAMP, INTERVAL '1 day'),
+(2, 'Another Test', NULL, -1.2, FALSE, '2024-01-01 00:00:00', INTERVAL '1 hour');
+
+INSERT INTO t2 VALUES 
+(1, 1, 'Related Record', 5),
+(2, NULL, 'Independent Record', 10);
+
+CREATE VIEW v1 AS
+SELECT t1.id, t1.name, t2.count 
+FROM t1 
+LEFT JOIN t2 ON t1.id = t2.t1_id;
+
+CREATE MATERIALIZED VIEW mv1 AS
+SELECT name, AVG(value) as avg_value 
+FROM t1 
+GROUP BY name;
+
+CREATE TRIGGER trig_t1 AFTER INSERT ON t1 BEGIN
+    UPDATE t2 SET count = count + 1 WHERE id = NEW.id;
+END;
+
+ANALYZE;
+SELECT * FROM sqlite_master;
+SELECT COUNT(*) FROM t1;
+SELECT name, value FROM t1 WHERE enabled AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 day';

@@ -1,0 +1,44 @@
+CREATE TABLE employee (
+    emp_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department TEXT,
+    salary REAL,
+    hire_date TEXT DEFAULT CURRENT_DATE,
+    CONSTRAINT salary_check CHECK (salary >= 0)
+);
+
+INSERT INTO employee VALUES(1, 'Alice Johnson', 'Engineering', 75000.00, '2021-06-15');
+INSERT INTO employee VALUES(2, 'Bob Smith', 'Sales', 60000.00, '2020-03-11');
+INSERT INTO employee VALUES(3, 'Charlie Brown', 'Engineering', 85000.00, '2018-12-01');
+INSERT INTO employee VALUES(4, 'Diana Prince', 'HR', 70000.00, '2019-07-20');
+INSERT INTO employee VALUES(5, 'Ethan Hunt', 'Sales', 52000.00, NULL);
+
+CREATE TABLE department (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name TEXT NOT NULL UNIQUE,
+    budget REAL CHECK (budget >= 0)
+);
+
+INSERT INTO department VALUES(1, 'Engineering', 300000.00);
+INSERT INTO department VALUES(2, 'Sales', 150000.00);
+INSERT INTO department VALUES(3, 'HR', 80000.00);
+
+CREATE VIEW employee_summary AS 
+SELECT d.dept_name, COUNT(e.emp_id) AS total_employees, AVG(e.salary) AS average_salary
+FROM department d
+LEFT JOIN employee e ON d.dept_name = e.department
+GROUP BY d.dept_name;
+
+SELECT * FROM employee_summary;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales' AND hire_date < '2020-01-01';
+
+DELETE FROM employee WHERE emp_id = 5;
+
+SELECT emp_id, name, department, salary, hire_date FROM employee 
+WHERE salary IN (SELECT salary FROM employee WHERE salary > 70000)
+ORDER BY salary DESC;
+
+SELECT dept_name, SUM(budget) as total_budget FROM department 
+GROUP BY dept_name
+HAVING total_budget > 100000;

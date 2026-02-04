@@ -1,0 +1,145 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+CREATE DATABASE IF NOT EXISTS fuzz_test;
+USE fuzz_test;
+
+-- Test various data types and constraints
+CREATE TABLE IF NOT EXISTS data_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tinyint_col TINYINT,
+    smallint_col SMALLINT,
+    mediumint_col MEDIUMINT,
+    int_col INT,
+    bigint_col BIGINT,
+    decimal_col DECIMAL(10, 2),
+    float_col FLOAT,
+    double_col DOUBLE,
+    bit_col BIT(64),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(255),
+    varchar_col VARCHAR(255),
+    binary_col BINARY(10),
+    varbinary_col VARBINARY(255),
+    tinyblob_col TINYBLOB,
+    tinytext_col TINYTEXT,
+    blob_col BLOB,
+    text_col TEXT,
+    mediumblob_col MEDIUMBLOB,
+    mediumtext_col MEDIUMTEXT,
+    longblob_col LONGBLOB,
+    longtext_col LONGTEXT,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3'),
+    geometry_col GEOMETRY NULL,
+    json_col JSON NULL,
+    not_null_int INT NOT NULL DEFAULT 0,
+    unique_varchar VARCHAR(255) UNIQUE
+);
+
+-- Insert some initial data with various data types
+INSERT INTO data_types (tinyint_col, smallint_col, mediumint_col, int_col, bigint_col, decimal_col, float_col, double_col, bit_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, binary_col, varbinary_col, tinyblob_col, tinytext_col, blob_col, text_col, mediumblob_col, mediumtext_col, longblob_col, longtext_col, enum_col, set_col,geometry_col,json_col, not_null_int, unique_varchar) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 12345678.90, 123.456, 12345.6789, b'10101010', '2023-10-27', '2023-10-27 10:30:00', '10:30:00', 2023, 'fixed', 'variable', 'binary', 'varbinary', 'tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext', 'value2', 'option1,option3', ST_GeomFromText('POINT(1 1)'), '{"key1": "value1", "key2": 123}', 1, 'unique1'),
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -12345678.90, -123.456, -12345.6789, b'01010101', '2024-01-01', '2024-01-01 00:00:00', '00:00:00', 2024, 'fixed2', 'variable2', 'binary2', 'varbinary2', 'tinyblob2', 'tinytext2', 'blob2', 'text2', 'mediumblob2', 'mediumtext2', 'longblob2', 'longtext2', 'value3', 'option2', ST_GeomFromText('LINESTRING(0 0,1 1,2 2)'), '{"key3": "value3", "key4": 456}', 2, 'unique2');
+
+-- Test constraints and edge cases
+INSERT INTO data_types (not_null_int, unique_varchar) VALUES (3, 'unique3'); -- Should work
+-- INSERT INTO data_types (unique_varchar) VALUES ('unique3');  -- Should fail: duplicate key
+-- INSERT INTO data_types (not_null_int) VALUES (NULL);       -- Should fail: not null constraint
+
+-- Test spatial functions
+SELECT ST_Distance(ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('POINT(2 2)'));
+SELECT ST_AsGeoJSON(geometry_col) from data_types;
+
+-- Test JSON functions
+SELECT JSON_EXTRACT(json_col, '$.key1') from data_types;
+UPDATE data_types SET json_col = JSON_SET(json_col, '$.key5', 'value5');
+
+-- Test fulltext indexing
+CREATE TABLE IF NOT EXISTS fulltext_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    FULLTEXT INDEX content_index (content)
+) ENGINE=InnoDB; -- Important: InnoDB is required for FULLTEXT indexes in newer MySQL versions
+
+INSERT INTO fulltext_test (content) VALUES ('This is a test string for fulltext indexing.'), ('Another test string with different words.');
+SELECT * FROM fulltext_test WHERE MATCH (content) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test partitioning
+CREATE TABLE IF NOT EXISTS range_partitioned_table (
+    id INT,
+    value VARCHAR(255)
+)
+PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (10),
+    PARTITION p1 VALUES LESS THAN (20),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO range_partitioned_table (id, value) VALUES (5, 'value1'), (15, 'value2'), (25, 'value3');
+SELECT * FROM range_partitioned_table PARTITION (p0);
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS simple_procedure (IN input_value INT, OUT output_value INT)
+BEGIN
+    SET output_value = input_value * 2;
+END //
+DELIMITER ;
+
+CALL simple_procedure(10, @result);
+SELECT @result;
+
+-- Test Views
+CREATE OR REPLACE VIEW data_types_view AS SELECT id, varchar_col FROM data_types;
+SELECT * FROM data_types_view;
+
+-- Test character sets and collations
+CREATE TABLE IF NOT EXISTS charset_test (
+    id INT,
+    name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+);
+
+INSERT INTO charset_test (id, name) VALUES (1, '你好世界');
+SELECT * FROM charset_test WHERE name = '你好世界';
+
+-- Test triggers
+CREATE TABLE IF NOT EXISTS trigger_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value INT
+);
+
+CREATE TABLE IF NOT EXISTS trigger_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value INT,
+    action VARCHAR(20)
+);
+
+DELIMITER //
+CREATE TRIGGER IF NOT EXISTS trigger_test_insert AFTER INSERT ON trigger_test
+FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log (value, action) VALUES (NEW.value, 'INSERT');
+END //
+DELIMITER ;
+
+INSERT INTO trigger_test (value) VALUES (100);
+SELECT * FROM trigger_log;
+
+-- Test index hints
+SELECT /*! USE INDEX (content_index) */ * FROM fulltext_test WHERE MATCH (content) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test Generated Columns (MySQL 5.7+)
+CREATE TABLE IF NOT EXISTS generated_columns_test (
+  a INT,
+  b INT,
+  c INT GENERATED ALWAYS AS (a + b) VIRTUAL
+);
+
+INSERT INTO generated_columns_test (a,b) VALUES (1,2),(3,4);
+SELECT * FROM generated_columns_test;

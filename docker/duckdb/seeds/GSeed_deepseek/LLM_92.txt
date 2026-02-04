@@ -1,0 +1,80 @@
+-- Initial seed for DuckDB fuzz testing
+DROP TABLE IF EXISTS products;
+CREATE TABLE products (
+    product_id INT,
+    product_name VARCHAR(50),
+    category VARCHAR(20),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products VALUES
+(1, 'Laptop', 'Electronics', 999.99),
+(2, 'Smartphone', 'Electronics', 699.99),
+(3, 'Tablet', 'Electronics', 299.99),
+(4, 'Headphones', 'Electronics', 149.99);
+
+DROP TABLE IF EXISTS sales;
+CREATE TABLE sales (
+    sale_id INT,
+    product_id INT,
+    sale_date DATE,
+    quantity INT,
+    discount DECIMAL(5, 2)
+);
+
+INSERT INTO sales VALUES
+(1, 1, '2023-01-01', 10, 0.1),
+(2, 2, '2023-01-02', 15, 0.05),
+(3, 3, '2023-01-03', 8, 0.2),
+(4, 4, '2023-01-04', 12, 0.15);
+
+CREATE INDEX idx_product_id ON products(product_id);
+CREATE INDEX idx_sale_date ON sales(sale_date);
+
+-- Complex query with subquery and window function
+SELECT 
+    p.product_name,
+    s.sale_date,
+    s.quantity,
+    (SELECT AVG(discount) FROM sales WHERE product_id = p.product_id) AS avg_discount,
+    ROW_NUMBER() OVER (ORDER BY s.sale_date DESC) AS rn
+FROM products p
+JOIN sales s ON p.product_id = s.product_id
+WHERE s.discount > 0.1
+GROUP BY p.product_name, s.sale_date, s.quantity
+HAVING COUNT(*) > 2;
+
+-- CTE example with DuckDB-specific syntax
+WITH recursive_sales AS (
+    SELECT * FROM sales WHERE sale_id < 3
+    UNION ALL
+    SELECT * FROM sales WHERE sale_id >= 3 AND sale_id < 5
+)
+SELECT 
+    product_name,
+    sale_date,
+    quantity,
+    discount,
+    CASE WHEN discount > 0.1 THEN 'High' ELSE 'Low' END AS discount_category
+FROM recursive_sales r
+JOIN products p ON r.product_id = p.product_id
+ORDER BY sale_date DESC;
+
+-- Testing DuckDB-specific features like virtual tables
+SELECT 
+    (SELECT product_name FROM products WHERE product_id = s.product_id) AS product,
+    sale_date,
+    quantity * price AS total_revenue
+FROM sales s
+WHERE sale_date >= '2023-01-01'
+ORDER BY total_revenue DESC;
+
+-- Testing aggregate functions and string operations
+SELECT 
+    category,
+    COUNT(*) AS total_products,
+    SUM(price) AS total_price,
+    LOWER(MAX(product_name)) AS max_product_name_lower
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 2;

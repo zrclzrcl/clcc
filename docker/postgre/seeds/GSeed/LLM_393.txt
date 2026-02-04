@@ -1,0 +1,88 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    department VARCHAR(255),
+    salary INTEGER,
+    hire_date DATE,
+    data JSONB
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date, data) VALUES
+('Alice', 'Sales', 60000, '2022-01-15', '{"age": 30, "city": "New York"}'),
+('Bob', 'Marketing', 70000, '2021-05-20', '{"age": 35, "city": "London"}'),
+('Charlie', 'Engineering', 80000, '2023-03-10', '{"age": 28, "city": "San Francisco"}'),
+('David', 'Sales', 65000, '2022-08-01', '{"age": 32, "city": "New York"}'),
+('Eve', 'Engineering', 90000, '2023-06-01', '{"age": 29, "city": "San Francisco"}');
+
+SELECT * FROM employees;
+
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+
+SELECT * FROM employees ORDER BY salary DESC LIMIT 3;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 4;
+
+SELECT e.name, d.location FROM employees e JOIN departments d ON e.department = d.name;
+
+SELECT DISTINCT department FROM employees;
+
+SELECT name FROM employees WHERE data ->> 'city' = 'New York';
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2022-12-31';
+
+SELECT name, salary FROM employees UNION SELECT name, salary FROM employees WHERE salary > 80000;
+
+CREATE INDEX idx_employee_department ON employees (department);
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(255);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT * FROM employees WHERE data @> '{"city": "San Francisco"}';
+
+-- Example of using GENERATED ALWAYS AS IDENTITY
+CREATE TABLE orders (
+    order_id BIGINT GENERATED ALWAYS AS IDENTITY,
+    customer_id INTEGER,
+    order_date DATE
+);
+
+INSERT INTO orders (customer_id, order_date) VALUES (1, '2024-01-01');
+SELECT * FROM orders;
+
+-- Example using WITH RECURSIVE (simple example to avoid infinite loop)
+WITH RECURSIVE NumberSeries AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM NumberSeries WHERE n < 5
+)
+SELECT n FROM NumberSeries;
+
+SELECT current_database();
+SELECT version();
+SELECT pg_backend_pid();
+
+-- Using information schema
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+
+-- Granting privileges
+GRANT SELECT ON employees TO PUBLIC;
+GRANT UPDATE ON employees TO CURRENT_USER;
+
+-- Revoking privileges
+REVOKE ALL PRIVILEGES ON employees FROM PUBLIC;

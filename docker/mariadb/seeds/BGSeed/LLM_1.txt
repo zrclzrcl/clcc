@@ -1,0 +1,45 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(255)
+);
+
+INSERT INTO products (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Book', 15.50, 'Books'),
+('Keyboard', 75.00, 'Electronics');
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT,
+    quantity INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (product_id, quantity) VALUES
+(1, 1),
+(2, 5),
+(3, 2),
+(4, 1);
+
+-- MariaDB specific: Window function with range
+SELECT
+    p.name,
+    SUM(o.quantity) OVER (ORDER BY p.price RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS total_quantity
+FROM products p
+JOIN orders o ON p.id = o.product_id;
+
+-- MariaDB specific: JSON functions
+SELECT JSON_ARRAYAGG(name) FROM products WHERE category = 'Electronics';
+
+-- MariaDB specific:  Generate a sequence using a system table.
+SELECT seq FROM seq_1_to_5;
+
+--MariaDB specific: ANALYZE TABLE to update table statistics
+ANALYZE TABLE products;
+
+-- Test case for error handling. This will likely fail without the appropriate index.
+SELECT * FROM products WHERE name LIKE '%a%';

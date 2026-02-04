@@ -1,0 +1,47 @@
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value REAL,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    data BLOB
+);
+
+INSERT INTO t1 VALUES
+(1, 'Test 1', NULL, TRUE, CURRENT_TIMESTAMP, X'0102'),
+(2, NULL, 3.14, FALSE, '2023-01-01 00:00:00', X'abcd'),
+(3, 'Edge Case', -9999999999999999.99, TRUE, NULL, NULL);
+
+CREATE INDEX idx_t1_active ON t1(is_active);
+CREATE INDEX idx_t1_value ON t1(value) WHERE value > 0;
+
+INSERT INTO t1 VALUES
+(4, 'Join Test', 100.5, TRUE, CURRENT_TIMESTAMP, X'1234'),
+(5, 'Another Join', NULL, FALSE, '2023-01-02 00:00:00', X'5678');
+
+SELECT * FROM t1;
+SELECT id, name, value, is_active 
+FROM t1 
+WHERE created_at > '2023-01-01 00:00:00' AND data IS NOT NULL
+ORDER BY id DESC;
+
+SELECT 
+    id,
+    name,
+    value,
+    ROW_NUMBER() OVER (ORDER BY value DESC) AS rank
+FROM t1
+WHERE is_active = TRUE;
+
+WITH cte AS (
+    SELECT id, name, value FROM t1 WHERE value > 50
+)
+SELECT * FROM cte UNION ALL SELECT * FROM t1 WHERE value <= 50;
+
+RECURSIVE rcte(n) AS (
+    VALUES(1)
+    UNION ALL
+    SELECT n + 1 FROM rcte WHERE n < 10
+)
+SELECT * FROM rcte;

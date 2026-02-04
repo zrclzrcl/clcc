@@ -1,0 +1,68 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES
+(1, 10),
+(2, 20),
+(3, 30);
+
+CREATE TABLE strings (
+    id INTEGER PRIMARY KEY,
+    text VARCHAR
+);
+
+INSERT INTO strings (id, text) VALUES
+(1, 'abc'),
+(2, 'def'),
+(3, 'ghi');
+
+-- Test for joins and aggregations
+SELECT i.id, SUM(i.value) FROM integers i JOIN strings s ON i.id = s.id GROUP BY i.id HAVING SUM(i.value) > 15;
+
+-- Test for string functions
+SELECT text, UPPER(text), LENGTH(text) FROM strings WHERE text LIKE 'd%';
+
+-- Test for date/time functions (DuckDB specific)
+CREATE TABLE dates (
+    id INTEGER PRIMARY KEY,
+    event_date DATE,
+    event_time TIME,
+    event_timestamp TIMESTAMP
+);
+
+INSERT INTO dates (id, event_date, event_time, event_timestamp) VALUES
+(1, '2023-10-26', '10:00:00', '2023-10-26 10:00:00'),
+(2, '2023-10-27', '11:00:00', '2023-10-27 11:00:00');
+
+SELECT event_date, DATE_TRUNC('day', event_date) FROM dates;
+
+-- Test for DuckDB specific array and list functions
+CREATE TABLE lists (
+    id INTEGER PRIMARY KEY,
+    int_list INTEGER[]
+);
+
+INSERT INTO lists (id, int_list) VALUES
+(1, [1, 2, 3]),
+(2, [4, 5, 6]);
+
+SELECT id, list_sum(int_list) FROM lists;
+
+-- Test window functions
+SELECT
+  id,
+  value,
+  RANK() OVER (ORDER BY value DESC) as rank
+FROM
+  integers;
+
+-- Test CASE statements
+SELECT id,
+       CASE
+           WHEN value > 20 THEN 'High'
+           WHEN value > 10 THEN 'Medium'
+           ELSE 'Low'
+       END AS value_category
+FROM integers;

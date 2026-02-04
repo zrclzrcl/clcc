@@ -1,0 +1,29 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL);
+
+-- Test various aggregate functions with NULLs
+SELECT sum(i), avg(i), min(i), max(i), count(i), count(*) FROM integers;
+
+-- Test string functions
+SELECT upper(s), lower(s), length(s), substring(s, 2, 1) FROM strings;
+
+-- Test CASE WHEN statements
+SELECT CASE WHEN i > 2 THEN 'large' WHEN i < 2 THEN 'small' ELSE 'medium' END FROM integers;
+
+-- Test date and time functions (DuckDB-specific)
+SELECT date('2024-01-01'), date_trunc('month', date('2024-01-15')), date_part('day', date('2024-01-20'));
+
+-- Test list functions, especially append and contains (DuckDB-specific)
+SELECT list_append([1,2,3], 4), list_contains([1,2,3], 2);
+
+-- Test UNNEST with arrays (DuckDB-specific)
+SELECT value FROM integers, UNNEST([i, i*2]);
+
+--Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+--Test json functions (DuckDB-specific)
+SELECT json('{ "a": 1, "b": 2 }'):a;

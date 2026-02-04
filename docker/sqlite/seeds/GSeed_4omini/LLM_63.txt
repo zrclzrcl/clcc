@@ -1,0 +1,39 @@
+CREATE TABLE users(
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE posts(
+    post_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE comments(
+    comment_id INTEGER PRIMARY KEY,
+    post_id INTEGER,
+    user_id INTEGER,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, email) VALUES ('johndoe', 'john@example.com'), ('janedoe', 'jane@example.com');
+INSERT INTO posts (user_id, title, body) VALUES (1, 'First Post', 'This is the body of the first post.'), (2, 'Second Post', 'Another body for the second post.');
+INSERT INTO comments (post_id, user_id, content) VALUES (1, 2, 'Great post!'), (2, 1, 'Thanks for sharing!');
+
+UPDATE users SET email = 'john.doe@example.com' WHERE username = 'johndoe';
+DELETE FROM comments WHERE comment_id = 1;
+
+SELECT u.id, u.username, p.title, c.content 
+FROM users u 
+JOIN posts p ON u.id = p.user_id 
+LEFT JOIN comments c ON p.post_id = c.post_id 
+ORDER BY p.created_at DESC;
+
+SELECT *, '|' FROM posts WHERE user_id = (SELECT id FROM users WHERE username = 'janedoe');

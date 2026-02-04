@@ -1,0 +1,76 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    data JSONB
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, data) VALUES
+('Alice Smith', 'Sales', 60000.00, '{"age": 30, "status": "active"}'),
+('Bob Johnson', 'Marketing', 75000.00, '{"age": 35, "status": "active"}'),
+('Charlie Brown', 'Engineering', 90000.00, '{"age": 28, "status": "inactive"}');
+
+CREATE INDEX idx_employee_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE status = 'inactive';
+
+SELECT d.name AS department_name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.name = e.department
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+CREATE VIEW active_employees AS
+SELECT id, name, department, salary FROM employees WHERE data ->> 'status' = 'active';
+
+SELECT * FROM active_employees WHERE salary > 65000;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE - (id * INTERVAL '30 day');
+
+SELECT AVG(salary) FROM employees;
+
+-- PostgreSQL-specific: WITH RECURSIVE example (simple, but demonstrates feature)
+WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 5
+)
+SELECT * FROM numbers;
+
+--JSONB Operators
+SELECT name, data ->> 'age' AS age FROM employees;
+SELECT * FROM employees WHERE data @> '{"status": "active"}';
+
+--Check table size
+SELECT pg_size_pretty(pg_total_relation_size('employees'));
+
+--String functions
+SELECT upper(name) from employees;
+
+--Date functions
+SELECT hire_date + INTERVAL '1 year' FROM employees;
+
+--Cleanup, in case of repeated runs
+DROP VIEW IF EXISTS active_employees;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;

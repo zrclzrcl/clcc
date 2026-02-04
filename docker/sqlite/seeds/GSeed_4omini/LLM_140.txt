@@ -1,0 +1,29 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    email TEXT UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    title TEXT NOT NULL,
+    content TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, password, email) VALUES ('test_user', 'securepassword', 'test@example.com');
+INSERT INTO posts (user_id, title, content) VALUES (1, 'First Post', 'This is the content of the first post.');
+
+SELECT username, COUNT(posts.id) AS post_count
+FROM users LEFT JOIN posts ON users.id = posts.user_id
+GROUP BY users.id
+HAVING post_count > 0;
+
+UPDATE users SET email = 'new_email@example.com', updated_at = CURRENT_TIMESTAMP WHERE username = 'test_user';
+
+DELETE FROM posts WHERE title = 'First Post';

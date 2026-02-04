@@ -1,0 +1,50 @@
+-- Create tables with different data types and constraints
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    score INTEGER CHECK (score >= 0)
+);
+
+CREATE TABLE t2 (
+    date DATE,
+    value DECIMAL(10, 2),
+    status BOOLEAN
+);
+
+CREATE TABLE t3 (
+    category TEXT,
+    subcategory TEXT,
+    quantity INTEGER
+);
+
+-- Insert sample data into tables
+INSERT INTO t1 VALUES (1, 'Alice', 85);
+INSERT INTO t1 VALUES (2, 'Bob', 92);
+INSERT INTO t1 VALUES (3, 'Charlie', 78);
+
+INSERT INTO t2 VALUES ('2023-01-15', 100.50, true);
+INSERT INTO t2 VALUES ('2023-02-20', 200.75, false);
+INSERT INTO t2 VALUES ('2023-03-25', NULL, NULL);
+
+INSERT INTO t3 VALUES ('Electronics', 'Laptops', 150);
+INSERT INTO t3 VALUES ('Clothing', 'Shirts', 200);
+INSERT INTO t3 VALUES ('Home', 'Furniture', 80);
+
+-- SELECT statements testing various operations
+SELECT name, score * 2 AS doubled_score FROM t1 WHERE score > 80;
+
+SELECT date, value + (value * 0.1) AS increased_value FROM t2 WHERE status = true;
+
+SELECT category, subcategory, SUM(quantity) FROM t3 GROUP BY category, subcategory HAVING SUM(quantity) > 100;
+
+SELECT COUNT(*) FROM t1 WHERE name LIKE 'A%';
+
+SELECT MIN(date), MAX(value) FROM t2;
+
+SELECT (name || ', Score: ' || score) AS formatted_result FROM t1;
+
+-- Testing boolean logic
+SELECT * FROM t2 WHERE status IS TRUE OR value < 150.00;
+
+-- Union of two tables for combined results
+SELECT name, score FROM t1 UNION SELECT category, quantity FROM t3;

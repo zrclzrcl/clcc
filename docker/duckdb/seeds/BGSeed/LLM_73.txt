@@ -1,0 +1,76 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+    ('Alice', 'Sales', 50000),
+    ('Bob', 'Engineering', 75000),
+    ('Charlie', 'Sales', 55000),
+    ('David', 'Marketing', 60000),
+    ('Eve', 'Engineering', 80000);
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR,
+    location VARCHAR
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+    ('Sales', 'New York'),
+    ('Engineering', 'San Francisco'),
+    ('Marketing', 'Los Angeles');
+
+-- Demonstrate JOIN operations
+SELECT e.name, e.department, d.location FROM employees e JOIN departments d ON e.department = d.dept_name;
+
+-- Demonstrate aggregate functions
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+-- Demonstrate window functions (DuckDB specific)
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Demonstrate string functions
+SELECT name, UPPER(department) FROM employees;
+
+-- Demonstrate date functions (add a column first)
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+UPDATE employees SET hire_date = CASE name WHEN 'Alice' THEN '2022-01-15' WHEN 'Bob' THEN '2021-05-20' WHEN 'Charlie' THEN '2022-03-10' WHEN 'David' THEN '2023-07-01' ELSE '2023-11-01' END;
+SELECT name, hire_date, DATE_PART('year', hire_date) AS hire_year FROM employees;
+
+-- Demonstrate CASE expressions
+SELECT name, salary, CASE WHEN salary > 70000 THEN 'High' ELSE 'Low' END AS salary_level FROM employees;
+
+-- Demonstrate UNION ALL
+CREATE TABLE temp_employees AS SELECT * FROM employees WHERE 1=0;
+INSERT INTO temp_employees (name, department, salary, hire_date) VALUES ('New Employee', 'HR', 45000, '2024-01-01');
+
+SELECT name, department FROM employees UNION ALL SELECT name, department FROM temp_employees;
+
+-- Demonstrate EXCEPT
+SELECT name FROM employees EXCEPT SELECT name FROM temp_employees;
+
+-- Demonstrate INTERSECT
+SELECT name FROM employees INTERSECT SELECT name FROM (SELECT 'Alice' as name UNION ALL SELECT 'Bob' as name);
+
+-- Demonstrate DuckDB specific features: APPROXIMATE PERCENTILE
+SELECT APPROXIMATE PERCENTILE(0.5) WITHIN GROUP (ORDER BY salary) FROM employees;
+
+-- Demonstrate LIST and UNNEST (DuckDB specific)
+CREATE TABLE list_test (
+  id INTEGER,
+  values INTEGER[]
+);
+
+INSERT INTO list_test VALUES (1, [1, 2, 3]), (2, [4, 5, 6]);
+SELECT id, UNNEST(values) FROM list_test;
+
+-- Demonstrate JSON functions (DuckDB specific)
+CREATE TABLE json_test (
+    id INTEGER,
+    data VARCHAR
+);
+INSERT INTO json_test VALUES (1, '{"name": "Alice", "age": 30}');
+SELECT id, JSON_EXTRACT_STRING(data, '$.name') FROM json_test;

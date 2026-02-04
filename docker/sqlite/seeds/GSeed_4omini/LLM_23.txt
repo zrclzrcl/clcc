@@ -1,0 +1,13 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK (age >= 18), salary REAL);
+INSERT INTO employees (id, name, age, salary) VALUES (1, 'Alice', 30, 60000.00), (2, 'Bob', 25, 50000.00);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, dept_name TEXT UNIQUE);
+INSERT INTO departments VALUES (1, 'HR'), (2, 'Engineering');
+CREATE TABLE emp_dept(emp_id INTEGER, dept_id INTEGER, FKEY (emp_id) REFERENCES employees(id), FKEY (dept_id) REFERENCES departments(id));
+INSERT INTO emp_dept VALUES (1, 1), (2, 2);
+UPDATE employees SET salary = salary * 1.1 WHERE age > 25;
+DELETE FROM employees WHERE age < 18;
+CREATE INDEX idx_emp_name ON employees(name);
+PRAGMA foreign_keys = ON; 
+DROP TABLE IF EXISTS temp_salaries;
+CREATE TEMP TABLE temp_salaries AS SELECT AVG(salary) AS avg_salary FROM employees;
+SELECT * FROM temp_salaries;

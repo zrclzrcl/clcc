@@ -1,0 +1,95 @@
+set optimizer_switch='index_merge=on,batched_key_access=off';
+set session sql_mode='ANSI_QUOTES,STRICT_ALL_TABLES';
+
+-- Create a database with unique name for isolation
+CREATE DATABASE IF NOT EXISTS `mariadb_test_db`;
+USE `mariadb_test_db`;
+
+-- Create tables with various data types and MariaDB-specific features
+CREATE TABLE `test_table` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) NOT NULL DEFAULT '',
+    `description` TEXT,
+    `value` DECIMAL(10, 2),
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `status` ENUM('active', 'inactive') DEFAULT 'active',
+    `data` BLOB
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+-- Table with MariaDB-specific Aria engine for testing alternative storage engines
+CREATE TABLE `test_aria_table` (
+    `id` INT PRIMARY KEY,
+    `content` TEXT
+) ENGINE=Aria;
+
+-- Create a partitioned table to test MariaDB's partitioning capabilities
+CREATE TABLE `test_partitioned` (
+    `id` INT NOT NULL,
+    `country_code` CHAR(2),
+    `amount` DECIMAL(10, 2)
+) PARTITION BY RANGE (YEAR(`created_at`)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p_max VALUES LESS THAN MAXVALUE
+);
+
+-- Create a table for testing JSON data type and functions
+CREATE TABLE `test_json` (
+    `id` INT PRIMARY KEY,
+    `metadata` JSON CHECK (JSON_VALID(metadata)),
+    `settings` JSON DEFAULT '{"enabled": true}'
+);
+
+-- Stored procedure to test MariaDB's stored procedure functionality
+DELIMITER ;;
+CREATE PROCEDURE `increment_counter`()
+BEGIN
+    DECLARE counter INT DEFAULT 0;
+    
+    SELECT COUNT(*) INTO counter FROM test_table;
+    INSERT INTO test_table (name) VALUES (CONCAT('Entry ', counter));
+END;;
+DELIMITER ;
+
+-- Trigger to test MariaDB's trigger functionality
+CREATE TRIGGER `after_insert_test_table`
+AFTER INSERT ON `test_table` FOR EACH ROW
+BEGIN
+    INSERT INTO test_json (id, metadata) VALUES (NEW.id, '{"timestamp": "' . NOW() . '"}');
+END;
+
+-- Create indexes for testing query optimization paths
+CREATE FULLTEXT INDEX `ft_name_description` ON `test_table` (`name`, `description`);
+CREATE INDEX `idx_status_created_at` ON `test_table` (`status`, `created_at`);
+
+-- Insert sample data for testing queries
+INSERT INTO test_table (name, description, value) VALUES
+('Test 1', 'First test entry', 100.5),
+('Test 2', 'Second test entry with more details', 200.75);
+
+-- Test MariaDB-specific functions and features
+SELECT BENCHMARK(1000, SHA2('test', 256));
+SHOW ENGINES;
+SHOW PLUGINS;
+
+-- Transaction testing with different isolation levels
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN;
+    UPDATE test_table SET status = 'inactive' WHERE id = 1;
+COMMIT;
+
+-- Create a view for testing complex queries and joins
+CREATE VIEW `test_view` AS
+SELECT t.id, t.name, j.metadata 
+FROM test_table t 
+JOIN test_json j ON t.id = j.id 
+WHERE t.status = 'active';
+
+-- Test complex query with subqueries and unions
+SELECT * FROM (
+    SELECT id, name, value FROM test_table WHERE status = 'active'
+    UNION ALL
+    SELECT id, name, value FROM test_partitioned WHERE country_code = 'US'
+) AS combined_data
+ORDER BY id DESC;

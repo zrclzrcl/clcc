@@ -1,0 +1,39 @@
+CREATE TABLE fuzz_test_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO fuzz_test_table (data) VALUES ('Initial Data 1'), ('Initial Data 2');
+
+CREATE OR REPLACE VIEW fuzz_test_view AS
+SELECT id, data FROM fuzz_test_table WHERE id > 0;
+
+DELIMITER //
+CREATE PROCEDURE fuzz_test_procedure(IN input_id INT)
+BEGIN
+    SELECT data FROM fuzz_test_table WHERE id = input_id;
+END //
+DELIMITER ;
+
+CALL fuzz_test_procedure(1);
+
+CREATE TRIGGER fuzz_test_trigger
+AFTER INSERT ON fuzz_test_table
+FOR EACH ROW
+BEGIN
+    UPDATE fuzz_test_table SET data = CONCAT(data, ' - Updated by Trigger') WHERE id = NEW.id;
+END;
+
+INSERT INTO fuzz_test_table (data) VALUES ('Trigger Test');
+
+ANALYZE TABLE fuzz_test_table;
+
+SET GLOBAL general_log = 'OFF';
+SET GLOBAL slow_query_log = 'OFF';
+
+FLUSH TABLES fuzz_test_table;
+
+SELECT SLEEP(0.01);
+
+SHOW WARNINGS;

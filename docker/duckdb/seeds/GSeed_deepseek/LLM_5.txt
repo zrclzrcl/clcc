@@ -1,0 +1,58 @@
+CREATE TABLE t1(
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    score DECIMAL(5,2) CHECK (score >= 0 AND score <= 100),
+    created_at DATE DEFAULT CURRENT_DATE,
+    is_active BOOLEAN NOT NULL,
+    UNIQUE(name)
+);
+
+INSERT INTO t1 VALUES
+(1, 'Alice', 98.7, '2023-01-01', TRUE),
+(2, 'Bob', 65.4, '2023-01-02', FALSE),
+(3, 'Charlie', NULL, DEFAULT, TRUE);
+
+CREATE TABLE t2(
+    id INT PRIMARY KEY,
+    t1_id INT REFERENCES t1(id),
+    value TEXT
+);
+
+ALTER TABLE t1 ADD COLUMN notes VARCHAR(255);
+ALTER TABLE t1 ADD CONSTRAINT positive_score CHECK (score >= 0);
+
+INSERT INTO t2 VALUES
+(1, 1, 'Important note'),
+(2, NULL, 'Another note');
+
+CREATE TABLE t3 AS
+SELECT id, name, score * 2 as doubled_score
+FROM t1;
+
+WITH cte AS (
+    SELECT id, name, created_at
+    FROM t1
+    WHERE is_active = TRUE
+)
+SELECT ROW_NUMBER() OVER (ORDER BY created_at) as rn,
+       cte.*
+FROM cte;
+
+SELECT 
+    t1.id,
+    t1.name,
+    COUNT(t2.id) as note_count,
+    SUM(CASE WHEN t2.value LIKE '%important%' THEN 1 ELSE 0 END) as important_notes
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.t1_id
+GROUP BY t1.id, t1.name
+HAVING COUNT(t2.id) > 1;
+
+SELECT 
+    id,
+    name,
+    created_at,
+    COALESCE(notes, 'No notes') as notes_text
+FROM t1
+WHERE is_active = TRUE
+ORDER BY created_at DESC;

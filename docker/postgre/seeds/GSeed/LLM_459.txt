@@ -1,0 +1,269 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary INTEGER,
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000, '2021-05-20'),
+('Charlie Brown', 'Engineering', 90000, '2020-11-01'),
+('David Lee', 'Sales', 62000, '2022-03-10'),
+('Eve Wilson', 'Marketing', 78000, '2021-07-01');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE hire_date < '2021-06-01';
+
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 75000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+ALTER TABLE employees ADD COLUMN bonus INTEGER DEFAULT 0;
+
+UPDATE employees SET bonus = 5000 WHERE department = 'Sales';
+
+SELECT name, salary, bonus, salary + bonus AS total_compensation FROM employees;
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (department_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(department_id);
+
+UPDATE employees SET department_id = (SELECT department_id FROM departments WHERE department_name = employees.department);
+
+ALTER TABLE employees DROP COLUMN department;
+
+SELECT e.name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.department_id;
+
+CREATE FUNCTION calculate_bonus(base_salary INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN base_salary * 0.1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, salary, calculate_bonus(salary) AS calculated_bonus FROM employees;
+
+DROP FUNCTION calculate_bonus(INTEGER);
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100),
+    record_id INTEGER,
+    operation VARCHAR(10),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (now())::timestamp without time zone
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES ('employees', OLD.id, 'DELETE');
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES ('employees', NEW.id, 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, record_id, operation)
+        VALUES ('employees', NEW.id, 'INSERT');
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+INSERT INTO employees (name, department_id, salary, hire_date) VALUES ('New Employee', 1, 55000, '2023-01-01');
+UPDATE employees SET salary = 65000 WHERE name = 'New Employee';
+DELETE FROM employees WHERE name = 'New Employee';
+
+SELECT * FROM audit_log;
+
+DROP TRIGGER employee_audit ON employees;
+DROP FUNCTION log_employee_changes();
+DROP TABLE audit_log;
+DROP TABLE employees;
+DROP TABLE departments;
+
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10, 2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.00),
+('Mouse', 'Ergonomic wireless mouse', 25.00),
+('Keyboard', 'Mechanical keyboard with RGB lighting', 100.00);
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 150;
+
+UPDATE products SET price = price * 1.05 WHERE id = 1;
+
+DELETE FROM products WHERE id = 2;
+
+SELECT name, price FROM products ORDER BY price DESC;
+
+CREATE TYPE product_category AS ENUM ('electronics', 'clothing', 'books');
+
+ALTER TABLE products ADD COLUMN category product_category;
+
+UPDATE products SET category = 'electronics' WHERE id IN (1, 3);
+
+SELECT name, category FROM products WHERE category = 'electronics';
+
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT category, COUNT(*) AS product_count, AVG(price) AS average_price
+FROM products
+GROUP BY category;
+
+REFRESH MATERIALIZED VIEW product_summary;
+
+SELECT * FROM product_summary;
+
+DROP MATERIALIZED VIEW product_summary;
+DROP TABLE products;
+DROP TYPE product_category;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2023-01-10', 150.00),
+(2, '2023-02-15', 200.00),
+(1, '2023-03-20', 100.00);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    customer_email VARCHAR(255),
+    customer_phone VARCHAR(20)
+);
+
+INSERT INTO customers (customer_name, customer_email, customer_phone) VALUES
+('John Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane Smith', 'jane.smith@example.com', '987-654-3210');
+
+SELECT c.customer_name, o.order_date, o.total_amount
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date BETWEEN '2023-01-01' AND '2023-03-31';
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+EXPLAIN SELECT c.customer_name, o.order_date, o.total_amount
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date BETWEEN '2023-01-01' AND '2023-03-31';
+
+CREATE SEQUENCE order_sequence START WITH 1000;
+
+ALTER TABLE orders ALTER COLUMN order_id SET DEFAULT nextval('order_sequence');
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (1, '2024-01-01', 50);
+
+SELECT * FROM orders;
+
+DROP TABLE orders;
+DROP TABLE customers;
+DROP SEQUENCE order_sequence;
+
+CREATE TABLE employees_partitioned (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary INTEGER,
+    hire_date DATE
+) PARTITION BY RANGE (hire_date);
+
+CREATE TABLE employees_y2022 PARTITION OF employees_partitioned
+    FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');
+
+CREATE TABLE employees_y2023 PARTITION OF employees_partitioned
+    FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+INSERT INTO employees_partitioned (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000, '2023-05-20');
+
+SELECT * FROM employees_partitioned;
+
+SELECT * FROM employees_y2022;
+
+SELECT * FROM employees_y2023;
+
+DROP TABLE employees_partitioned;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    content TEXT
+);
+
+INSERT INTO documents (content) VALUES
+('This is a sample document about PostgreSQL.'),
+('Another document discussing database management systems.');
+
+SELECT * FROM documents WHERE content % 'PostgreSQL';
+
+CREATE INDEX trgm_idx ON documents USING gin (content gin_trgm_ops);
+
+EXPLAIN SELECT * FROM documents WHERE content % 'PostgreSQL';
+
+DROP INDEX trgm_idx;
+DROP TABLE documents;
+DROP EXTENSION pg_trgm;
+
+CREATE TABLE json_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_data (data) VALUES
+('{"name": "Product A", "price": 100}'),
+('{"name": "Product B", "price": 200, "category": "Electronics"}');
+
+SELECT data -> 'name' AS product_name FROM json_data;
+
+SELECT data ->> 'name' AS product_name FROM json_data;
+
+SELECT * FROM json_data WHERE (data ->> 'category') = 'Electronics';
+
+UPDATE json_data SET data = jsonb_set(data, '{discount}', '0.1'::jsonb) WHERE id = 1;
+
+SELECT * FROM json_data;
+
+DROP TABLE json_data;

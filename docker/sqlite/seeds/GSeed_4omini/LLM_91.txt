@@ -1,0 +1,10 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, email TEXT NOT NULL);
+CREATE TABLE posts(post_id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(username, email) VALUES('alice', 'alice@example.com'), ('bob', 'bob@example.com'), ('charlie', 'charlie@example.com');
+INSERT INTO posts(user_id, content) VALUES(1, 'Hello World!'), (2, null), (3, 'SQLite Fuzz Testing');
+CREATE UNIQUE INDEX idx_username ON users(username);
+CREATE VIEW user_post_counts AS SELECT u.username, COUNT(p.post_id) AS post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id GROUP BY u.id;
+SELECT quote(username), quote(email) FROM users WHERE email LIKE '%@example.com%';
+SELECT username, post_count FROM user_post_counts WHERE post_count > 0 ORDER BY post_count DESC;
+UPDATE posts SET content = 'Updated content' WHERE post_id = 1;
+DELETE FROM posts WHERE user_id = 2;

@@ -1,0 +1,114 @@
+SET optimizer_switch='semijoin=on,materialization=on,firstmatch=on,loosescan=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=off';
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+-- Insert some initial data
+INSERT INTO products (name, description, price, quantity, category) VALUES
+('Laptop', 'High-performance laptop', 1200.50, 10, 'Electronics'),
+('T-Shirt', 'Cotton T-Shirt', 25.00, 50, 'Clothing'),
+('Coffee Table', 'Wooden coffee table', 150.75, 5, 'Home Goods'),
+('Novel', 'Science fiction novel', 15.99, 20, 'Books');
+
+-- Create a table for orders with foreign key constraint
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    order_date DATE NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Insert some order data
+INSERT INTO orders (product_id, quantity, order_date) VALUES
+(1, 2, '2023-01-15'),
+(2, 5, '2023-02-20'),
+(3, 1, '2023-03-10'),
+(4, 3, '2023-04-05');
+
+-- Create a stored procedure
+DELIMITER //
+CREATE PROCEDURE UpdateProductQuantity(IN productId INT, IN quantityChange INT)
+BEGIN
+    UPDATE products SET quantity = quantity + quantityChange WHERE id = productId;
+END //
+DELIMITER ;
+
+-- Call the stored procedure
+CALL UpdateProductQuantity(1, -1);
+
+-- Create a view
+CREATE VIEW LowStockProducts AS
+SELECT id, name, quantity FROM products WHERE quantity < 10;
+
+-- Select from the view
+SELECT * FROM LowStockProducts;
+
+-- Perform some complex queries
+SELECT p.name, SUM(o.quantity) AS total_ordered
+FROM products p JOIN orders o ON p.id = o.product_id
+GROUP BY p.name
+ORDER BY total_ordered DESC;
+
+-- Use window function
+SELECT
+    name,
+    price,
+    AVG(price) OVER () AS average_price
+FROM
+    products;
+
+-- Use EXPLAIN to analyze a query
+EXPLAIN SELECT * FROM products WHERE price > 100;
+
+-- Create index
+CREATE INDEX idx_product_name ON products (name);
+
+-- Analyze table
+ANALYZE TABLE products;
+
+-- Check table
+CHECK TABLE products;
+
+-- Repair table if necessary (commented out as it might require privileges)
+-- REPAIR TABLE products;
+
+-- Demonstrate JSON functionality (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN metadata JSON;
+UPDATE products SET metadata = JSON_OBJECT('color', 'black', 'weight', '2.5kg') WHERE name = 'Laptop';
+SELECT name, metadata->>'$.color' AS color FROM products WHERE name = 'Laptop';
+
+-- Demonstrate GIS functionality
+CREATE TABLE cities (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+INSERT INTO cities (name, location) VALUES ('New York', ST_GeomFromText('POINT(-74.0060 40.7128)'));
+
+SELECT ST_AsText(location) FROM cities WHERE name = 'New York';
+
+-- Create a table with generated column
+CREATE TABLE generated_table (
+  id INT PRIMARY KEY,
+  a INT,
+  b INT,
+  c INT GENERATED ALWAYS AS (a + b) VIRTUAL
+);
+
+INSERT INTO generated_table (id, a, b) VALUES (1, 10, 5);
+
+SELECT * FROM generated_table;
+
+-- Reset SQL Mode
+SET sql_mode = '';

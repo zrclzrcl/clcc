@@ -1,0 +1,29 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location GEOMETRY NOT NULL SRID 4326,
+    SPATIAL INDEX(location)
+) ENGINE=InnoDB;
+
+-- Insert some diverse geometries
+INSERT INTO spatial_data (name, location) VALUES
+('Point A', ST_GeomFromText('POINT(10 20)', 4326)),
+('Line B', ST_GeomFromText('LINESTRING(30 40, 50 60)', 4326)),
+('Polygon C', ST_GeomFromText('POLYGON((70 80, 90 80, 90 100, 70 100, 70 80))', 4326));
+
+-- Spatial functions
+SELECT name, ST_Distance(location, ST_GeomFromText('POINT(0 0)', 4326)) AS distance FROM spatial_data;
+SELECT name, ST_Contains(ST_GeomFromText('POLYGON((0 0, 0 100, 100 100, 100 0, 0 0))', 4326), location) AS contains FROM spatial_data;
+
+-- MariaDB specific: MBRContains - Minimum Bounding Rectangle
+SELECT name, MBRContains(ST_GeomFromText('POLYGON((0 0, 0 100, 100 100, 100 0, 0 0))', 4326), location) AS mbr_contains FROM spatial_data;
+
+-- MariaDB specific: ST_LatFromGeoHash and ST_LongFromGeoHash
+SELECT ST_LatFromGeoHash('ezs42'), ST_LongFromGeoHash('ezs42');
+
+-- Test with different SRIDs and transformations (requires additional setup potentially, but good to include for fuzzing)
+-- CREATE TABLE t2 (id INT, geom GEOMETRY SRID 3857);
+-- INSERT INTO t2 (id, geom) VALUES (1, ST_Transform(ST_GeomFromText('POINT(10 20)', 4326), 3857)); -- Transforms between SRIDs.  Error if t2 doesn't exist, but good for fuzzing
+
+SHOW CREATE TABLE spatial_data;

@@ -1,0 +1,170 @@
+SET GLOBAL innodb_file_per_table=ON;
+SET GLOBAL validate_password.policy=LOW;
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Table creation with various data types and constraints
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_data JSON NULL
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Books', 'Other') DEFAULT 'Other',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    order_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Insert some initial data
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', 'password123'),
+('testuser2', 'test2@example.com', 'secure_password');
+
+INSERT INTO products (product_name, description, price, quantity, category) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 10, 'Electronics'),
+('T-Shirt', 'Cotton T-shirt', 25.00, 50, 'Clothing'),
+('MySQL Book', 'Learning MySQL', 30.00, 20, 'Books');
+
+INSERT INTO orders (user_id, order_date, total_amount) VALUES
+(1, '2023-10-26', 1225.00),
+(2, '2023-10-27', 30.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 1, 30.00);
+
+-- Stored procedure with error handling
+DELIMITER //
+CREATE PROCEDURE update_product_price(IN product_id_param INT, IN new_price DECIMAL(10, 2))
+BEGIN
+    DECLARE original_price DECIMAL(10, 2);
+
+    -- Get the original price
+    SELECT price INTO original_price FROM products WHERE product_id = product_id_param;
+
+    -- Check if the product exists
+    IF original_price IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Product not found';
+    ELSE
+    -- Update the price
+    UPDATE products SET price = new_price WHERE product_id = product_id_param;
+
+    -- Log the price change (assuming you have a log table)
+    -- INSERT INTO price_change_log (product_id, old_price, new_price, change_date) VALUES (product_id_param, original_price, new_price, NOW());
+    END IF;
+END //
+DELIMITER ;
+
+-- Function to calculate total order amount
+DELIMITER //
+CREATE FUNCTION calculate_total_amount(order_id_param INT) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    SELECT SUM(quantity * price) INTO total FROM order_items WHERE order_id = order_id_param;
+    RETURN IFNULL(total, 0);
+END //
+DELIMITER ;
+
+-- Trigger to update order total after an item is added
+DELIMITER //
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE orders SET total_amount = calculate_total_amount(NEW.order_id) WHERE order_id = NEW.order_id;
+END //
+DELIMITER ;
+
+-- Event scheduling (disabled by default, needs enabling)
+-- SET GLOBAL event_scheduler = ON;
+-- CREATE EVENT IF NOT EXISTS delete_old_orders
+-- ON SCHEDULE EVERY 1 MONTH
+-- STARTS CURRENT_TIMESTAMP
+-- DO
+--   DELETE FROM orders WHERE order_date < DATE_SUB(NOW(), INTERVAL 1 YEAR);
+
+-- Index creation
+CREATE INDEX idx_username ON users (username);
+CREATE INDEX idx_email ON users (email);
+
+-- Fulltext Index
+ALTER TABLE products ADD FULLTEXT INDEX idx_description (description);
+
+-- Analyze Tables for Query Optimization
+ANALYZE TABLE users, products, orders, order_items;
+
+-- Show variables to check configurations
+SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
+SHOW VARIABLES LIKE 'max_connections';
+SHOW STATUS LIKE 'Threads_connected';
+
+-- Set some configurations that may affect query execution
+SET GLOBAL sort_buffer_size=4194304;
+SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Use window function
+SELECT
+    product_name,
+    price,
+    RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM
+    products;
+
+-- Spatial Data Types Example
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO spatial_data (name, location) VALUES ('Point A', ST_GeomFromText('POINT(1 1)'));
+INSERT INTO spatial_data (name, location) VALUES ('Point B', ST_GeomFromText('POINT(2 2)'));
+
+SELECT name FROM spatial_data WHERE ST_Distance_Sphere(location, ST_GeomFromText('POINT(1.5 1.5)')) < 1000;
+
+-- Testing Grouping Sets feature
+SELECT category, YEAR(created_at), SUM(price * quantity) FROM products JOIN order_items ON products.product_id = order_items.product_id GROUP BY category, YEAR(created_at) WITH ROLLUP;
+
+-- Common Table Expression (CTE) example
+WITH ProductSales AS (
+  SELECT product_id, SUM(quantity * price) AS total_sales
+  FROM order_items
+  GROUP BY product_id
+)
+SELECT p.product_name, ps.total_sales
+FROM products p
+JOIN ProductSales ps ON p.product_id = ps.product_id
+ORDER BY ps.total_sales DESC;
+
+-- Test statement involving generated columns (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10,2) GENERATED ALWAYS AS (price * 0.9) STORED;

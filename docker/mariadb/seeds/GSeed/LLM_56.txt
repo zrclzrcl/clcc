@@ -1,0 +1,62 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department_id INT,
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50),
+    location_id INT
+);
+
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY AUTO_INCREMENT,
+    city VARCHAR(50),
+    country_id VARCHAR(2)
+);
+
+INSERT INTO departments (department_name, location_id) VALUES
+('Sales', 1),
+('Marketing', 2),
+('Engineering', 3);
+
+INSERT INTO locations (city, country_id) VALUES
+('New York', 'US'),
+('London', 'UK'),
+('Paris', 'FR');
+
+INSERT INTO employees (first_name, last_name, salary, department_id, hire_date) VALUES
+('John', 'Doe', 60000.00, 1, '2022-01-15'),
+('Jane', 'Smith', 75000.00, 2, '2021-05-20'),
+('Peter', 'Jones', 90000.00, 3, '2020-09-10');
+
+-- MariaDB specific features
+SET GLOBAL connect_timeout=30;
+SET GLOBAL max_allowed_packet=67108864;
+
+-- Example of using JSON functions
+SELECT JSON_OBJECT('id', employee_id, 'name', first_name, 'salary', salary) AS employee_json FROM employees WHERE employee_id = 1;
+
+-- Example of using window functions
+SELECT first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Example using stored procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeeSalary(IN emp_id INT, OUT salary DECIMAL(10,2))
+BEGIN
+    SELECT salary INTO salary FROM employees WHERE employee_id = emp_id;
+END //
+DELIMITER ;
+
+CALL GetEmployeeSalary(1, @salary);
+SELECT @salary;
+
+ANALYZE TABLE employees, departments, locations;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00;

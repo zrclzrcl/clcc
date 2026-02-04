@@ -1,0 +1,18 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'pending';
+CREATE INDEX idx_user_email ON users(email);
+INSERT INTO users(name, email) VALUES('Alice', 'alice@example.com');
+INSERT INTO users(name, email) VALUES('Bob', 'bob@example.com');
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50);
+INSERT INTO orders(user_id, amount) VALUES(2, 75.00);
+UPDATE orders SET status = 'completed' WHERE id = 1;
+DELETE FROM orders WHERE id = 2;
+SELECT * FROM users;
+SELECT * FROM orders WHERE amount > 50.00;
+PRAGMA foreign_keys = ON;
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL);
+ALTER TABLE products ADD COLUMN description TEXT;
+INSERT INTO products(name, price) VALUES('Product A', 29.99);
+INSERT INTO products(name, price) VALUES('Product B', 49.99);
+SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.status = 'completed';

@@ -1,0 +1,51 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), ('d'), ('e');
+
+-- Test joins with complex conditions
+SELECT * FROM integers, strings WHERE i > 2 AND s LIKE 'a%';
+
+-- Test aggregations with GROUP BY and HAVING
+SELECT s, AVG(i) FROM integers, strings GROUP BY s HAVING AVG(i) > 2;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test string functions
+SELECT s, UPPER(s), LENGTH(s) FROM strings;
+
+-- Test date functions (DuckDB specific)
+SELECT CURRENT_DATE, DATE('2023-10-27'), DATE_DIFF('day', DATE('2023-10-20'), CURRENT_DATE);
+
+-- Test case statements
+SELECT i, CASE WHEN i > 3 THEN 'large' ELSE 'small' END FROM integers;
+
+-- Test array functions (DuckDB specific)
+CREATE TABLE arrays (arr INTEGER[]);
+INSERT INTO arrays VALUES (ARRAY[1, 2, 3]), (ARRAY[4, 5, 6]);
+SELECT arr, ARRAY_LENGTH(arr) FROM arrays;
+
+-- Test JSON functions (DuckDB specific)
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": 2}'), ('{"c": 3, "d": 4}');
+SELECT j, JSON_EXTRACT_SCALAR(j, '$.a') FROM jsons;
+
+-- Test UNNEST (DuckDB specific, expands arrays into rows)
+SELECT value FROM arrays, UNNEST(arr) AS value;
+
+-- Attempt to trigger a division by zero error, though this should be handled gracefully
+SELECT 1 / 0;
+
+-- Test a more complex join and filter
+CREATE TABLE more_integers (j INTEGER, k INTEGER);
+INSERT INTO more_integers VALUES (1, 10), (2, 20), (3, 30), (4, 40), (5, 50);
+
+SELECT i, j, k FROM integers JOIN more_integers ON integers.i = more_integers.j WHERE k > 25;
+
+DROP TABLE IF EXISTS integers;
+DROP TABLE IF EXISTS strings;
+DROP TABLE IF EXISTS arrays;
+DROP TABLE IF EXISTS jsons;
+DROP TABLE IF EXISTS more_integers;

@@ -1,0 +1,131 @@
+-- Create a schema for organizing test objects
+CREATE SCHEMA IF NOT EXISTS test_schema;
+
+-- Create a table with various data types including array and JSON
+CREATE TABLE test_schema.base_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    tags JSONB,
+    status VARCHAR(50) CHECK (status IN ('active', 'inactive')),
+    data BYTEA
+);
+
+-- Create a table with inheritance
+CREATE TABLE test_schema.inherited_table () INHERITS (test_schema.base_table);
+
+-- Create an index on the JSONB column for efficient querying
+CREATE INDEX idx_tags ON test_schema.base_table USING GIN (tags jsonb_path_ops);
+
+-- Create a partitioned table
+CREATE TABLE test_schema.partitioned_table (
+    id SERIAL,
+    amount DECIMAL(10, 2),
+    transaction_date DATE
+) PARTITION BY RANGE (transaction_date);
+
+-- Create partitions for the partitioned table
+CREATE TABLE test_schema.partition_2023 PARTITION OF test_schema.partitioned_table 
+FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+-- Create a unique constraint on a column
+ALTER TABLE test_schema.base_table ADD CONSTRAINT unique_name UNIQUE (name);
+
+-- Add a check constraint to enforce business rules
+ALTER TABLE test_schema.base_table ADD CONSTRAINT positive_value CHECK (value > 0);
+
+-- Create a foreign key constraint
+CREATE TABLE test_schema.dependent_table (
+    id SERIAL PRIMARY KEY,
+    base_id INTEGER REFERENCES test_schema.base_table(id) ON DELETE CASCADE
+);
+
+-- Create a trigger function
+CREATE FUNCTION test_schema.log_updates() RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO test_schema.audit_log (table_name, action, old_data, new_data)
+    VALUES (TG_TABLE_NAME, TG_OP, OLD, NEW);
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+-- Create a trigger that invokes the function
+CREATE TRIGGER update_trigger
+AFTER UPDATE ON test_schema.base_table
+FOR EACH ROW EXECUTE FUNCTION test_schema.log_updates();
+
+-- Create a view with complex query
+CREATE VIEW test_schema.complex_view AS
+WITH cte AS (
+    SELECT id, name, value, 
+           ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+    FROM test_schema.base_table
+)
+SELECT * FROM cte WHERE rank <= 10;
+
+-- Create a materialized view for faster queries
+CREATE MATERIALIZED VIEW test_schema.mv_base_data AS
+SELECT id, name, value, created_at::DATE as date
+FROM test_schema.base_table
+WITH DATA;
+
+-- Create an index on the materialized view
+CREATE INDEX idx_mv_date ON test_schema.mv_base_data (date);
+
+-- Create a stored procedure with exception handling
+CREATE PROCEDURE test_schema.process_data()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM test_schema.base_table;
+    
+    IF v_count > 100 THEN
+        RAISE NOTICE 'Processing % records...', v_count;
+    END IF;
+    
+    EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'An error occurred: %', SQLERRM;
+END $$;
+
+-- Create a function with parameters and return table
+CREATE FUNCTION test_schema.get_filtered_data(search_term TEXT)
+RETURNS TABLE (
+    id INTEGER,
+    name TEXT,
+    value DECIMAL
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT id, name, value 
+    FROM test_schema.base_table
+    WHERE name LIKE '%' || search_term || '%'
+       OR tags @> '{"search": "' || search_term || '"}';
+END $$ LANGUAGE plpgsql;
+
+-- Vacuum analyze the table for query optimization
+VACUUM ANALYZE test_schema.base_table;
+
+-- Create an extension to add additional functionality
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS xml2;
+
+-- Create a table with XML data type
+CREATE TABLE test_schema.xml_data (
+    id SERIAL PRIMARY KEY,
+    content XML
+);
+
+-- Insert sample data into the tables
+INSERT INTO test_schema.base_table (name, value, tags)
+VALUES 
+('Test1', 100.5, '{"key": "value"}'),
+('Test2', 200.3, '{"status": "active"}');
+
+-- Enable row-level security on a table
+ALTER TABLE test_schema.base_table ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy for RLS
+CREATE POLICY base_policy ON test_schema.base_table AS RESTRICTIVE
+TO PUBLIC USING (status = 'active');

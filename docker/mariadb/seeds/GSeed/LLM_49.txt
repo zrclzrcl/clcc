@@ -1,0 +1,88 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Laptop', 'High-performance laptop for work and gaming', 1200.50, 'Electronics'),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker with programmable timer', 80.00, 'Home Goods'),
+('The Hitchhiker\'s Guide to the Galaxy', 'A science fiction comedy series by Douglas Adams', 15.75, 'Books');
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.50),
+(2, 50.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.50),
+(1, 2, 1, 25.00),
+(2, 2, 2, 25.00);
+
+-- MariaDB Specific: Virtual Column Example
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10, 2) GENERATED ALWAYS AS (price * 0.9) VIRTUAL;
+
+-- MariaDB Specific: Sequence Example
+CREATE SEQUENCE product_id_seq START WITH 5 INCREMENT BY 1;
+
+-- MariaDB Specific: Use sequence to insert a new product
+INSERT INTO products (id, name, description, price, category) VALUES (NEXT VALUE FOR product_id_seq, 'Smart Watch', 'Feature-rich smartwatch with fitness tracking', 300.00, 'Electronics');
+
+-- Test the virtual column
+SELECT id, name, price, discounted_price FROM products;
+
+-- Stored Procedure Example
+DELIMITER //
+CREATE PROCEDURE GetOrderTotal(IN order_id INT, OUT total DECIMAL(10, 2))
+BEGIN
+    SELECT SUM(quantity * price) INTO total FROM order_items WHERE order_id = order_id;
+END //
+DELIMITER ;
+
+CALL GetOrderTotal(1, @order_total);
+SELECT @order_total;
+
+-- Trigger Example
+DELIMITER //
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE orders SET total_amount = (SELECT SUM(quantity * price) FROM order_items WHERE order_id = NEW.order_id) WHERE id = NEW.order_id;
+END //
+DELIMITER ;
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (2, 3, 1, 80.00);
+
+SELECT * FROM orders WHERE id = 2;
+
+-- Fulltext index and search (MariaDB Specific)
+ALTER TABLE products ADD FULLTEXT INDEX idx_product_name_description (name, description);
+
+SELECT * FROM products WHERE MATCH(name, description) AGAINST ('laptop' IN NATURAL LANGUAGE MODE);
+
+-- JSON column support (MariaDB Specific)
+ALTER TABLE products ADD COLUMN details JSON;
+
+UPDATE products SET details = JSON_OBJECT('screen_size', '15.6 inch', 'processor', 'Intel Core i7') WHERE name = 'Laptop';
+
+SELECT name, JSON_EXTRACT(details, '$.screen_size') AS screen_size FROM products WHERE name = 'Laptop';

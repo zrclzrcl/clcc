@@ -1,0 +1,52 @@
+SET GLOBAL validate_password.policy=LOW;
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number VARCHAR(255) UNIQUE NOT NULL,
+    account_type ENUM('checking', 'savings', 'credit') NOT NULL DEFAULT 'checking',
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insert some sample accounts
+INSERT INTO accounts (account_number, account_type, balance) VALUES
+('1234567890', 'checking', 1000.00),
+('9876543210', 'savings', 5000.00),
+('5555555555', 'credit', -200.00);
+
+-- Create a stored procedure to transfer funds
+DELIMITER //
+CREATE PROCEDURE transfer_funds (
+    IN from_account VARCHAR(255),
+    IN to_account VARCHAR(255),
+    IN amount DECIMAL(15, 2)
+)
+BEGIN
+    START TRANSACTION;
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+    COMMIT;
+END //
+DELIMITER ;
+
+-- Call the stored procedure
+CALL transfer_funds('1234567890', '9876543210', 100.00);
+
+-- Create a user with limited privileges
+CREATE USER 'fuzz_user'@'localhost' IDENTIFIED BY 'password';
+GRANT SELECT, UPDATE ON accounts TO 'fuzz_user'@'localhost';
+FLUSH PRIVILEGES;
+
+-- Test FULLTEXT index
+ALTER TABLE accounts ADD FULLTEXT INDEX account_number_idx (account_number);
+SELECT * FROM accounts WHERE MATCH (account_number) AGAINST ('1234' IN BOOLEAN MODE);
+
+-- Test JSON functionality
+ALTER TABLE accounts ADD COLUMN metadata JSON;
+UPDATE accounts SET metadata = '{"owner": "John Doe", "preferences": {"notifications": true, "currency": "USD"}}' WHERE account_number = '1234567890';
+SELECT account_number, metadata->'$.owner' AS owner FROM accounts WHERE account_number = '1234567890';
+
+-- Test spatial data type (requires MySQL 8.0+)
+ALTER TABLE accounts ADD COLUMN location POINT SRID 4326;
+UPDATE accounts SET location = ST_GeomFromText('POINT(37.7749 -122.4194)', 4326) WHERE account_number = '1234567890';
+SELECT ST_AsText(location) FROM accounts WHERE account_number = '1234567890';

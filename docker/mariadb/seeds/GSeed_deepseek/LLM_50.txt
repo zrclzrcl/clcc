@@ -1,0 +1,35 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    balance DECIMAL(10, 2) DEFAULT 0.00,
+    data JSON
+);
+
+CREATE UNIQUE INDEX unique_name ON test_table(name);
+CREATE INDEX idx_status_balance ON test_table(status, balance);
+CREATE TABLE partitioned_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region VARCHAR(50),
+    value DECIMAL(10,2)
+) PARTITION BY RANGE (region_id);
+
+INSERT INTO test_table (name, status, balance) VALUES 
+('Test User 1', 'active', 100.00),
+('Test User 2', 'inactive', -50.00),
+('Edge Case NULL', 'active', NULL),
+( 'Max Int', 'active', 9223372036854775807);
+
+SET @var1 = 1;
+SET @var2 = 'test';
+ANALYZE TABLE test_table;
+
+DELIMITER //
+CREATE PROCEDURE simple_proc()
+BEGIN
+    SELECT COUNT(*) AS total FROM test_table WHERE status = 'active';
+END//
+DELIMITER ;
+
+UPDATE test_table SET balance = balance * 2 WHERE id > 100 AND name LIKE '%Test%';

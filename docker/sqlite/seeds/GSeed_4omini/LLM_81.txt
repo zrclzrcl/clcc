@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, email TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (username, email) VALUES ('alice', 'alice@example.com'), ('bob', 'bob@example.com'), ('charlie', 'charlie@example.com');
+UPDATE users SET email = 'alice_updated@example.com' WHERE username = 'alice';
+DELETE FROM users WHERE id = (SELECT id FROM users WHERE username = 'bob');
+SELECT * FROM users WHERE created_at < DATETIME('now', '-1 day');
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS orders (order_id INTEGER PRIMARY KEY, user_id INTEGER, order_date DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id));
+INSERT INTO orders (user_id) VALUES (1), (2);
+SELECT users.username, COUNT(orders.order_id) AS order_count FROM users LEFT JOIN orders ON users.id = orders.user_id GROUP BY users.username;
+PRAGMA quick_check;

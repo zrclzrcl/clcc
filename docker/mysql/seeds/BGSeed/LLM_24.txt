@@ -1,0 +1,43 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 10),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 2, 75000.00, 20),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 1, 62000.00, 10);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT * FROM employees WHERE salary BETWEEN 60000 AND 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 10;
+
+DELETE FROM employees WHERE id = 3;
+
+-- MySQL Specific: Window Functions (attempting to trigger edge cases)
+SELECT first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- MySQL Specific: Common Table Expression (CTE)
+WITH HighEarners AS (
+    SELECT first_name, last_name, salary
+    FROM employees
+    WHERE salary > 65000
+)
+SELECT * FROM HighEarners;
+
+-- MySQL Specific: Spatial Data type usage, should cause error due to missing srid
+CREATE TABLE geo_test (id INT, geom GEOMETRY);
+INSERT INTO geo_test (id, geom) VALUES (1,ST_GeomFromText('POINT(1 1)'));

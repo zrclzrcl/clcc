@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
+INSERT INTO users (name, email) VALUES ('Bob', 'bob@example.com');
+INSERT INTO orders (user_id, amount) VALUES (1, 100.5);
+INSERT INTO orders (user_id, amount) VALUES (2, 150.0);
+INSERT INTO orders (user_id, amount) VALUES (1, 250.75);
+SELECT * FROM users LEFT JOIN orders ON users.id = orders.user_id WHERE orders.amount > 200;
+SELECT CASE WHEN EXISTS (SELECT 1 FROM orders WHERE amount > 100) THEN 'High Spender' ELSE 'Low Spender' END AS spending_category FROM users;
+SELECT SUM(amount) FROM orders GROUP BY user_id HAVING SUM(amount) > 200;
+CREATE INDEX idx_user_email ON users(email);
+SELECT name FROM users WHERE id IN (SELECT user_id FROM orders WHERE amount IS NULL);
+DELETE FROM orders WHERE order_id NOT IN (SELECT order_id FROM orders);

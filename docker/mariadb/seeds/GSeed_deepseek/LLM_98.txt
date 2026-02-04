@@ -1,0 +1,56 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age TINYINT UNSIGNED DEFAULT 0,
+    balance DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    INDEX idx_name (name),
+    UNIQUE KEY uk_age (age)
+) ENGINE=InnoDB;
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    user_id INT,
+    amount DECIMAL(10, 2) DEFAULT 0.00,
+    FOREIGN KEY (user_id) REFERENCES t1(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO t1 VALUES 
+(1, 'John Doe', 30, 1000.50, '2024-01-01 00:00:00', CURRENT_TIMESTAMP, 'active'),
+(2, 'Jane Smith', NULL, -500.75, '2024-01-02 00:00:00', CURRENT_TIMESTAMP, 'inactive'),
+(3, 'Bob Johnson', 25, NULL, '2024-01-03 00:00:00', CURRENT_TIMESTAMP, 'active');
+
+INSERT IGNORE INTO t2 VALUES 
+(1, 1, 100.00),
+(2, 2, -200.50),
+(3, 3, NULL);
+
+SET @optimizer_search_depth = 0;
+SET GLOBAL optimizer_switch='index_merge=on';
+SET SESSION group_concat_max_len = 4096;
+
+ALTER TABLE t1 ADD COLUMN notes TEXT AFTER updated_at;
+ALTER TABLE t1 DROP INDEX idx_name;
+ALTER TABLE t2 ADD CONSTRAINT chk_amount CHECK (amount > -1000);
+
+CREATE TRIGGER tr_t1_update BEFORE UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    SET NEW.updated_at = CURRENT_TIMESTAMP;
+END;
+
+ANALYZE TABLE t1, t2;
+OPTIMIZE TABLE t1, t2;
+CHECKSUM TABLE t1;
+
+SELECT COUNT(*) AS total_users FROM t1 WHERE age IS NOT NULL AND status = 'active';
+SELECT name, balance, created_at FROM t1 ORDER BY created_at DESC LIMIT 5 OFFSET 10;
+
+SET @var1 := (SELECT MAX(balance) FROM t1);
+SET @var2 := (SELECT MIN(age) FROM t1 WHERE status = 'inactive');
+
+DO 1;
+FLUSH TABLES t1;
+REPAIR TABLE t1;

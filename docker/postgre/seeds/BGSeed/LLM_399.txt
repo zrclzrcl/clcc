@@ -1,0 +1,109 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 60000.00, '2022-01-15'),
+('Bob', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie', 'Engineering', 90000.00, '2023-03-10'),
+('David', 'Sales', 62000.00, '2022-09-01'),
+('Eve', 'Engineering', 95000.00, '2023-07-01');
+
+SELECT * FROM employees;
+
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE hire_date < '2022-01-01';
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, SUM(salary) FROM employees GROUP BY department;
+
+SELECT e.name, d.location FROM employees e JOIN departments d ON e.department = d.name;
+
+SELECT e.name, d.location FROM employees e LEFT JOIN departments d ON e.department = d.name;
+
+CREATE INDEX idx_department ON employees (department);
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Sales';
+
+CREATE VIEW sales_employees AS SELECT name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}'),
+('{"name": "Jane", "age": 25, "city": "Los Angeles"}');
+
+SELECT data ->> 'name' FROM json_test;
+
+SELECT * FROM json_test WHERE data ->> 'city' = 'New York';
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+SELECT name FROM employees WHERE name % 'Ali';
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, department, 1 AS level
+    FROM employees
+    WHERE department = 'Engineering'
+    UNION ALL
+    SELECT e.id, e.name, e.department, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department = eh.department
+    WHERE eh.level < 3
+)
+SELECT * FROM employee_hierarchy;
+
+SELECT generate_series(1, 10);
+
+SELECT hire_date, ROW_NUMBER() OVER (ORDER BY hire_date) FROM employees;
+
+SELECT department, AVG(salary) OVER (PARTITION BY department) FROM employees;
+
+SELECT * FROM (SELECT name, salary, RANK() OVER (ORDER BY salary DESC) as salary_rank FROM employees) sub WHERE salary_rank <= 2;
+
+COPY employees TO '/tmp/employees.csv' WITH CSV HEADER;
+
+CREATE TABLE products (id SERIAL PRIMARY KEY, name VARCHAR(50), price DECIMAL(10,2));
+INSERT INTO products (name, price) VALUES ('Laptop', 1200.00), ('Mouse', 25.00), ('Keyboard', 75.00);
+SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE TABLE test_range (
+    id SERIAL PRIMARY KEY,
+    range_val int4range
+);
+
+INSERT INTO test_range (range_val) VALUES ('[10,20)'::int4range);
+
+SELECT * FROM test_range WHERE range_val @> 15;

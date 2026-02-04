@@ -1,0 +1,17 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT NOT NULL, salary REAL, department_id INTEGER);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT NOT NULL, budget REAL CHECK(budget >= 0));
+INSERT INTO employees VALUES(1, 'Alice', 75000, 1);
+INSERT INTO employees VALUES(2, 'Bob', 60000, 1);
+INSERT INTO employees VALUES(3, 'Charlie', 50000, 2);
+INSERT INTO departments VALUES(1, 'HR', 200000);
+INSERT INTO departments VALUES(2, 'Engineering', 300000);
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1; 
+DELETE FROM employees WHERE id = 3;
+SELECT e.id, e.name, d.name AS department FROM employees e INNER JOIN departments d ON e.department_id = d.id WHERE e.salary > 60000;
+CREATE INDEX idx_department ON employees(department_id);
+CREATE VIRTUAL TABLE search_employees USING FTS5(name, department_id);
+INSERT INTO search_employees VALUES('Alice', 1);
+INSERT INTO search_employees VALUES('Bob', 1);
+SELECT * FROM search_employees WHERE search_employees MATCH 'Alice';
+ALTER TABLE departments ADD COLUMN location TEXT;
+SELECT name, salary FROM employees WHERE department_id IS NULL;

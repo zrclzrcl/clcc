@@ -1,0 +1,59 @@
+-- Create a table with various data types to test edge cases
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value FLOAT,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    data BLOB
+);
+
+-- Insert sample data including NULL values and edge cases
+INSERT INTO t1 VALUES(1, 'Alice', 3.14, TRUE, CURRENT_TIMESTAMP, X'0102');
+INSERT INTO t1 VALUES(2, 'Bob', -123.45, FALSE, '2023-01-01 00:00:00', NULL);
+INSERT INTO t1 VALUES(3, '', NULL, TRUE, '2023-12-31 23:59:59', X'');
+INSERT INTO t1 VALUES(4, 'Charlie', 0.0, FALSE, CURRENT_TIMESTAMP, X'FF');
+
+-- Create indexes to test index-related functionality
+CREATE INDEX idx_name ON t1(name);
+CREATE INDEX idx_is_active ON t1(is_active);
+
+-- Create a unique constraint to test uniqueness checks
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    key TEXT UNIQUE,
+    value TEXT
+);
+
+-- Insert into the second table with unique constraints
+INSERT INTO t2 VALUES(1, 'key1', 'value1');
+INSERT INTO t2 VALUES(2, 'key2', 'value2');
+
+-- Create a view to test view-related functionality
+CREATE VIEW v1 AS SELECT name, created_at FROM t1 WHERE is_active = TRUE;
+
+-- Insert into the view (will fail if view is not updatable)
+INSERT INTO v1 VALUES('DuckDB', CURRENT_TIMESTAMP);
+
+-- Update statement to modify existing data
+UPDATE t2 SET value = 'updated_value' WHERE key = 'key1';
+
+-- Delete statement to test deletion functionality
+DELETE FROM t1 WHERE id = 4;
+
+-- Complex SELECT query with subquery and aggregate functions
+SELECT 
+    name,
+    created_at,
+    (SELECT COUNT(*) FROM t2 WHERE key LIKE '%key%') AS count_key,
+    SUM(value) OVER (ORDER BY created_at) AS running_sum
+FROM t1
+WHERE is_active = TRUE
+GROUP BY name, created_at
+HAVING COUNT(*) > 0;
+
+-- Create a trigger to test procedural functionality
+CREATE TRIGGER trg_after_insert AFTER INSERT ON t1
+BEGIN
+    UPDATE t2 SET value = 'triggered' WHERE key LIKE 'key%';
+END;

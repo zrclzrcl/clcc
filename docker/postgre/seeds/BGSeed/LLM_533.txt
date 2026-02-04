@@ -1,0 +1,120 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00),
+    ('Monitor', 300.00),
+    ('USB Drive', 15.00);
+
+CREATE INDEX idx_products_name ON products (name);
+
+SELECT * FROM products WHERE price > 50 ORDER BY price DESC LIMIT 3;
+
+UPDATE products SET price = price * 1.1 WHERE price < 100;
+
+DELETE FROM products WHERE name = 'USB Drive';
+
+SELECT AVG(price), SUM(price), COUNT(*) FROM products;
+
+SELECT name, price FROM products WHERE name LIKE 'M%' OR name LIKE '%r';
+
+-- Using window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Using common table expression (CTE)
+WITH ExpensiveProducts AS (
+    SELECT id, name, price
+    FROM products
+    WHERE price > 200
+)
+SELECT * FROM ExpensiveProducts ORDER BY price;
+
+-- Using generate_series
+SELECT generate_series(1, 5);
+
+-- Using string functions
+SELECT name, UPPER(name), LOWER(name), LENGTH(name) FROM products;
+
+-- Using date/time functions (if a date column existed) - dummy example with current_timestamp
+SELECT current_timestamp, date_trunc('day', current_timestamp);
+
+-- PL/pgSQL function example
+CREATE OR REPLACE FUNCTION get_product_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM products);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_product_count();
+
+-- Advisory Lock Example
+SELECT pg_advisory_lock(12345);
+SELECT pg_advisory_unlock(12345);
+
+-- Materialized view example
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT name, price FROM products WHERE price > 100;
+REFRESH MATERIALIZED VIEW product_summary;
+SELECT * FROM product_summary;
+DROP MATERIALIZED VIEW product_summary;
+
+-- Check constraint example
+ALTER TABLE products ADD CONSTRAINT positive_price CHECK (price > 0);
+
+-- Foreign key constraint example (create a categories table first)
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(255) NOT NULL
+);
+INSERT INTO categories (category_name) VALUES ('Electronics'), ('Accessories');
+
+ALTER TABLE products ADD COLUMN category_id INTEGER;
+ALTER TABLE products ADD CONSTRAINT fk_category_id FOREIGN KEY (category_id) REFERENCES categories(category_id);
+UPDATE products SET category_id = 1 WHERE id IN (1, 4);
+UPDATE products SET category_id = 2 WHERE id IN (2, 3);
+
+-- Recursive CTE example
+WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 5
+)
+SELECT * FROM numbers;
+
+-- Create a temporary table
+CREATE TEMP TABLE temp_products AS SELECT * FROM products;
+SELECT * FROM temp_products;
+DROP TABLE temp_products;
+
+-- Table inheritance (create a discounted_products table inheriting from products)
+CREATE TABLE discounted_products (
+    discount DECIMAL(5, 2)
+) INHERITS (products);
+
+INSERT INTO discounted_products (name, price, discount, category_id) VALUES ('Discounted Laptop', 1000.00, 0.1, 1);
+SELECT * FROM products WHERE name LIKE '%Discounted%';
+
+DROP TABLE discounted_products;
+
+-- Json functions
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"color": "black", "weight": "2kg"}'::jsonb WHERE id = 1;
+SELECT name, details -> 'color' FROM products WHERE id = 1;
+
+-- Array functions
+ALTER TABLE products ADD COLUMN tags TEXT[];
+UPDATE products SET tags = ARRAY['new', 'featured'] WHERE id = 1;
+SELECT name, tags[1] FROM products WHERE id = 1;
+
+DROP TABLE products;
+DROP TABLE categories;

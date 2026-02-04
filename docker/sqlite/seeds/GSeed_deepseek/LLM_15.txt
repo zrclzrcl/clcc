@@ -1,0 +1,51 @@
+-- Create table t2 first to avoid foreign key issues in t1
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- Insert data into t2
+INSERT INTO t2 VALUES (1, 'Alice');
+INSERT INTO t2 VALUES (2, 'Bob');
+INSERT INTO t2 VALUES (3, 'Charlie');
+
+-- Create table t1 with foreign key referencing t2
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value NUMERIC,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data BLOB,
+    fkey INTEGER REFERENCES t2(id)
+);
+
+-- Insert data into t1, referencing valid entries in t2
+INSERT INTO t1 (name, value, data, fkey) VALUES ('Item 1', 100.5, 'dGVzdA==', 1);
+INSERT INTO t1 (name, value, data, fkey) VALUES ('Item 2', 200.3, 'aGVsbG8=', 2);
+INSERT INTO t1 (name, value, data, fkey) VALUES ('Item 3', 150.7, 'cGFzcw==', 3);
+INSERT INTO t1 (name, value, data, fkey) VALUES ('Item 4', 300.0, 'YWJjZA==', NULL); -- Nullable foreign key
+INSERT INTO t1 (name, value, data, fkey) VALUES ('Item 5', 250.2, 'dXNlcg==', 1);
+
+-- Rename a column in t1 to test ALTER TABLE RENAME COLUMN
+ALTER TABLE t1 RENAME COLUMN name TO item_name;
+
+-- Create a unique index on item_name to enforce uniqueness
+CREATE UNIQUE INDEX idx_unique_item_name ON t1(item_name);
+
+-- Use CTE to calculate running total of values
+WITH cte_running_total AS (
+    SELECT 
+        id, 
+        value,
+        SUM(value) OVER (ORDER BY id) as running_total
+    FROM t1
+)
+SELECT * FROM cte_running_total;
+
+-- Use window function to rank items by their value in descending order
+SELECT 
+    id, 
+    item_name, 
+    value,
+    RANK() OVER (ORDER BY value DESC) as value_rank
+FROM t1;

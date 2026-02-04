@@ -1,0 +1,65 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+CREATE UNLOGGED TABLE public.test_table (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    value NUMERIC(10, 2),
+    data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE public.another_table (
+    test_table_id BIGINT REFERENCES public.test_table(id),
+    extra_data TEXT
+);
+
+INSERT INTO public.test_table (name, description, value, data) VALUES
+('Item 1', 'Description for item 1', 123.45, '{"key": "value1"}'),
+('Item 2', 'Description for item 2', 67.89, '{"key": "value2"}');
+
+INSERT INTO public.another_table (test_table_id, extra_data)
+SELECT id, 'Extra data for id ' || id FROM public.test_table;
+
+CREATE INDEX ON public.test_table (name);
+
+CREATE FUNCTION public.add(a INTEGER, b INTEGER) RETURNS INTEGER
+    AS $$
+    BEGIN
+        RETURN a + b;
+    END;
+    $$ LANGUAGE plpgsql;
+
+SELECT public.add(5, 10);
+
+CREATE VIEW public.test_view AS
+SELECT t.name, a.extra_data
+FROM public.test_table t
+JOIN public.another_table a ON t.id = a.test_table_id;
+
+SELECT * FROM public.test_view;
+
+SELECT name, description FROM public.test_table WHERE data @@ 'value1';
+
+WITH RankedItems AS (
+    SELECT
+        name,
+        value,
+        RANK() OVER (ORDER BY value DESC) as rank_num
+    FROM public.test_table
+)
+SELECT name, value, rank_num FROM RankedItems WHERE rank_num <= 3;
+
+ALTER TABLE public.test_table ADD COLUMN search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', name || ' ' || description)) STORED;
+CREATE INDEX test_table_search_idx ON public.test_table USING GIN (search_vector);
+SELECT * FROM public.test_table WHERE search_vector @@ to_tsquery('english', 'item & description');
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+SELECT * FROM person;
+
+GRANT SELECT ON public.test_table TO public;
+REVOKE ALL PRIVILEGES ON public.another_table FROM public;

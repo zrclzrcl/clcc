@@ -1,0 +1,65 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books') DEFAULT 'Electronics',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD.', 1299.99, 'Electronics'),
+('T-Shirt', 'Comfortable cotton t-shirt.', 19.99, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker with programmable timer.', 79.99, 'Home Goods'),
+('The Lord of the Rings', 'A classic fantasy novel.', 29.99, 'Books'),
+('Smartphone', 'Latest smartphone with 5G connectivity.', 999.99, 'Electronics');
+
+CREATE INDEX idx_products_name ON products (name);
+CREATE FULLTEXT INDEX idx_products_description ON products (description);
+
+-- Test edge cases and boundary conditions
+INSERT INTO products (name, price) VALUES ('', 0.01);
+INSERT INTO products (name, price) VALUES ('Very Long Product Name - ' || REPEAT('A', 250), 99999999.99);
+
+-- Stored procedure example (MySQL specific)
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN cat VARCHAR(255))
+BEGIN
+    SELECT * FROM products WHERE category = cat;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Electronics');
+
+-- Trigger example (MySQL specific)
+CREATE TABLE product_audit (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    old_price DECIMAL(10, 2),
+    new_price DECIMAL(10, 2),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER product_price_update
+BEFORE UPDATE
+ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price <> OLD.price THEN
+        INSERT INTO product_audit (product_id, old_price, new_price)
+        VALUES (OLD.id, OLD.price, NEW.price);
+    END IF;
+END;//
+DELIMITER ;
+
+UPDATE products SET price = 1399.99 WHERE name = 'Laptop';
+
+-- Example using JSON functions (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = JSON_OBJECT('color', 'silver', 'weight', '2.5kg') WHERE name = 'Laptop';
+SELECT name, details->>'$.color' AS color FROM products WHERE name = 'Laptop';
+
+-- Example using window functions (MySQL 8.0+)
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;

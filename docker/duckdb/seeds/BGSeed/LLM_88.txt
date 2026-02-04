@@ -1,0 +1,11 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE TABLE strings AS SELECT CAST(i AS VARCHAR) AS s FROM range(10);
+CREATE VIEW v1 AS SELECT * FROM integers WHERE i % 2 = 0;
+INSERT INTO integers VALUES (NULL);
+SELECT typeof(NULL);
+SELECT list_value(1, 2, 3);
+SELECT struct_pack(a := 1, b := 'hello');
+SELECT * FROM integers ORDER BY i DESC NULLS LAST;
+SELECT * FROM integers UNION ALL SELECT * FROM integers;
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY i) FROM integers;
+SELECT value FROM duckdb_settings() WHERE name = 'threads';

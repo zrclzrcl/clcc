@@ -1,0 +1,161 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000.00, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie Brown', 'Engineering', 90000.00, '2020-11-01');
+
+SELECT * FROM employees;
+
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = 65000.00 WHERE name = 'Alice Smith';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT department, MAX(salary) FROM employees GROUP BY department;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+CREATE INDEX idx_department ON employees (department);
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT name, email FROM employees;
+
+SELECT generate_series(1, 10);
+
+SELECT md5('test');
+
+SELECT clock_timestamp();
+
+SELECT current_database();
+
+SELECT inet_client_addr();
+
+SELECT inet_server_addr();
+
+CREATE OR REPLACE FUNCTION greet(name text)
+RETURNS text AS $$
+BEGIN
+  RETURN 'Hello, ' || name || '!';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT greet('World');
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+GRANT SELECT ON employees TO public;
+
+REVOKE SELECT ON employees FROM public;
+
+PREPARE my_query (int) AS
+SELECT name FROM employees WHERE id = $1;
+
+EXECUTE my_query(1);
+
+DEALLOCATE my_query;
+
+SELECT version();
+
+SHOW server_version;
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Sales';
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Using Common Table Expressions (CTEs)
+WITH high_earners AS (
+    SELECT name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT name FROM high_earners;
+
+-- Create a temporary table
+CREATE TEMP TABLE temp_employees AS
+SELECT * FROM employees WHERE salary > 50000;
+
+SELECT * FROM temp_employees;
+
+DROP TABLE temp_employees;
+
+-- Using arrays
+ALTER TABLE employees ADD COLUMN phone_numbers TEXT[];
+UPDATE employees SET phone_numbers = ARRAY['123-456-7890', '098-765-4321'] WHERE name = 'Alice Smith';
+SELECT name, phone_numbers[1] FROM employees WHERE name = 'Alice Smith';
+
+-- Try jsonb
+ALTER TABLE employees ADD COLUMN details jsonb;
+UPDATE employees SET details = '{"age": 30, "city": "New York"}'::jsonb WHERE name = 'Alice Smith';
+SELECT name, details ->> 'city' FROM employees WHERE name = 'Alice Smith';
+
+-- Try ranged datatypes
+CREATE TABLE availability (
+    name text,
+    schedule tsrange
+);
+
+INSERT INTO availability (name, schedule) VALUES ('John', '[2024-01-01 08:00, 2024-01-01 17:00]');
+
+SELECT * FROM availability WHERE schedule @> timestamp '2024-01-01 12:00';
+
+-- Using foreign data wrapper (requires setup) - Skip since setup is required.
+-- CREATE EXTENSION postgres_fdw;
+-- CREATE SERVER remote_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host 'remote_host', dbname 'remote_db', port '5432');
+-- CREATE USER MAPPING FOR current_user SERVER remote_server OPTIONS (user 'remote_user', password 'remote_password');
+-- CREATE FOREIGN TABLE remote_table (id integer, name text) SERVER remote_server OPTIONS (schema_name 'public', table_name 'some_table');
+-- SELECT * FROM remote_table;
+
+-- Try Lateral Join
+SELECT e.name, d.name AS department_name
+FROM employees e
+LEFT JOIN LATERAL (SELECT name FROM departments WHERE id = 1) d ON TRUE;
+
+-- Try Recursive CTE
+WITH RECURSIVE employee_hierarchy AS (
+  SELECT id, name, department, 0 AS level
+  FROM employees
+  WHERE department = 'Engineering'
+  UNION ALL
+  SELECT e.id, e.name, e.department, eh.level + 1
+  FROM employees e
+  INNER JOIN employee_hierarchy eh ON e.department = eh.department
+  WHERE eh.level < 3
+)
+SELECT * FROM employee_hierarchy;

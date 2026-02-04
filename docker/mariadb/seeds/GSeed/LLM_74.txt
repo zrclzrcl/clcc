@@ -1,0 +1,78 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET auto_increment_increment=1;
+
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(100) NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `username_UNIQUE` (`username` ASC)
+) ENGINE=InnoDB;
+
+INSERT INTO `users` (`username`, `password`, `email`) VALUES ('testuser', '$2y$10$ROVHWx6i0kHJL0wHqj3i2u69K0g2b9Lq59b6g18c2wX2wN.63dFda', 'test@example.com');
+INSERT INTO `users` (`username`, `password`, `email`) VALUES ('adminuser', '$2y$10$ROVHWx6i0kHJL0wHqj3i2u69K0g2b9Lq59b6g18c2wX2wN.63dFda', 'admin@example.com');
+
+CREATE TABLE IF NOT EXISTS `products` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  `description` TEXT NULL,
+  `price` DECIMAL(10,2) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `products` (`name`, `description`, `price`) VALUES ('Awesome Widget', 'A truly awesome widget for all your widgeting needs.', 19.99);
+INSERT INTO `products` (`name`, `description`, `price`) VALUES ('Another Widget', 'Just another widget.', 9.99);
+
+-- Test JSON functionality
+UPDATE products SET description = JSON_SET(description, '$.features', JSON_ARRAY('Feature 1', 'Feature 2')) WHERE id = 1;
+
+-- Test Spatial Data
+CREATE TABLE `spatial_data` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) DEFAULT NULL,
+  `location` point DEFAULT NULL,
+  SPATIAL INDEX(location),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO `spatial_data` (`name`, `location`) VALUES ('Point A', ST_GeomFromText('POINT(10 10)'));
+
+SELECT ST_Distance_Sphere(POINT(10, 10), POINT(20,20));
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE GetUserCount()
+BEGIN
+  SELECT COUNT(*) FROM users;
+END //
+DELIMITER ;
+
+CALL GetUserCount();
+
+-- Test triggers
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    record_id INT,
+    action VARCHAR(50),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER users_after_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, record_id, action)
+    VALUES ('users', NEW.id, 'insert');
+END//
+DELIMITER ;
+
+INSERT INTO users (username, password) VALUES ('triggeruser', 'password');
+
+SET sql_mode=@old_sql_mode;
+SET auto_increment_increment=@auto_increment_increment;

@@ -1,0 +1,24 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3);
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c');
+SELECT i, s FROM integers, strings WHERE i = length(s); -- Join with type conversion
+CREATE VIEW int_view AS SELECT i * 2 AS doubled FROM integers;
+SELECT * FROM int_view;
+
+CREATE TABLE test_interval (start DATE, duration INTERVAL);
+INSERT INTO test_interval VALUES ('2023-01-01', '1 day'), ('2023-01-05', '1 week');
+SELECT start + duration FROM test_interval; -- Interval arithmetic
+
+CREATE TABLE blobs (b BLOB);
+INSERT INTO blobs VALUES (decode('AQID', 'base64')); -- Insert a base64 encoded blob
+SELECT length(b) FROM blobs;
+
+-- DuckDB specific JSON functionality
+CREATE TABLE json_table (j JSON);
+INSERT INTO json_table VALUES ('{"a": 1, "b": "hello"}');
+SELECT j['a'] FROM json_table;
+
+--Trying out some expressions
+SELECT CASE WHEN 1=1 THEN 'true' ELSE 'false' END;
+SELECT LIST(i) FROM integers;

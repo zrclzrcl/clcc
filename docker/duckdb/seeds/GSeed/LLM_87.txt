@@ -1,0 +1,58 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('foo'), ('bar'), ('baz');
+
+-- Test window functions with different partitions and orders.
+SELECT i, ROW_NUMBER() OVER (ORDER BY i), SUM(i) OVER (PARTITION BY i % 2 ORDER BY i) FROM integers;
+
+-- Test string functions
+SELECT s, UPPER(s), SUBSTRING(s, 2, 2) FROM strings;
+
+-- Test date functions. DuckDB has good date support.
+SELECT CURRENT_DATE, DATE_TRUNC('month', CURRENT_DATE), DATE_DIFF('day', '2023-01-01', CURRENT_DATE);
+
+-- Test aggregate functions with filter clause (DuckDB specific)
+SELECT SUM(i) FILTER (WHERE i > 2) FROM integers;
+
+-- Test UNNEST with range. DuckDB supports unnesting ranges
+SELECT * FROM UNNEST(range(1, 5));
+
+-- Test LIST aggregate function (DuckDB specific)
+SELECT list(i) FROM integers;
+
+-- Test STRUCT creation and access (DuckDB specific)
+SELECT STRUCT_PACK(a := 1, b := 'hello');
+SELECT (STRUCT_PACK(a := 1, b := 'hello')).a;
+
+-- Test JSON functions
+SELECT JSON('{"a": 1, "b": "hello"}');
+SELECT JSON_EXTRACT_SCALAR('{"a": 1, "b": "hello"}', '$.a');
+
+-- Test union all with different data types
+SELECT i FROM integers UNION ALL SELECT 1.0;
+
+-- Test case when
+SELECT CASE WHEN i > 3 THEN 'large' ELSE 'small' END FROM integers;
+
+-- Test try_cast
+SELECT TRY_CAST('abc' AS INTEGER);
+
+-- Test percentile_cont (DuckDB specific)
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY i) FROM integers;
+
+-- Test grouping sets
+SELECT i % 2, SUM(i) FROM integers GROUP BY GROUPING SETS ((i % 2), ());
+
+-- Test correlated subquery
+SELECT * FROM integers i1 WHERE EXISTS (SELECT 1 FROM integers i2 WHERE i2.i = i1.i + 1);
+
+-- Test table-valued function (DuckDB specific)
+SELECT * FROM range(5);
+
+-- Test string concatenation
+SELECT 'prefix-' || s FROM strings;
+
+-- Test list value
+SELECT [1, 2, 3];

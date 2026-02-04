@@ -1,0 +1,39 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE UNLOGGED TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    email CITEXT,
+    data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO fuzz_test_table (name, email, data)
+VALUES
+    ('Alice', 'alice@example.com', '{"age": 30, "city": "New York"}'),
+    ('Bob', 'bob@example.org', '{"age": 25, "city": "London"}'),
+    ('Charlie', 'charlie@test.net', '{"age": 40, "city": "Paris"}');
+
+CREATE INDEX idx_fuzz_test_name ON fuzz_test_table (name);
+CREATE INDEX idx_fuzz_test_email ON fuzz_test_table (email);
+CREATE INDEX idx_fuzz_test_data ON fuzz_test_table USING gin (data);
+
+SELECT * FROM fuzz_test_table WHERE name = 'Alice';
+SELECT * FROM fuzz_test_table WHERE email LIKE '%@example.%';
+SELECT * FROM fuzz_test_table WHERE data ->> 'city' = 'London';
+
+UPDATE fuzz_test_table SET name = 'Updated Name' WHERE id = 1;
+
+DELETE FROM fuzz_test_table WHERE id = 3;
+
+SELECT jsonb_agg(data) FROM fuzz_test_table;
+
+-- Usage of WITH ORDINALITY
+SELECT id, name, ordinality FROM fuzz_test_table, UNNEST(string_to_array(name, ' ')) WITH ORDINALITY;
+
+-- Test some edge cases with large strings/JSON
+INSERT INTO fuzz_test_table (name, data) VALUES (repeat('A', 100000), repeat('{"key": "value"}', 100));
+SELECT length(name) FROM fuzz_test_table WHERE name LIKE 'A%';
+
+DROP TABLE fuzz_test_table;
+DROP EXTENSION citext;

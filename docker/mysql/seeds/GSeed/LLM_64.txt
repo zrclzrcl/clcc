@@ -1,0 +1,71 @@
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Create a simple table with various data types
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100),
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    age TINYINT UNSIGNED,
+    is_active BOOLEAN DEFAULT TRUE,
+    balance DECIMAL(10, 2)
+);
+
+-- Insert some initial data
+INSERT INTO users (username, email, age, balance) VALUES
+('testuser1', 'test1@example.com', 25, 100.50),
+('testuser2', 'test2@example.com', 30, 250.75),
+('testuser3', 'test3@example.com', 40, 500.00);
+
+-- Test some ALTER TABLE operations
+ALTER TABLE users ADD COLUMN last_login DATETIME;
+ALTER TABLE users MODIFY COLUMN email VARCHAR(150);
+ALTER TABLE users ADD INDEX idx_username (username);
+
+-- Test some UPDATE operations
+UPDATE users SET balance = balance * 1.1 WHERE age > 30;
+
+-- Test some DELETE operations with different conditions
+DELETE FROM users WHERE is_active = FALSE;
+DELETE FROM users WHERE id = (SELECT id FROM users ORDER BY age DESC LIMIT 1);
+
+-- Create a table with a FULLTEXT index (MySQL specific)
+CREATE TABLE IF NOT EXISTS articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255),
+    content TEXT,
+    FULLTEXT (title, content)
+);
+
+-- Insert some articles
+INSERT INTO articles (title, content) VALUES
+('MySQL Fuzzing', 'This article discusses database fuzzing techniques for MySQL.'),
+('Database Security', 'Learn about common database security vulnerabilities and how to prevent them.');
+
+-- Test a SELECT query using MATCH AGAINST (MySQL specific FULLTEXT search)
+SELECT * FROM articles WHERE MATCH (title, content) AGAINST ('fuzzing' IN NATURAL LANGUAGE MODE);
+
+-- Create a table with JSON column (MySQL 5.7+ feature)
+CREATE TABLE IF NOT EXISTS settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    preferences JSON
+);
+
+-- Insert a record with JSON data
+INSERT INTO settings (user_id, preferences) VALUES (1, '{"theme": "dark", "notifications": true}');
+
+-- Test JSON_EXTRACT function
+SELECT JSON_EXTRACT(preferences, '$.theme') FROM settings WHERE user_id = 1;
+
+-- Test Stored Procedure creation
+DELIMITER //
+CREATE PROCEDURE GetUserBalance(IN user_id INT, OUT balance DECIMAL(10, 2))
+BEGIN
+    SELECT balance INTO balance FROM users WHERE id = user_id;
+END //
+DELIMITER ;
+
+CALL GetUserBalance(1, @balance);
+SELECT @balance;

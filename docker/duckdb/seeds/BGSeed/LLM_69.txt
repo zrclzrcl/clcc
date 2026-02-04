@@ -1,0 +1,27 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL), ('');
+
+-- DuckDB-specific feature: APPROXIMATE AGGREGATES
+SELECT approx_count_distinct(i) FROM integers;
+SELECT approx_quantile(i, 0.5) FROM integers;
+
+-- DuckDB-specific feature: UUID Generation and Usage
+CREATE TABLE uuids (id UUID);
+INSERT INTO uuids VALUES (uuid()), (uuid()), (NULL);
+SELECT id FROM uuids WHERE id IS NOT NULL;
+
+-- Standard SQL, but exercises different data types and WHERE clauses
+SELECT i FROM integers WHERE i > 1 AND i < 3;
+SELECT s FROM strings WHERE s LIKE 'a%';
+
+-- DuckDB-specific feature: LIST type usage.
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES ([1, 2, 3]), ([4, 5, NULL]), (NULL), ([]);
+SELECT list_sum(l) FROM lists;
+
+-- Test NULL handling in various scenarios
+SELECT i FROM integers WHERE i IS NULL;
+SELECT s FROM strings WHERE s IS NOT NULL AND s = '';

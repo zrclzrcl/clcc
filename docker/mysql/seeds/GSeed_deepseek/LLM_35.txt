@@ -1,0 +1,48 @@
+-- Step 1: Set optimizer parameters to enable specific features
+SET optimizer_switch='index_merge=on,loose_scan=on';
+
+-- Step 2: Create table t1 with various column types and constraints
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Step 3: Insert sample data into t1
+INSERT INTO t1 (name, description, status)
+VALUES
+    ('Test1', 'Description for Test1', 'active'),
+    ('Test2', NULL, 'inactive'),
+    ('Test3', 'Another test entry', 'active');
+
+-- Step 4: Create table t2 with a foreign key referencing t1
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    data BLOB,
+    FOREIGN KEY (t1_id) REFERENCES t1(id) ON DELETE CASCADE
+);
+
+-- Step 5: Insert related data into t2
+INSERT INTO t2 (t1_id, data)
+VALUES
+    (1, BINARY 'some binary data'),
+    (2, BINARY 'more binary data');
+
+-- Step 6: Update a record in t1
+UPDATE t1 SET status = 'inactive' WHERE name = 'Test1';
+
+-- Step 7: Delete a record from t1 and observe cascading delete
+DELETE FROM t1 WHERE id = 3;
+
+-- Step 8: Analyze tables to update statistics
+ANALYZE TABLE t1, t2;
+
+-- Step 9: Optimize table structure for better performance
+OPTIMIZE TABLE t1;
+
+-- Step 10: Show the CREATE TABLE statements for metadata verification
+SHOW CREATE TABLE t1;
+SHOW CREATE TABLE t2;

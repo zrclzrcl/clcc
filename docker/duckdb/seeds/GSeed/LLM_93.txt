@@ -1,0 +1,51 @@
+DROP TABLE IF EXISTS integers;
+DROP TABLE IF EXISTS strings;
+DROP TABLE IF EXISTS dates;
+
+CREATE TABLE integers (
+  id INTEGER PRIMARY KEY,
+  value INTEGER
+);
+
+CREATE TABLE strings (
+  id INTEGER PRIMARY KEY,
+  text VARCHAR
+);
+
+CREATE TABLE dates (
+  id INTEGER PRIMARY KEY,
+  date_val DATE
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+INSERT INTO integers (id, value) VALUES (3, NULL);
+
+INSERT INTO strings (id, text) VALUES (1, 'hello');
+INSERT INTO strings (id, text) VALUES (2, 'world');
+INSERT INTO strings (id, text) VALUES (3, '');
+
+INSERT INTO dates (id, date_val) VALUES (1, '2023-01-01');
+INSERT INTO dates (id, date_val) VALUES (2, '2023-01-15');
+INSERT INTO dates (id, date_val) VALUES (3, NULL);
+
+SELECT * FROM integers WHERE value > 15;
+SELECT text, LENGTH(text) FROM strings WHERE id = 1;
+SELECT date_val FROM dates WHERE date_val BETWEEN '2023-01-01' AND '2023-01-10';
+
+-- DuckDB Specific - Approx Quantile
+SELECT approx_quantile(value, 0.5) FROM integers;
+
+-- DuckDB Specific - Generate Series
+SELECT * FROM generate_series(1, 5);
+
+-- Try some more complex queries
+SELECT i.value, s.text
+FROM integers i
+LEFT JOIN strings s ON i.id = s.id
+WHERE i.value IS NOT NULL
+ORDER BY i.value DESC;
+
+SELECT date_trunc('month', date_val), COUNT(*)
+FROM dates
+GROUP BY 1;

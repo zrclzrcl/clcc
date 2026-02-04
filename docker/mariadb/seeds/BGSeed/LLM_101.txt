@@ -1,0 +1,99 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test basic CREATE, INSERT, and SELECT
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    department VARCHAR(255),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000.00),
+('Bob', 'Marketing', 60000.00),
+('Charlie', 'Sales', 55000.00),
+('David', 'Engineering', 70000.00);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+-- Test JOIN operations
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+SELECT employees.name, employees.salary, departments.location
+FROM employees
+INNER JOIN departments ON employees.department = departments.name;
+
+-- Test GROUP BY and aggregate functions
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+-- Test ORDER BY and LIMIT
+SELECT * FROM employees ORDER BY salary DESC LIMIT 2;
+
+-- Test subqueries
+SELECT name, salary
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees WHERE department = 'Sales');
+
+-- Test UNION
+CREATE TABLE temp_employees (name VARCHAR(255), salary DECIMAL(10, 2));
+INSERT INTO temp_employees VALUES ('Eve', 80000.00);
+SELECT name, salary FROM employees WHERE salary > 60000 UNION SELECT name, salary FROM temp_employees;
+
+-- Test VIEW
+CREATE VIEW high_earners AS SELECT name, salary FROM employees WHERE salary > 65000;
+SELECT * FROM high_earners;
+
+-- Test stored procedure (MariaDB specific)
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment (IN dept_name VARCHAR(255))
+BEGIN
+    SELECT * FROM employees WHERE department = dept_name;
+END //
+DELIMITER ;
+CALL GetEmployeesByDepartment('Marketing');
+
+-- Test functions (MariaDB specific)
+CREATE FUNCTION calculate_bonus(salary DECIMAL(10, 2), bonus_percentage DECIMAL(5,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+RETURN salary * bonus_percentage / 100;
+
+SELECT name, salary, calculate_bonus(salary, 10.0) AS bonus FROM employees;
+
+-- Test index
+CREATE INDEX idx_department ON employees (department);
+EXPLAIN SELECT * FROM employees WHERE department = 'Engineering';
+
+-- Test stored procedure with output parameter
+DELIMITER //
+CREATE PROCEDURE GetMaxSalary(OUT max_sal DECIMAL(10,2))
+BEGIN
+    SELECT MAX(salary) INTO max_sal FROM employees;
+END //
+DELIMITER ;
+
+CALL GetMaxSalary(@max_salary);
+SELECT @max_salary;
+
+-- Test Window Functions (MariaDB specific)
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Test JSON functions (MariaDB specific)
+CREATE TABLE json_data (id INT PRIMARY KEY AUTO_INCREMENT, data JSON);
+INSERT INTO json_data (data) VALUES ('{"name": "John", "age": 30}');
+SELECT data->'$.name' FROM json_data;
+
+-- Reset sql_mode
+SET sql_mode=@old_sql_mode;

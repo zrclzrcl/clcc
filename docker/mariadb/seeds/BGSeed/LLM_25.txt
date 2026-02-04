@@ -1,0 +1,34 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Books', 'Home')
+);
+
+-- Insert some initial data, including edge cases like very long names and high prices
+INSERT INTO products (name, description, price, category) VALUES
+('Super Long Product Name to Test Limits of VARCHAR', 'A very detailed description', 9999.99, 'Electronics'),
+('Basic T-Shirt', 'A simple cotton t-shirt', 19.99, 'Clothing'),
+('Database Fuzzing: A Practical Guide', 'Learn how to fuzz databases effectively.', 49.95, 'Books'),
+('Cozy Blanket', 'A warm and comfortable blanket', 75.00, 'Home');
+
+-- Test ENUM functionality with a query.  Also try a negative price filter
+SELECT name, price, category FROM products WHERE category = 'Electronics' OR price < 0;
+
+-- Use MariaDB specific feature: window function to calculate the average price
+SELECT name, price, AVG(price) OVER () AS average_price FROM products;
+
+-- Test FULLTEXT index and search - MariaDB specific
+ALTER TABLE products ADD FULLTEXT INDEX idx_name_description (name, description);
+SELECT name, description FROM products WHERE MATCH (name, description) AGAINST ('database fuzzing' IN NATURAL LANGUAGE MODE);
+
+-- Test JSON functionality in MariaDB (add a JSON column)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = JSON_OBJECT('color', 'red', 'size', 'M') WHERE name = 'Basic T-Shirt';
+SELECT name, details->'$.color' AS color FROM products WHERE name = 'Basic T-Shirt';
+
+-- Test GIS functionality (add a point column for location). This requires spatial functions which might need enabling.
+ALTER TABLE products ADD COLUMN location POINT;
+UPDATE products SET location = ST_GeomFromText('POINT(12.34 56.78)') WHERE name = 'Cozy Blanket';
+SELECT name, ST_AsText(location) AS location_text FROM products WHERE name = 'Cozy Blanket';

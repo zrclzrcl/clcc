@@ -1,0 +1,240 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id),
+    order_date TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() at time zone 'utc'),
+    total_amount DECIMAL(12, 2)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.50),
+('Smartphone', 'Latest model smartphone with advanced features', 999.99),
+('Tablet', 'Lightweight tablet for on-the-go use', 350.00),
+('Monitor', '27-inch curved monitor for immersive experience', 450.75),
+('Keyboard', 'Ergonomic keyboard for comfortable typing', 75.20);
+
+INSERT INTO customers (first_name, last_name, email, phone_number) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210'),
+('Robert', 'Jones', 'robert.jones@example.com', '555-123-4567'),
+('Emily', 'Brown', 'emily.brown@example.com', '111-222-3333');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1200.50),
+(2, 1349.99),
+(3, 425.20),
+(1, 1050.75);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.50),
+(2, 2, 1, 999.99),
+(2, 5, 1, 75.20),
+(3, 4, 1, 450.75),
+(4, 3, 3, 350.00);
+
+SELECT * FROM products WHERE price > 500;
+
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+
+DELETE FROM products WHERE id = 5;
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.last_name = 'Doe';
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+EXPLAIN SELECT * FROM products WHERE name LIKE 'L%';
+
+SELECT COUNT(*) FROM orders;
+
+SELECT AVG(price) FROM products;
+
+SELECT MAX(total_amount) FROM orders;
+
+SELECT product_id, SUM(quantity) AS total_quantity
+FROM order_items
+GROUP BY product_id
+ORDER BY total_quantity DESC;
+
+SELECT name, price FROM products
+UNION ALL
+SELECT first_name, id FROM customers;
+
+CREATE VIEW customer_orders AS
+SELECT c.first_name, c.last_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id;
+
+SELECT * FROM customer_orders WHERE last_name = 'Smith';
+
+CREATE OR REPLACE FUNCTION calculate_discount(price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, calculate_discount(price, 10) AS discounted_price FROM products;
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL,
+    department VARCHAR(255)
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+('Alice', 60000, 'Sales'),
+('Bob', 70000, 'Marketing'),
+('Charlie', 80000, 'Engineering');
+
+SELECT *
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);
+
+CREATE TEMP TABLE temp_products AS
+SELECT * FROM products WHERE price < 500;
+
+SELECT * FROM temp_products;
+
+DROP TABLE IF EXISTS products CASCADE;
+
+-- Testing JSON functionality
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "Product A", "price": 100.00}'),
+('{"name": "Product B", "price": 200.50, "details": {"color": "red", "size": "large"}}');
+
+SELECT data -> 'name' FROM json_test;
+SELECT data ->> 'name' FROM json_test;
+SELECT data #> '{details,color}' FROM json_test;
+SELECT data #>> '{details,color}' FROM json_test;
+
+-- Testing array functions
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES
+(ARRAY['tag1', 'tag2', 'tag3']),
+(ARRAY['tag4', 'tag5']);
+
+SELECT tags[1] FROM array_test;
+SELECT array_length(tags, 1) FROM array_test;
+SELECT * FROM array_test WHERE 'tag2' = ANY(tags);
+
+-- Testing window functions
+SELECT
+    name,
+    price,
+    AVG(price) OVER (ORDER BY price) AS running_average
+FROM products;
+
+-- Testing trigger
+CREATE OR REPLACE FUNCTION audit_product_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Product % changed: Old price = %, New price = %', NEW.id, OLD.price, NEW.price;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_update_trigger
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION audit_product_changes();
+
+UPDATE products SET price = 1300.00 WHERE id = 1;
+
+-- Testing CTE (Common Table Expression)
+WITH expensive_products AS (
+    SELECT id, name, price
+    FROM products
+    WHERE price > 500
+)
+SELECT * FROM expensive_products WHERE name LIKE '%Laptop%';
+
+-- Test materialized view
+CREATE MATERIALIZED VIEW materialized_customer_orders AS
+SELECT c.first_name, c.last_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id;
+
+REFRESH MATERIALIZED VIEW materialized_customer_orders;
+
+SELECT * FROM materialized_customer_orders;
+
+-- Test generated column
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL GENERATED ALWAYS AS (price * 0.9) STORED;
+
+SELECT name, price, discounted_price FROM products;
+
+-- Test foreign key on delete cascade
+ALTER TABLE orders DROP CONSTRAINT orders_customer_id_fkey;
+ALTER TABLE orders ADD CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE;
+
+DELETE FROM customers WHERE id = 4;
+
+-- Test foreign key on update cascade
+ALTER TABLE orders DROP CONSTRAINT orders_customer_id_fkey;
+ALTER TABLE orders ADD CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES customers(id) ON UPDATE CASCADE;
+
+UPDATE customers SET id = 100 WHERE id = 1;
+
+--Test pg_locks
+
+SELECT * FROM pg_locks WHERE locktype = 'relation' OR locktype = 'tuple';
+
+-- Test interval type
+CREATE TABLE interval_test (
+    id SERIAL PRIMARY KEY,
+    event_time TIMESTAMP WITHOUT TIME ZONE,
+    duration INTERVAL
+);
+
+INSERT INTO interval_test (event_time, duration) VALUES
+(NOW(), '1 hour'),
+(NOW(), '2 days 3 hours');
+
+SELECT event_time + duration FROM interval_test;
+
+-- Test range type
+CREATE TABLE int4range_test (
+    id SERIAL PRIMARY KEY,
+    range int4range
+);
+
+INSERT INTO int4range_test (range) VALUES
+(int4range(10, 20)),
+(int4range(30, 40, '[]'));
+
+SELECT lower(range), upper(range) FROM int4range_test;

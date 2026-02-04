@@ -1,0 +1,115 @@
+-- Initial seed for PostgreSQL 18 RC1
+
+-- Grant usage on public schema
+GRANT USAGE ON SCHEMA public TO PUBLIC;
+
+-- Create a table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+-- Create another table for departments
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+-- Add a foreign key constraint to the employees table
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments (id);
+
+-- Insert some data into the departments table
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+-- Insert some data into the employees table
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 60000.00, 1);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-11-01', 75000.00, 2);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 80000.00, 3);
+
+-- Select data from the employees table
+SELECT * FROM employees;
+
+-- Update an employee's salary
+UPDATE employees SET salary = 65000.00 WHERE id = 1;
+
+-- Delete an employee
+-- DELETE FROM employees WHERE id = 3;
+
+-- Create an index on the last_name column
+CREATE INDEX idx_employees_last_name ON employees (last_name);
+
+-- Use a built-in function
+SELECT COUNT(*) FROM employees WHERE salary > 70000;
+
+-- Create a view
+CREATE VIEW high_earners AS
+SELECT first_name, last_name, salary
+FROM employees
+WHERE salary > 70000;
+
+-- Select from the view
+SELECT * FROM high_earners;
+
+-- Add a JSONB column
+ALTER TABLE employees ADD COLUMN details JSONB;
+
+-- Insert some JSON data
+UPDATE employees SET details = '{"age": 30, "city": "New York"}'::jsonb WHERE id = 1;
+
+-- Query JSON data
+SELECT details ->> 'city' FROM employees WHERE id = 1;
+
+-- Using create extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Using some crypto function
+SELECT gen_random_uuid();
+
+-- Create a table with enum
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+-- Using generate series
+SELECT generate_series(1, 5);
+
+-- Create temporary table
+CREATE TEMP TABLE tmp_test (id int);
+INSERT INTO tmp_test VALUES (1);
+SELECT * FROM tmp_test;
+
+-- Create a table with check constraint
+CREATE TABLE products (
+  product_no integer,
+  name text,
+  price numeric CHECK (price > 0)
+);
+INSERT INTO products VALUES (1, 'Cheese', 9.99);
+
+-- Using like
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+-- Using array
+CREATE TABLE sal_emp (
+    name            text,
+    pay_by_quarter  integer[]
+);
+INSERT INTO sal_emp VALUES ('Carol', '{20000,25000,22000,27000}');
+SELECT name, pay_by_quarter[1] FROM sal_emp;

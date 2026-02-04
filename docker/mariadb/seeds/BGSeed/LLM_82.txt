@@ -1,0 +1,86 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test CREATE TABLE variations and data types
+CREATE TABLE test_table_1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    value INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSON NULL
+);
+
+CREATE TABLE test_table_2 (
+    id BIGINT UNSIGNED PRIMARY KEY,
+    description TEXT,
+    price DECIMAL(10, 2),
+    is_active BOOLEAN,
+    geom GEOMETRY SRID 4326
+);
+
+-- Test INSERT statements with different data types and functions
+INSERT INTO test_table_1 (name, value, data) VALUES
+('Item 1', 10, '{"key1": "value1", "key2": 123}'),
+('Item 2', 20, NULL),
+('Item 3', 30, JSON_OBJECT('key3', 'value3', 'key4', 456));
+
+INSERT INTO test_table_2 (id, description, price, is_active, geom) VALUES
+(1, 'A product description', 99.99, TRUE, ST_GeomFromText('POINT(10 20)', 4326)),
+(2, 'Another product', 149.50, FALSE, ST_GeomFromText('POINT(30 40)', 4326));
+
+-- Test UPDATE statements with expressions and functions
+UPDATE test_table_1 SET value = value * 2 WHERE id = 1;
+UPDATE test_table_2 SET price = price * 1.1 WHERE is_active = TRUE;
+
+-- Test SELECT statements with JOINs, WHERE clauses, GROUP BY, and ORDER BY
+SELECT t1.name, t2.price FROM test_table_1 t1 JOIN test_table_2 t2 ON t1.id = t2.id WHERE t1.value > 10 GROUP BY t1.name ORDER BY t2.price DESC;
+
+-- Test DELETE statement
+DELETE FROM test_table_1 WHERE value < 25;
+
+-- Test ALTER TABLE statements (adding/removing columns, changing data types)
+ALTER TABLE test_table_1 ADD COLUMN quantity INT DEFAULT 1;
+ALTER TABLE test_table_2 DROP COLUMN description;
+
+-- Test INDEX creation
+CREATE INDEX idx_name ON test_table_1 (name);
+
+-- Test Stored Procedure (MariaDB specific)
+DELIMITER //
+CREATE PROCEDURE increment_value(IN p_id INT, IN p_increment INT)
+BEGIN
+    UPDATE test_table_1 SET value = value + p_increment WHERE id = p_id;
+END //
+DELIMITER ;
+
+CALL increment_value(1, 5);
+
+-- Test View creation
+CREATE VIEW view_test AS SELECT id, name, value FROM test_table_1 WHERE value > 0;
+
+SELECT * FROM view_test;
+
+-- Test Function creation (MariaDB specific)
+DELIMITER //
+CREATE FUNCTION calculate_total(p_price DECIMAL(10, 2), p_quantity INT)
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    RETURN p_price * p_quantity;
+END //
+DELIMITER ;
+
+SELECT calculate_total(9.99, 5);
+
+-- Test ANALYZE TABLE and OPTIMIZE TABLE
+ANALYZE TABLE test_table_1;
+OPTIMIZE TABLE test_table_2;
+
+-- Cleanup (optional, but good practice)
+DROP PROCEDURE IF EXISTS increment_value;
+DROP FUNCTION IF EXISTS calculate_total;
+DROP VIEW IF EXISTS view_test;
+DROP TABLE IF EXISTS test_table_1;
+DROP TABLE IF EXISTS test_table_2;
+
+SET sql_mode=@old_sql_mode;

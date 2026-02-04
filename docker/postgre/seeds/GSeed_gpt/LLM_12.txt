@@ -1,0 +1,54 @@
+-- Create a table if it doesn't exist to ensure proper context for subsequent operations
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unique_field VARCHAR(50) UNIQUE
+);
+
+-- Test various NOTIFY and LISTEN scenarios including edge cases
+NOTIFY notify_test_channel;
+SELECT pg_notify('notify_test_channel', 'test message');
+SELECT pg_notify('notify_test_channel', '');
+SELECT pg_notify('notify_test_channel', NULL);
+SELECT pg_notify('', 'test message');
+SELECT pg_notify(NULL, 'test message');
+SELECT pg_notification_queue_usage();
+
+-- Test UUID functions with edge cases
+SELECT uuid_generate_v4();
+SELECT uuid_nil();
+SELECT uuid_generate_v1mc();
+
+-- Test JSONB operations including edge cases and complex queries
+INSERT INTO test_table (name, data) VALUES ('json_test', '{"key": "value"}');
+INSERT INTO test_table (data) VALUES ('null'::jsonb);
+UPDATE test_table SET data = data || '{"new_key": 42}' WHERE name = 'json_test';
+SELECT * FROM test_table WHERE data @> '{"key": "value"}';
+
+-- Test transaction management
+BEGIN;
+    INSERT INTO test_table (name) VALUES ('transaction_test');
+COMMIT;
+
+BEGIN;
+    INSERT INTO test_table (unique_field) VALUES (NULL);
+ROLLBACK;
+
+-- Test index creation and constraint checks
+CREATE INDEX IF NOT EXISTS idx_unique_field ON test_table(unique_field);
+INSERT INTO test_table (unique_field) VALUES ('duplicate_value');
+INSERT INTO test_table (unique_field) VALUES ('duplicate_value');
+
+-- Test Common Table Expressions (CTEs) with complex logic
+WITH cte AS (
+    SELECT id, name FROM test_table WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '1 day'
+)
+SELECT * FROM cte;
+
+-- Test window functions and advanced queries
+SELECT id, name, ROW_NUMBER() OVER (ORDER BY created_at) FROM test_table;
+
+-- Test vacuum to ensure database maintenance operations are covered
+VACUUM ANALYZE test_table;

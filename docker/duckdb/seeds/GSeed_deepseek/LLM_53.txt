@@ -1,0 +1,90 @@
+-- Create tables with various data types to test different scenarios
+CREATE TABLE test_table (
+    id INT,
+    name TEXT,
+    value FLOAT,
+    created_at DATE,
+    is_active BOOLEAN
+);
+
+-- Insert sample data with edge cases (e.g., NULL values)
+INSERT INTO test_table VALUES 
+(1, 'Alice', 100.5, '2023-01-01', TRUE),
+(2, 'Bob', NULL, '2023-01-02', FALSE),
+(3, NULL, 200.75, '2023-01-03', TRUE),
+(4, 'Charlie', 300.0, NULL, FALSE);
+
+-- Create indexes on different columns to test query optimization
+CREATE INDEX idx_id ON test_table(id);
+CREATE INDEX idx_name ON test_table(name);
+CREATE INDEX idx_value ON test_table(value);
+
+-- Test common table expressions (CTEs) which are a DuckDB feature
+WITH cte_test AS (
+    SELECT id, name, value,
+    ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+    FROM test_table
+)
+SELECT * FROM cte_test WHERE row_num <= 3;
+
+-- Test aggregate functions and GROUP BY
+SELECT 
+    MIN(id) as min_id,
+    MAX(value) as max_value,
+    COUNT(*) as total_rows,
+    AVG(value) as avg_value
+FROM test_table
+GROUP BY is_active;
+
+-- Test JOIN operations with another table
+CREATE TABLE test_table2 (
+    id INT,
+    name TEXT,
+    value FLOAT
+);
+
+INSERT INTO test_table2 VALUES 
+(1, 'Alice', 100.5),
+(2, 'Bob', 200.75),
+(3, 'Charlie', NULL);
+
+SELECT t1.id, t1.name, t2.value
+FROM test_table t1
+INNER JOIN test_table2 t2 ON t1.id = t2.id;
+
+-- Test UNION operation
+(SELECT id FROM test_table WHERE value > 150)
+UNION
+(SELECT id FROM test_table2 WHERE value > 150);
+
+-- Test transaction support (DuckDB's feature)
+BEGIN TRANSACTION;
+INSERT INTO test_table VALUES (5, 'David', 400.0, '2023-01-04', TRUE);
+COMMIT;
+
+-- Test DML operations
+UPDATE test_table SET value = 150.0 WHERE id = 1;
+DELETE FROM test_table WHERE value > 200;
+
+-- Test ALTER TABLE (schema modification)
+ALTER TABLE test_table ADD COLUMN new_column TEXT DEFAULT 'test';
+INSERT INTO test_table (id, name, value, created_at, is_active, new_column) 
+VALUES (6, 'Eve', NULL, '2023-01-05', TRUE, 'test_value');
+
+-- Test subqueries
+SELECT id FROM test_table WHERE value > (SELECT AVG(value) FROM test_table);
+
+-- Test DISTINCT and ORDER BY on expressions
+SELECT DISTINCT CONCAT(name, '_', id) as combined_id 
+FROM test_table 
+ORDER BY created_at DESC;
+
+-- Test LIMIT and OFFSET
+SELECT * FROM test_table LIMIT 5 OFFSET 2;
+
+-- Test CAST operation for type conversion
+SELECT CAST('123' AS INT) as casted_value;
+
+-- Clean up (optional)
+DROP TABLE test_table;
+DROP TABLE test_table2;

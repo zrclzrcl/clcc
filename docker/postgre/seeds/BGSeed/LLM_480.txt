@@ -1,0 +1,89 @@
+CREATE UNLOGGED TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"key1": "value1", "key2": 100}'),
+('Bob', 20, '{"key1": "value2", "key2": 200}'),
+('Charlie', 30, '{"key1": "value3", "key2": 300}'),
+('David', 40, '{"key1": "value4", "key2": 400}'),
+('Eve', 50, '{"key1": "value5", "key2": 500}');
+
+SELECT * FROM test_table WHERE value > 25;
+
+SELECT name, value FROM test_table ORDER BY value DESC LIMIT 3;
+
+SELECT data ->> 'key1' AS key1_value FROM test_table WHERE data ->> 'key2' = '200';
+
+UPDATE test_table SET value = value + 5 WHERE name ILIKE 'b%';
+
+DELETE FROM test_table WHERE id = 4;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+SELECT name, SUM(value) FROM test_table GROUP BY name HAVING SUM(value) > 10;
+
+SELECT generate_series(1, 5);
+
+SELECT id, name, value, ROW_NUMBER() OVER (ORDER BY value DESC) AS row_num FROM test_table;
+
+WITH RankedTable AS (
+    SELECT id, name, value, RANK() OVER (ORDER BY value DESC) AS ranking FROM test_table
+)
+SELECT id, name, value, ranking FROM RankedTable WHERE ranking <= 2;
+
+SELECT *
+FROM test_table
+WHERE name % 'Ali';
+
+SELECT name, value
+FROM test_table
+WHERE name LIKE '%a%'
+ORDER BY value DESC;
+
+SELECT name, value
+FROM test_table
+WHERE name LIKE '%a%'
+ORDER BY value ASC;
+
+SELECT name, value
+FROM test_table
+WHERE name LIKE '%a%'
+ORDER BY value;
+
+SELECT t.name, t.value, s.i
+FROM test_table t, generate_series(1, 3) s(i);
+
+SELECT t.name, t.value, s.i
+FROM test_table t, generate_series(1, 3) WITH ORDINALITY s(i, ord);
+
+SELECT jsonb_pretty(data) FROM test_table;
+
+SELECT * FROM test_table WHERE data @> '{"key2": 200}';
+
+SELECT * FROM test_table WHERE data ? 'key1';
+
+SELECT * FROM test_table WHERE data ?| array['key1', 'key3'];
+
+SELECT * FROM test_table WHERE data ?& array['key1', 'key2'];
+
+SELECT id, name, value FROM test_table ORDER BY name, value;
+
+SELECT id, name, value FROM test_table ORDER BY name DESC, value ASC;
+
+SELECT id, name, value FROM test_table ORDER BY name COLLATE "en_US", value;
+
+SELECT id, name, value FROM test_table ORDER BY name COLLATE "C", value;
+
+SELECT id, name, value FROM test_table ORDER BY name COLLATE "POSIX", value;
+
+SELECT id, name, value FROM test_table ORDER BY name COLLATE "default", value;
+
+DROP TABLE test_table;

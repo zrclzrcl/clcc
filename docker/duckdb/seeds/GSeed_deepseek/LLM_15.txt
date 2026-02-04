@@ -1,0 +1,7 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    score REAL CHECK (score >= 0),
+    data BLOB
+);

@@ -1,0 +1,46 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+CREATE TABLE strings (
+    id INTEGER PRIMARY KEY,
+    text VARCHAR
+);
+
+CREATE TABLE dates (
+    id INTEGER PRIMARY KEY,
+    date_value DATE
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+INSERT INTO strings (id, text) VALUES (1, 'hello');
+INSERT INTO strings (id, text) VALUES (2, 'world');
+INSERT INTO dates (id, date_value) VALUES (1, '2023-01-01');
+INSERT INTO dates (id, date_value) VALUES (2, '2023-01-02');
+
+-- DuckDB-specific feature: APPROXIMATE COUNT DISTINCT
+SELECT APPROX_COUNT_DISTINCT(value) FROM integers;
+
+-- DuckDB-specific feature: STRING_SPLIT
+SELECT STRING_SPLIT('hello,world', ',');
+
+-- DuckDB-specific feature: Generate series
+SELECT * FROM generate_series(1, 5);
+
+-- Test for window functions
+SELECT id, value, AVG(value) OVER () FROM integers;
+
+-- Test for JSON functions
+SELECT JSON('{"a": 1, "b": 2}');
+
+-- Test for Hashing functions
+SELECT md5('test');
+
+-- Example of using a VIEW
+CREATE VIEW integer_view AS SELECT * FROM integers WHERE value > 15;
+SELECT * FROM integer_view;
+
+--Example of using UNION ALL
+SELECT id FROM integers UNION ALL SELECT id FROM integers;

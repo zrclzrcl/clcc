@@ -1,0 +1,38 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders;
+
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT, age INTEGER);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+
+INSERT INTO users VALUES(1, 'Alice', 30),(2, 'Bob', 25),(3, 'Charlie', 35);
+INSERT INTO orders VALUES(1, 1, 100.50),(2, 1, 200.75),(3, 2, 150.00),(4, 3, 300.25);
+
+-- Test edge cases with boundary values and NULLs
+INSERT INTO users VALUES(4, NULL, 28);
+INSERT INTO orders VALUES(5, 1, 0.00);
+
+-- Query to test for edge case NULL username and total order amount per user
+SELECT u.username, SUM(o.amount) AS total_spent
+FROM users AS u
+LEFT JOIN orders AS o ON u.id = o.user_id
+GROUP BY u.id
+HAVING total_spent IS NULL OR total_spent > 100;
+
+-- Verification of valid and invalid foreign key relationships
+SELECT u.username, o.amount
+FROM users AS u
+JOIN orders AS o ON u.id = o.user_id
+WHERE u.age > 25
+ORDER BY o.amount DESC;
+
+-- Additional sophisticated query to evaluate multiple conditions
+WITH user_totals AS (
+    SELECT user_id, COUNT(*) AS order_count, SUM(amount) AS total_amount
+    FROM orders
+    GROUP BY user_id
+)
+SELECT u.username, ut.order_count, ut.total_amount
+FROM users AS u
+JOIN user_totals AS ut ON u.id = ut.user_id
+WHERE ut.order_count > 1 AND ut.total_amount > 100
+ORDER BY ut.total_amount DESC;

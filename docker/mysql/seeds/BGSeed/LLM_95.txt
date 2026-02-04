@@ -1,0 +1,71 @@
+SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET autocommit=0;
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Home Goods')
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 'Electronics'),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker', 75.00, 'Home Goods');
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES (1, 1225.00);
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 1200.00), (1, 2, 1, 25.00);
+
+-- Test JSON functions
+SELECT JSON_EXTRACT(description, '$.features') FROM products WHERE id = 1;
+
+-- Test spatial functions (requires spatial data type)
+CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY);
+INSERT INTO spatial_data (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+SELECT ST_Distance(geom, ST_GeomFromText('POINT(2 2)')) FROM spatial_data WHERE id = 1;
+
+-- Test window functions
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Test fulltext search (if enabled) - Requires a fulltext index
+ALTER TABLE products ADD FULLTEXT INDEX product_name_description (name, description);
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('laptop');
+
+-- Testing generated columns
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10,2) GENERATED ALWAYS AS (price * 0.9) VIRTUAL;
+
+-- Testing stored procedures
+DELIMITER //
+CREATE PROCEDURE GetProductPrice(IN productId INT, OUT productPrice DECIMAL(10,2))
+BEGIN
+    SELECT price INTO productPrice FROM products WHERE id = productId;
+END //
+DELIMITER ;
+
+CALL GetProductPrice(1, @price);
+SELECT @price;
+
+-- Testing common table expressions (CTEs)
+WITH HighPricedProducts AS (
+    SELECT name, price FROM products WHERE price > 100
+)
+SELECT name, price FROM HighPricedProducts ORDER BY price DESC;
+
+COMMIT;

@@ -1,0 +1,73 @@
+CREATE TABLE integers (
+  i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (
+  s VARCHAR
+);
+
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), ('jkl'), (NULL);
+
+CREATE TABLE doubles (
+  d DOUBLE
+);
+
+INSERT INTO doubles VALUES (1.1), (2.2), (3.3), (4.4), (5.5);
+
+-- Test various aggregate functions
+SELECT sum(i), avg(i), min(i), max(i), count(i) FROM integers;
+SELECT sum(d), avg(d), min(d), max(d), count(d) FROM doubles;
+
+-- Test string functions
+SELECT upper(s), lower(s), length(s), substr(s, 2, 2) FROM strings;
+
+-- Test date functions (DuckDB specific)
+CREATE TABLE dates (
+  dt DATE
+);
+
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-02-15'), ('2023-03-20');
+
+SELECT date_part('year', dt), date_part('month', dt), date_part('day', dt) FROM dates;
+SELECT date_trunc('month', dt) FROM dates;
+
+-- Test window functions
+SELECT i, AVG(i) OVER (ORDER BY i) FROM integers;
+
+-- Test joins
+SELECT * FROM integers JOIN doubles ON i = CAST(d AS INTEGER);
+
+-- Test unnesting
+CREATE TABLE lists (
+    l INTEGER[]
+);
+INSERT INTO lists VALUES (LIST(1,2,3)), (LIST(4,5,6));
+SELECT UNNEST(l) FROM lists;
+
+-- Test string concatenation and LIKE
+SELECT s || 'test' FROM strings WHERE s LIKE 'a%';
+
+-- Test case statement
+SELECT i, CASE WHEN i > 3 THEN 'high' ELSE 'low' END FROM integers;
+
+-- Test DuckDB's positional parameter binding
+SELECT * FROM integers WHERE i = $1; -- This will likely fail without explicit binding, but exercises the parser
+
+-- Test CREATE TABLE AS
+CREATE TABLE generated_table AS SELECT i * 2 AS doubled FROM integers;
+
+-- Test complex ORDER BY
+SELECT * FROM integers ORDER BY i DESC NULLS FIRST;
+
+-- Test casting
+SELECT CAST('123' AS INTEGER);
+SELECT CAST(123 AS VARCHAR);
+
+-- Test EXCEPT ALL and INTERSECT ALL
+SELECT * FROM integers EXCEPT ALL SELECT 2;
+SELECT * FROM integers INTERSECT ALL SELECT 2;
+
+-- Test DISTINCT ON (DuckDB specific extension)
+SELECT DISTINCT ON (s) * FROM strings ORDER BY s, length(s) DESC;

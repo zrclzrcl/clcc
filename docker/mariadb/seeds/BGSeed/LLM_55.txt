@@ -1,0 +1,114 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET NAMES utf8mb4;
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Table creation with various data types and constraints
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_picture MEDIUMBLOB,
+    last_login DATETIME NULL
+);
+
+-- Table with foreign key relationship
+CREATE TABLE IF NOT EXISTS posts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Table using spatial data type (MariaDB specific)
+CREATE TABLE IF NOT EXISTS locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    location POINT SRID 0
+);
+
+-- Insert some initial data
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', 'password123'),
+('testuser2', 'test2@example.com', 'password456');
+
+INSERT INTO posts (user_id, title, content) VALUES
+(1, 'My First Post', 'This is the content of my first post.'),
+(2, 'Another Post', 'Another interesting post.');
+
+INSERT INTO locations (name, location) VALUES
+('Office', ST_GeomFromText('POINT(10 20)')),
+('Home', ST_GeomFromText('POINT(30 40)'));
+
+-- Stored procedure example
+DELIMITER //
+CREATE PROCEDURE GetUserPosts(IN userId INT)
+BEGIN
+    SELECT * FROM posts WHERE user_id = userId;
+END //
+DELIMITER ;
+
+-- Function example
+DELIMITER //
+CREATE FUNCTION CalculatePostCount(userId INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE postCount INT;
+    SELECT COUNT(*) INTO postCount FROM posts WHERE user_id = userId;
+    RETURN postCount;
+END //
+DELIMITER ;
+
+-- Trigger example
+CREATE TABLE IF NOT EXISTS user_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    action VARCHAR(50),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER UserInsert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO user_logs (user_id, action) VALUES (NEW.id, 'INSERT');
+END //
+DELIMITER ;
+
+-- Example of MariaDB specific feature: Dynamic Columns
+CREATE TABLE IF NOT EXISTS dynamic_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data LONGBLOB
+);
+
+INSERT INTO dynamic_data (data) VALUES (COLUMN_CREATE('name', 'John Doe', 'age', 30, 'city', 'New York'));
+
+-- Perform some queries
+SELECT * FROM users WHERE id = 1;
+SELECT CalculatePostCount(1);
+CALL GetUserPosts(1);
+SELECT COLUMN_GET(data, 'name' AS CHAR) FROM dynamic_data;
+SELECT ST_AsText(location) FROM locations;
+
+-- Test fulltext index
+ALTER TABLE posts ADD FULLTEXT INDEX title_content_idx (title, content);
+SELECT * FROM posts WHERE MATCH (title, content) AGAINST ('first post');
+
+-- Test spatial index
+ALTER TABLE locations ADD SPATIAL INDEX location_idx (location);
+SELECT * FROM locations WHERE ST_Contains(ST_GeomFromText('POLYGON((0 0, 0 50, 50 50, 50 0, 0 0))'), location);
+
+-- Clean up unnecessary things
+DROP TRIGGER IF EXISTS UserInsert;
+DROP PROCEDURE IF EXISTS GetUserPosts;
+DROP FUNCTION IF EXISTS CalculatePostCount;
+
+SET sql_mode=@old_sql_mode;

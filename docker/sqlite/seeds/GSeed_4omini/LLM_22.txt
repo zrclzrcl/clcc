@@ -1,0 +1,10 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, email TEXT CHECK(email LIKE '%_@__%.__%'), age INTEGER CHECK(age >= 0));
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, order_date TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(username, email, age) VALUES('alice', 'alice@example.com', 30), ('bob', 'bob@example.com', 25);
+INSERT INTO orders(user_id, amount) VALUES(1, 50.75), (2, 35.00);
+CREATE INDEX idx_user_age ON users(age);
+UPDATE users SET age = age + 1 WHERE username = 'alice';
+DELETE FROM orders WHERE amount < 40.00;
+ALTER TABLE users RENAME COLUMN email TO user_email;
+PRAGMA foreign_keys = ON;
+SELECT * FROM users WHERE age BETWEEN 20 AND 30 AND username LIKE 'b%';

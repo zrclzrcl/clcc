@@ -1,0 +1,127 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ZERO_IN_DATE,NO_ZERO_DATE';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET auto_increment_increment=1;
+
+-- Test different storage engines
+CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255)) ENGINE=InnoDB;
+CREATE TABLE t2 (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255)) ENGINE=MyISAM;
+CREATE TABLE t3 (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255)) ENGINE=MEMORY;
+CREATE TABLE t4 (id INT PRIMARY KEY AUTO_INCREMENT, data VARCHAR(255)) ENGINE=Aria;
+
+INSERT INTO t1 (data) VALUES ('InnoDB data 1'), ('InnoDB data 2');
+INSERT INTO t2 (data) VALUES ('MyISAM data 1'), ('MyISAM data 2');
+INSERT INTO t3 (data) VALUES ('Memory data 1'), ('Memory data 2');
+INSERT INTO t4 (data) VALUES ('Aria data 1'), ('Aria data 2');
+
+-- Test different data types
+CREATE TABLE t5 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tinyint_col TINYINT,
+    smallint_col SMALLINT,
+    mediumint_col MEDIUMINT,
+    int_col INT,
+    bigint_col BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10,2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(10),
+    varchar_col VARCHAR(20),
+    text_col TEXT,
+    blob_col BLOB,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3')
+);
+
+INSERT INTO t5 (tinyint_col, smallint_col, mediumint_col, int_col, bigint_col, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, text_col, blob_col, enum_col, set_col) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-26', '2023-10-26 12:34:56', '12:34:56', 2023, 'char12345', 'varchar1234567890', 'This is some text', 'This is a blob', 'value2', 'option1,option3');
+
+-- Test indexes
+CREATE TABLE t6 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    indexed_col VARCHAR(255),
+    unique_col VARCHAR(255),
+    FULLTEXT text_col TEXT,
+    INDEX idx_indexed_col (indexed_col),
+    UNIQUE INDEX idx_unique_col (unique_col),
+    FULLTEXT INDEX idx_fulltext_col (text_col)
+) ENGINE=InnoDB;
+
+INSERT INTO t6 (indexed_col, unique_col, text_col) VALUES ('index_value1', 'unique_value1', 'fulltext value 1');
+INSERT INTO t6 (indexed_col, unique_col, text_col) VALUES ('index_value2', 'unique_value2', 'fulltext value 2');
+
+-- Test constraints
+CREATE TABLE t7 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    value INT CHECK (value > 0)
+);
+
+INSERT INTO t7 (value) VALUES (1);
+
+-- Test views and stored procedures
+
+CREATE OR REPLACE VIEW v1 AS SELECT id, data FROM t1 WHERE id > 0;
+
+DELIMITER //
+CREATE PROCEDURE p1(IN input_value INT)
+BEGIN
+    SELECT * FROM t5 WHERE int_col = input_value;
+END //
+DELIMITER ;
+
+CALL p1(2147483647);
+
+-- Test full-text search
+SELECT * FROM t6 WHERE MATCH (text_col) AGAINST ('fulltext');
+
+-- Test JSON
+CREATE TABLE t8 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    json_col JSON
+);
+
+INSERT INTO t8 (json_col) VALUES ('{"name": "John", "age": 30, "city": "New York"}');
+
+SELECT json_col->'$.name' FROM t8;
+
+-- Test Partitioning (MariaDB Specific)
+
+CREATE TABLE t9 (
+    id INT,
+    event_date DATE
+)
+PARTITION BY RANGE ( YEAR(event_date) ) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2021),
+    PARTITION p2 VALUES LESS THAN (2022),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO t9 (id, event_date) VALUES (1, '2019-01-01'), (2, '2020-01-01'), (3, '2021-01-01'), (4, '2022-01-01');
+
+SELECT * FROM t9 PARTITION (p0);
+
+-- Test Sequence (MariaDB Specific)
+CREATE SEQUENCE seq1 START WITH 1 INCREMENT BY 1;
+SELECT NEXT VALUE FOR seq1;
+SELECT CURRENT VALUE FOR seq1;
+
+-- Cleanup
+DROP VIEW IF EXISTS v1;
+DROP PROCEDURE IF EXISTS p1;
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t3;
+DROP TABLE IF EXISTS t4;
+DROP TABLE IF EXISTS t5;
+DROP TABLE IF EXISTS t6;
+DROP TABLE IF EXISTS t7;
+DROP TABLE IF EXISTS t8;
+DROP TABLE IF EXISTS t9;
+DROP SEQUENCE IF EXISTS seq1;
+SET auto_increment_increment=@auto_increment_increment;
+SET sql_mode=@old_sql_mode;

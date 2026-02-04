@@ -1,0 +1,26 @@
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX price_idx (price)
+);
+
+INSERT INTO products (name, description, price, quantity) VALUES
+('Awesome Widget', 'A truly awesome widget!', 99.99, 100),
+('Mediocre Gadget', 'It gets the job done.', 19.99, 500),
+('Deluxe Doohickey', 'The ultimate doohickey experience.', 199.99, 25);
+
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10, 2) UNSIGNED NULL AFTER price;
+UPDATE products SET discounted_price = price * 0.8 WHERE price > 50;
+
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('awesome widget' IN BOOLEAN MODE);
+
+-- Test JSON functionality (MySQL 5.7+)
+ALTER TABLE products ADD COLUMN features JSON;
+UPDATE products SET features = JSON_OBJECT('color', 'red', 'size', 'large') WHERE id = 1;
+SELECT id, features->'$.color' AS color FROM products WHERE JSON_CONTAINS(features, JSON_OBJECT('color', 'red'));

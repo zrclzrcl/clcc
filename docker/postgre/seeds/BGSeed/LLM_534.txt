@@ -1,0 +1,123 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 50000.00, '2023-03-10', 'Sales'),
+('David Lee', 80000.00, '2020-11-01', 'Engineering'),
+('Eve Wilson', 90000.00, '2019-09-25', 'Engineering');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 70000.00;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2020-01-01';
+
+SELECT AVG(salary) AS average_salary, department FROM employees GROUP BY department;
+
+SELECT COUNT(*) AS employee_count, department FROM employees GROUP BY department HAVING COUNT(*) > 1;
+
+CREATE VIEW sales_employees AS
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+DROP VIEW sales_employees;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.05 WHERE department = 'Engineering';
+
+SELECT name, salary, bonus FROM employees WHERE bonus > 0;
+
+-- Test case-insensitive matching with ILIKE
+SELECT * FROM employees WHERE name ILIKE '%alice%';
+
+-- Test case-insensitive NOT LIKE with NLIKE (PostgreSQL extension)
+SELECT * FROM employees WHERE name NOT LIKE '%bob%';
+
+-- Test window functions
+SELECT name, salary, department,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Test common table expressions (CTEs)
+WITH high_earners AS (
+    SELECT name, salary FROM employees WHERE salary > 75000
+)
+SELECT name, salary FROM high_earners ORDER BY salary DESC;
+
+-- Test JSON functions (PostgreSQL specific)
+ALTER TABLE employees ADD COLUMN details JSONB;
+UPDATE employees SET details = jsonb_build_object('performance', 'excellent', 'skills', ARRAY['SQL', 'Python']);
+SELECT name, details -> 'performance' AS performance FROM employees;
+
+-- Test array functions
+ALTER TABLE employees ADD COLUMN skills TEXT[];
+UPDATE employees SET skills = ARRAY['SQL', 'Python', 'Java'] WHERE department = 'Engineering';
+SELECT name, skills FROM employees WHERE 'SQL' = ANY(skills);
+
+-- Test DISTINCT ON
+SELECT DISTINCT ON (department) department, name, salary FROM employees ORDER BY department, salary DESC;
+
+-- Test UNION ALL
+SELECT name, department FROM employees WHERE department = 'Sales'
+UNION ALL
+SELECT name, department FROM employees WHERE department = 'Marketing';
+
+-- Test INTERSECT
+SELECT name, department FROM employees WHERE salary > 60000
+INTERSECT
+SELECT name, department FROM employees WHERE hire_date > '2021-01-01';
+
+-- Test EXCEPT
+SELECT name, department FROM employees WHERE department = 'Engineering'
+EXCEPT
+SELECT name, department FROM employees WHERE salary < 85000;
+
+-- Test LATERAL JOIN (requires PostgreSQL 9.3+)
+CREATE FUNCTION get_top_earners(dept VARCHAR(50), n INTEGER)
+RETURNS TABLE (employee_name VARCHAR(50), employee_salary DECIMAL(10, 2)) AS $$
+    SELECT name, salary
+    FROM employees
+    WHERE department = dept
+    ORDER BY salary DESC
+    LIMIT n;
+$$ LANGUAGE SQL;
+
+SELECT e.name, e.department, top_earners.employee_name, top_earners.employee_salary
+FROM employees e
+CROSS JOIN LATERAL get_top_earners(e.department, 1) AS top_earners
+WHERE e.department IN ('Sales', 'Engineering');
+
+DROP FUNCTION get_top_earners(dept VARCHAR(50), n INTEGER);
+
+-- Test materialized views
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+SELECT * FROM employee_summary;
+
+DROP MATERIALIZED VIEW employee_summary;
+
+-- Test full text search
+ALTER TABLE employees ADD COLUMN document tsvector;
+UPDATE employees SET document = to_tsvector('english', name || ' ' || department);
+CREATE INDEX idx_fts_employees ON employees USING GIN (document);
+SELECT name FROM employees WHERE document @@ to_tsquery('english', 'sales & alice');
+
+DROP INDEX idx_fts_employees;
+
+DROP TABLE employees;

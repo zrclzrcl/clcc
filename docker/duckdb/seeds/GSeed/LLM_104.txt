@@ -1,0 +1,90 @@
+CREATE TABLE product (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR
+);
+
+CREATE TABLE customer (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    email VARCHAR UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER REFERENCES customer(customer_id),
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES product(id),
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO product (name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Chair', 150.00, 'Furniture'),
+('Table', 300.00, 'Furniture');
+
+INSERT INTO customer (first_name, last_name, email) VALUES
+('Alice', 'Smith', 'alice.smith@example.com'),
+('Bob', 'Johnson', 'bob.johnson@example.com'),
+('Charlie', 'Brown', 'charlie.brown@example.com');
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2023-01-15', 1225.00),
+(2, '2023-02-20', 325.00),
+(3, '2023-03-10', 450.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 1, 25.00),
+(2, 4, 2, 150.00),
+(3, 3, 1, 75.00),
+(3, 5, 1, 300.00),
+(3,2, 1, 75.00);
+
+
+-- DuckDB Specific: Using LIST aggregate function
+SELECT customer_id, LIST(order_id) AS order_ids FROM orders GROUP BY customer_id;
+
+-- DuckDB Specific: UNNEST an array (mimicking a join)
+SELECT * FROM orders, UNNEST([1, 2, 3]);
+
+-- Complex query with window function and string manipulation
+SELECT
+    c.first_name,
+    SUM(oi.quantity * oi.unit_price) OVER (PARTITION BY c.customer_id ORDER BY o.order_date) AS running_total,
+    STRING_SPLIT(p.category, 'e')[1]  -- Splitting and accessing based on DuckDB default string split behavior
+FROM customer c
+JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN product p ON oi.product_id = p.id
+WHERE o.order_date BETWEEN '2023-01-01' AND '2023-03-31'
+LIMIT 10;
+
+-- Test for date manipulation
+SELECT DATE_TRUNC('month', order_date), AVG(total_amount) FROM orders GROUP BY 1;
+
+-- Test for different data types and casting
+SELECT CAST(product_id AS VARCHAR), AVG(price) FROM product GROUP BY 1;
+
+-- Test for case sensitivity in identifiers. DuckDB is generally case-insensitive, but let's see.
+SELECT FrOm PrOdUcT;
+
+--Test for null values
+INSERT INTO product (name, price, category) VALUES (NULL, 50.00, 'Unknown');
+SELECT * FROM product WHERE name IS NULL;
+
+-- Test for large numbers/decimals
+INSERT INTO product (name, price, category) VALUES ('Giant Thing', 9999999999.99, 'Misc');
+SELECT name, price FROM product WHERE price > 1000000000;

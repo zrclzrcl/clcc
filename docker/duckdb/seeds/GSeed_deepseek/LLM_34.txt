@@ -1,0 +1,56 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    t1_id INT REFERENCES t1(id),
+    project_name VARCHAR(100),
+    start_date DATE,
+    end_date DATE,
+    budget DECIMAL(15, 2)
+);
+
+CREATE INDEX idx_t1_age ON t1(age);
+CREATE INDEX idx_t2_start_end ON t2(start_date, end_date);
+
+INSERT INTO t1 VALUES
+    (1, 'Alice', 30, 70000.00, '2020-01-15', true),
+    (2, 'Bob', 28, 65000.00, '2021-03-20', false),
+    (3, 'Charlie', 35, 80000.00, '2019-07-10', true);
+
+INSERT INTO t2 VALUES
+    (1, 1, 'Project Alpha', '2022-01-01', '2023-12-31', 500000.00),
+    (2, 2, 'Project Beta', '2023-01-01', NULL, 750000.00),
+    (3, 3, 'Project Gamma', '2023-06-01', '2024-05-31', 1000000.00);
+
+CREATE MATERIALIZED VIEW mv_project_stats AS
+SELECT 
+    t2.project_name,
+    COUNT(*) as employee_count,
+    SUM(t1.salary) as total_salary,
+    AVG(t1.age) as avg_age
+FROM 
+    t1
+JOIN 
+    t2 ON t1.id = t2.t1_id
+GROUP BY 
+    t2.project_name;
+
+WITH cte_project_stats AS (
+    SELECT 
+        project_name,
+        employee_count,
+        total_salary,
+        CASE 
+            WHEN total_salary > 1000000 THEN 'High'
+            ELSE 'Low'
+        END as budget_category
+    FROM mv_project_stats
+)
+SELECT * FROM cte_project_stats;

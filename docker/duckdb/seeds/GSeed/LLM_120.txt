@@ -1,0 +1,83 @@
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+  );
+
+  CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    customer_name VARCHAR(255),
+    city VARCHAR(255)
+  );
+
+  CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(255),
+    price DECIMAL(10, 2)
+  );
+
+  CREATE TABLE order_items (
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+  );
+
+  INSERT INTO customers (customer_id, customer_name, city) VALUES
+  (1, 'Alice', 'New York'),
+  (2, 'Bob', 'Los Angeles'),
+  (3, 'Charlie', 'Chicago');
+
+  INSERT INTO products (product_id, product_name, price) VALUES
+  (101, 'Laptop', 1200.00),
+  (102, 'Mouse', 25.00),
+  (103, 'Keyboard', 75.00);
+
+  INSERT INTO orders (order_id, customer_id, order_date, total_amount) VALUES
+  (1, 1, '2023-01-15', 1225.00),
+  (2, 2, '2023-02-20', 75.00),
+  (3, 1, '2023-03-10', 2400.00);
+
+  INSERT INTO order_items (order_id, product_id, quantity) VALUES
+  (1, 101, 1),
+  (1, 102, 1),
+  (2, 103, 1),
+  (3, 101, 2);
+
+  -- DuckDB specific query: Window function with FILTER clause and approximate quantile
+  SELECT
+    customer_name,
+    AVG(total_amount) OVER (PARTITION BY city FILTER (WHERE order_date > DATE '2023-01-01')) as avg_amount_filtered,
+	approximate_quantile(total_amount, 0.5) as median_amount
+  FROM orders o
+  JOIN customers c ON o.customer_id = c.customer_id
+  WHERE o.order_date BETWEEN DATE '2023-01-01' AND DATE '2023-03-31'
+  ORDER BY customer_name;
+
+  -- Test boolean data types and operations
+  CREATE TABLE bool_test (
+    id INTEGER PRIMARY KEY,
+    is_active BOOLEAN
+  );
+
+  INSERT INTO bool_test (id, is_active) VALUES
+  (1, TRUE),
+  (2, FALSE),
+  (3, NULL);
+
+  SELECT id, is_active, NOT is_active AS inverted_active FROM bool_test;
+
+  -- Test string functions with collation
+  SELECT upper('test string' COLLATE "nocase");
+
+  -- Test struct creation and usage (DuckDB Specific)
+  CREATE TABLE struct_test (
+    id INTEGER,
+    data STRUCT(x INTEGER, y VARCHAR)
+  );
+
+  INSERT INTO struct_test VALUES (1, (10, 'test'));
+
+  SELECT id, data.x, data.y FROM struct_test;

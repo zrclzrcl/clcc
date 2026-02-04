@@ -1,0 +1,113 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees (
+    emp_no INT PRIMARY KEY,
+    birth_date DATE NOT NULL,
+    first_name VARCHAR(14) NOT NULL,
+    last_name VARCHAR(16) NOT NULL,
+    gender ENUM ('M', 'F') NOT NULL,
+    hire_date DATE NOT NULL
+);
+
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments (
+    dept_no CHAR(4) PRIMARY KEY,
+    dept_name VARCHAR(40) NOT NULL UNIQUE
+);
+
+DROP TABLE IF EXISTS dept_emp;
+CREATE TABLE dept_emp (
+    emp_no INT NOT NULL,
+    dept_no CHAR(4) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, dept_no)
+);
+
+DROP TABLE IF EXISTS salaries;
+CREATE TABLE salaries (
+    emp_no INT NOT NULL,
+    salary INT NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, from_date)
+);
+
+DROP TABLE IF EXISTS titles;
+CREATE TABLE titles (
+    emp_no INT NOT NULL,
+    title VARCHAR(50) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, title, from_date)
+);
+
+INSERT INTO departments (dept_no, dept_name) VALUES
+('d001', 'Marketing'),
+('d002', 'Finance'),
+('d003', 'Human Resources');
+
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES
+(10001, '1953-09-02', 'Georgi', 'Facello', 'M', '1986-06-26'),
+(10002, '1964-06-02', 'Bezalel', 'Simmel', 'F', '1985-11-21');
+
+INSERT INTO dept_emp (emp_no, dept_no, from_date, to_date) VALUES
+(10001, 'd001', '1986-06-26', '9999-01-01'),
+(10002, 'd002', '1989-08-02', '9999-01-01');
+
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES
+(10001, 60117, '1986-06-26', '1987-06-26'),
+(10002, 65828, '1996-08-03', '1997-08-03');
+
+INSERT INTO titles (emp_no, title, from_date, to_date) VALUES
+(10001, 'Senior Engineer', '1986-06-26', '9999-01-01'),
+(10002, 'Staff', '1996-08-03', '9999-01-01');
+
+CREATE INDEX emp_name ON employees (first_name, last_name);
+
+-- MySQL Specific: Window functions and Common Table Expressions
+WITH SalaryStats AS (
+    SELECT
+        emp_no,
+        AVG(salary) OVER (PARTITION BY emp_no) AS avg_salary,
+        MAX(salary) OVER (PARTITION BY emp_no) AS max_salary,
+        ROW_NUMBER() OVER (ORDER BY salary DESC) AS rn
+    FROM salaries
+)
+SELECT emp_no, avg_salary, max_salary
+FROM SalaryStats
+WHERE rn <= 10;
+
+-- MySQL Specific: Spatial data types and functions (if enabled)
+CREATE TABLE locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+INSERT INTO locations (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 20)'));
+
+-- Check constraints (MySQL 8.0.16+)
+ALTER TABLE salaries ADD CONSTRAINT chk_salary CHECK (salary > 0);
+
+-- Generated Column
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(30) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) STORED;
+
+-- JSON column
+CREATE TABLE logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    log_data JSON
+);
+
+INSERT INTO logs (log_data) VALUES ('{"user": "john.doe", "action": "login", "timestamp": "2024-01-01 10:00:00"}');
+
+-- test large text insert
+CREATE TABLE longtext_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    long_text LONGTEXT
+);
+
+INSERT INTO longtext_test (long_text) VALUES (REPEAT('A', 65536));

@@ -1,0 +1,104 @@
+-- Create tables with different data types and constraints
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY,
+    product_id INT,
+    quantity INT CHECK (quantity > 0),
+    sale_date DATE DEFAULT CURRENT_DATE
+);
+
+-- Insert sample data into tables
+INSERT INTO departments VALUES 
+    (1, 'Sales', 'New York'),
+    (2, 'Marketing', 'San Francisco'),
+    (3, 'Engineering', 'Austin');
+
+INSERT INTO employees VALUES 
+    (1, 'John Doe', 75000.00, '2023-01-01', 1),
+    (2, 'Jane Smith', 85000.00, '2023-02-15', 2),
+    (3, 'Bob Johnson', 95000.00, '2023-03-10', 3);
+
+INSERT INTO sales VALUES 
+    (1, 101, 50, DEFAULT),
+    (2, 102, 75, '2023-04-01'),
+    (3, 103, 30, '2023-04-02');
+
+-- Test various SQL operations
+SELECT 
+    e.emp_id,
+    e.name,
+    d.dept_name,
+    e.salary,
+    CASE 
+        WHEN salary >= 90000 THEN 'High'
+        WHEN salary >= 75000 THEN 'Medium'
+        ELSE 'Low'
+    END AS salary_level
+FROM employees e
+JOIN departments d ON e.department_id = d.dept_id;
+
+SELECT 
+    product_id,
+    quantity,
+    sale_date,
+    SUM(quantity) OVER (ORDER BY sale_date) AS cumulative_sales
+FROM sales;
+
+WITH dept_stats AS (
+    SELECT 
+        dept_name,
+        COUNT(emp_id) as emp_count,
+        AVG(salary) as avg_salary
+    FROM employees e
+    JOIN departments d ON e.department_id = d.dept_id
+    GROUP BY dept_name
+)
+SELECT * FROM dept_stats WHERE emp_count > 2;
+
+SELECT 
+    e.name,
+    s.sale_id,
+    s.quantity,
+    (s.quantity * 100) as projected_sales
+FROM employees e
+CROSS JOIN sales s
+WHERE e.emp_id IN (1,2);
+
+-- Test edge cases and special functionality
+SELECT 
+    emp_id,
+    name,
+    hire_date,
+    EXTRACT(YEAR FROM hire_date) as hire_year
+FROM employees
+ORDER BY hire_year DESC;
+
+SELECT 
+    dept_name,
+    location,
+    COALESCE(location, 'Unknown') as formatted_location
+FROM departments;
+
+-- Test mutations and complex queries
+INSERT INTO sales 
+SELECT sale_id + 1000, product_id, quantity, sale_date FROM sales;
+
+SELECT 
+    e.name,
+    s.sale_id,
+    ROW_NUMBER() OVER (ORDER BY e.hire_date) as emp_order
+FROM employees e
+JOIN sales s ON e.emp_id = s.sale_id % 3;

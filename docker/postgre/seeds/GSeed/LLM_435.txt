@@ -1,0 +1,99 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(100),
+    postal_code VARCHAR(20),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    country VARCHAR(50)
+);
+
+INSERT INTO locations (address, postal_code, city, state, country) VALUES
+('123 Main St', '12345', 'Anytown', 'CA', 'USA'),
+('456 Oak Ave', '67890', 'Springfield', 'IL', 'USA'),
+('789 Pine Ln', '13579', 'Hill Valley', 'CA', 'USA');
+
+INSERT INTO departments (name, location_id) VALUES
+('Sales', 1),
+('Marketing', 2),
+('Engineering', 3);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-05-20', 2, 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 3, 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+SELECT first_name, last_name FROM employees WHERE department_id = 1;
+UPDATE employees SET salary = 65000 WHERE id = 1;
+DELETE FROM employees WHERE id = 3;
+SELECT COUNT(*) FROM employees;
+SELECT AVG(salary) FROM employees;
+SELECT MAX(salary) FROM employees;
+SELECT MIN(salary) FROM employees;
+SELECT SUM(salary) FROM employees;
+SELECT * FROM employees ORDER BY salary DESC;
+SELECT * FROM employees LIMIT 2;
+SELECT d.name, COUNT(e.id) FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.name;
+SELECT e.first_name, d.name FROM employees e JOIN departments d ON e.department_id = d.id;
+SELECT l.city, COUNT(d.id) FROM locations l LEFT JOIN departments d ON l.id = d.location_id GROUP BY l.city;
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+SELECT * FROM employees WHERE email LIKE '%example.com';
+SELECT * FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2023-12-31';
+SELECT * FROM employees WHERE department_id IN (1, 2);
+SELECT * FROM employees WHERE last_name IS NULL;
+SELECT * FROM employees WHERE last_name IS NOT NULL;
+SELECT first_name AS "First Name", last_name AS "Last Name" FROM employees;
+SELECT UPPER(first_name), LOWER(last_name) FROM employees;
+SELECT SUBSTRING(email, 1, 4) FROM employees;
+SELECT LENGTH(first_name) FROM employees;
+SELECT REPLACE(email, 'example.com', 'newdomain.com') FROM employees;
+SELECT CURRENT_DATE, CURRENT_TIME;
+SELECT AGE(hire_date) FROM employees;
+SELECT EXTRACT(YEAR FROM hire_date) FROM employees;
+SELECT first_name || ' ' || last_name AS full_name FROM employees;
+SELECT COALESCE(last_name, 'N/A') FROM employees;
+SELECT CASE WHEN salary > 80000 THEN 'High' ELSE 'Low' END AS salary_level FROM employees;
+
+CREATE VIEW employee_summary AS
+SELECT first_name, last_name, salary, department_id FROM employees;
+
+SELECT * FROM employee_summary;
+
+DROP VIEW employee_summary;
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TABLE locations;
+
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO test_table (data) VALUES
+('{"name": "Alice", "age": 30, "city": "New York"}'),
+('{"name": "Bob", "age": 25, "city": "Los Angeles"}');
+
+SELECT data -> 'name' FROM test_table;
+SELECT data ->> 'name' FROM test_table;
+SELECT * FROM test_table WHERE (data ->> 'age')::integer > 27;
+UPDATE test_table SET data = jsonb_set(data, '{age}', '31'::jsonb) WHERE data ->> 'name' = 'Alice';
+SELECT jsonb_pretty(data) FROM test_table;
+
+DROP TABLE test_table;

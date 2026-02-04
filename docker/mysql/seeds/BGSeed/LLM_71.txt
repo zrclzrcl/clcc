@@ -1,0 +1,67 @@
+SET sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET GLOBAL optimizer_switch = 'derived_merge=off';
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `users` (`username`, `password`, `email`) VALUES
+('testuser1', '$2y$10$abcdefghijklmn', 'test1@example.com'),
+('testuser2', '$2y$10$opqrstuvwxyz', 'test2@example.com');
+CREATE TABLE `products` (
+  `product_id` int(11) NOT NULL AUTO_INCREMENT,
+  `product_name` varchar(100) NOT NULL,
+  `description` text,
+  `price` decimal(10,2) NOT NULL,
+  `stock_quantity` int(11) DEFAULT NULL,
+  PRIMARY KEY (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `products` (`product_name`, `description`, `price`, `stock_quantity`) VALUES
+('Awesome Gadget', 'A truly amazing gadget', 99.99, 50),
+('Another Product', 'Just another product', 19.99, 100);
+CREATE TABLE `orders` (
+  `order_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `order_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `total_amount` decimal(10,2) DEFAULT NULL,
+  PRIMARY KEY (`order_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `orders` (`user_id`, `total_amount`) VALUES
+(1, 99.99),
+(2, 19.99);
+CREATE TABLE `order_items` (
+  `order_item_id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `item_price` decimal(10,2) NOT NULL,
+  PRIMARY KEY (`order_item_id`),
+  KEY `order_id` (`order_id`),
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`),
+  CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `order_items` (`order_id`, `product_id`, `quantity`, `item_price`) VALUES
+(1, 1, 1, 99.99),
+(2, 2, 1, 19.99);
+ALTER TABLE `products` ADD COLUMN `category` ENUM('Electronics', 'Books', 'Clothing');
+UPDATE `products` SET `category` = 'Electronics' WHERE `product_id` = 1;
+UPDATE `products` SET `category` = 'Books' WHERE `product_id` = 2;
+CREATE TRIGGER update_order_total
+AFTER INSERT ON order_items
+FOR EACH ROW
+UPDATE orders
+SET total_amount = (SELECT SUM(item_price * quantity) FROM order_items WHERE order_id = NEW.order_id)
+WHERE order_id = NEW.order_id;
+CREATE VIEW high_value_products AS
+SELECT product_id, product_name, price
+FROM products
+WHERE price > 50;
+ANALYZE TABLE users, products, orders, order_items;
+SELECT * FROM users WHERE username LIKE 'test%';

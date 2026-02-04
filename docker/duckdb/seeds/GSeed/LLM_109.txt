@@ -1,0 +1,39 @@
+CREATE TABLE sensor_data (
+    id INTEGER PRIMARY KEY,
+    sensor_id VARCHAR,
+    timestamp TIMESTAMP,
+    temperature DOUBLE,
+    humidity DOUBLE,
+    location VARCHAR
+);
+
+CREATE TABLE weather_conditions (
+    city VARCHAR PRIMARY KEY,
+    date DATE,
+    condition VARCHAR,
+    temperature_high DOUBLE,
+    temperature_low DOUBLE
+);
+
+INSERT INTO sensor_data (sensor_id, timestamp, temperature, humidity, location) VALUES
+('sensor1', '2024-01-01 10:00:00', 25.5, 60.2, 'Living Room'),
+('sensor2', '2024-01-01 10:00:00', 22.1, 55.8, 'Bedroom'),
+('sensor1', '2024-01-01 10:15:00', 25.7, 60.5, 'Living Room'),
+('sensor2', '2024-01-01 10:15:00', 22.3, 56.0, 'Bedroom');
+
+INSERT INTO weather_conditions (city, date, condition, temperature_high, temperature_low) VALUES
+('Living Room', '2024-01-01', 'Sunny', 27.0, 15.0),
+('Bedroom', '2024-01-01', 'Cloudy', 24.0, 13.0);
+
+SELECT
+    sd.sensor_id,
+    AVG(sd.temperature) OVER (PARTITION BY sd.sensor_id ORDER BY sd.timestamp ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS avg_temp,
+    wc.condition
+FROM
+    sensor_data sd
+LEFT JOIN
+    weather_conditions wc ON sd.location = wc.city AND DATE(sd.timestamp) = wc.date
+WHERE sd.temperature > (SELECT AVG(temperature_high) FROM weather_conditions) - 5
+QUALIFY ROW_NUMBER() OVER (PARTITION BY sd.sensor_id ORDER BY sd.timestamp DESC) = 1;
+
+SELECT city, APPROX_COUNT_DISTINCT(condition) FROM weather_conditions GROUP BY city;

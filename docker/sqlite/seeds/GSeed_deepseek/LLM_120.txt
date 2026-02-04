@@ -1,0 +1,55 @@
+CREATE TABLE t1(a INTEGER PRIMARY KEY AUTOINCREMENT, b TEXT, c REAL);
+  CREATE TABLE t2(d BLOB, e NULL, f BOOLEAN);
+  CREATE TABLE t3(g TEXT UNIQUE, h INTEGER CHECK(h > 0), i TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+  CREATE TABLE t4(j REAL NOT NULL, k TEXT COLLATE NOCASE);
+  CREATE TABLE t5(l INTEGER REFERENCES t1(a));
+  
+  INSERT INTO t1 VALUES(1, 'test', 3.14);
+  INSERT INTO t2 VALUES(X'ABCD', NULL, TRUE);
+  INSERT INTO t3 VALUES('example', 100, '2023-10-05');
+  INSERT INTO t4 VALUES(2.718, 'sqlite');
+  INSERT INTO t5 VALUES(1);
+  
+  WITH cte1 AS (
+    SELECT a, b FROM t1
+    UNION ALL
+    SELECT d, e FROM t2
+  )
+  SELECT * FROM cte1;
+  
+  SELECT 
+    ROW_NUMBER() OVER (ORDER BY a) as rn,
+    SUM(c) OVER (PARTITION BY b) as sum_c,
+    RANK() OVER (ORDER BY c DESC) as rank
+  FROM t1;
+  
+  SELECT COUNT(*) as count_rows, AVG(c) as avg_c, MAX(a) as max_a, MIN(b) as min_b, SUM(c) as total_c 
+  FROM t1 
+  WHERE a > 5;
+  
+  SELECT DISTINCT a, b FROM t1 ORDER BY a DESC LIMIT 10 OFFSET 2;
+  
+  SELECT * FROM t1 WHERE EXISTS (SELECT 1 FROM t2 WHERE d = X'ABCD');
+  
+  BEGIN TRANSACTION;
+    INSERT INTO t3 VALUES('test_unique', 200, '2024-01-01');
+    UPDATE t1 SET b = 'updated' WHERE a = 1;
+    ROLLBACK;
+  COMMIT;
+  
+  CREATE INDEX idx_t1_a ON t1(a);
+  CREATE UNIQUE INDEX idx_t3_g ON t3(g);
+  
+  CREATE TRIGGER trig_after_insert AFTER INSERT ON t1
+  BEGIN
+    UPDATE t2 SET e = NEW.b WHERE d = X'ABCD';
+  END;
+  
+  CREATE VIEW v1 AS 
+    SELECT a, b, c FROM t1 
+    UNION ALL 
+    SELECT NULL, e, k FROM t4;
+    
+  SELECT * FROM v1 ORDER BY b;
+  
+  ANALYZE sqlite_master;

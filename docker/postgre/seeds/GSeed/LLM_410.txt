@@ -1,0 +1,87 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Record 1', 10, '{"a": 1, "b": 2}'),
+('Record 2', 20, '{"a": 3, "b": 4}'),
+('Record 3', 30, '{"a": 5, "b": 6}');
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = 25 WHERE name = 'Record 2';
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT jsonb_path_exists(data, '$.a') FROM test_table;
+
+SELECT jsonb_path_query_first(data, '$.a') FROM test_table;
+
+SELECT jsonb_extract_path(data, '{a}') FROM test_table;
+
+SELECT jsonb_pretty(data) FROM test_table;
+
+SELECT name, value FROM test_table ORDER BY value DESC LIMIT 2;
+
+CREATE INDEX idx_name ON test_table (name);
+
+SELECT COUNT(*) FROM test_table;
+
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+
+SELECT MAX(value), MIN(value), AVG(value) FROM test_table;
+
+SELECT name, UPPER(name), LOWER(name) FROM test_table;
+
+SELECT name, SUBSTRING(name FROM 1 FOR 3) FROM test_table;
+
+SELECT * FROM test_table WHERE name LIKE 'Rec%';
+
+SELECT id, name, COALESCE(value, 0) FROM test_table;
+
+SELECT md5(name) FROM test_table;
+
+CREATE OR REPLACE FUNCTION increment_value(input_value INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN input_value + 1;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_value(value) FROM test_table;
+
+EXPLAIN SELECT * FROM test_table WHERE value > 10;
+
+ANALYZE test_table;
+
+SELECT pg_typeof(data) FROM test_table;
+
+SELECT to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') from test_table;
+
+SELECT generate_series(1, 5);
+
+SELECT current_database();
+
+SHOW TIMEZONE;
+
+SELECT version();
+
+-- Test window functions
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value DESC) FROM test_table;
+SELECT name, value, RANK() OVER (ORDER BY value DESC) FROM test_table;
+
+-- Test Common Table Expression (CTE)
+WITH ValueCounts AS (
+  SELECT value, COUNT(*) as count FROM test_table GROUP BY value
+)
+SELECT value, count FROM ValueCounts WHERE count > 0;
+
+--Test array functions
+SELECT string_to_array(name, ' ') FROM test_table;
+
+-- Test date/time functions
+SELECT age(created_at) FROM test_table;
+SELECT date_trunc('month', created_at) FROM test_table;

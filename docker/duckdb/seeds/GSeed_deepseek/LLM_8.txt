@@ -1,0 +1,45 @@
+-- Create a table with various data types to test different SQL operations
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value FLOAT CHECK(value >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create an external table to demonstrate DuckDB's file handling capabilities
+CREATE EXTERNAL TABLE t2(
+    id INTEGER,
+    data TEXT
+) WITH (
+    format = 'csv',
+    path = 'test_data.csv'
+);
+
+-- Insert sample data into the main table
+INSERT INTO t1 VALUES(1, 'Test 1', 10.5, CURRENT_TIMESTAMP);
+INSERT INTO t1 VALUES(2, 'Test 2', 0, NULL);
+INSERT INTO t1 VALUES(3, 'Test 3', 100.123456789, CURRENT_TIMESTAMP);
+
+-- Create an index to test query optimization
+CREATE INDEX idx_t1_name ON t1(name);
+
+-- Create a unique constraint to test uniqueness
+ALTER TABLE t1 ADD CONSTRAINT uq_value UNIQUE(value);
+
+-- Create a view to test SQL queries with views
+CREATE VIEW v1 AS SELECT * FROM t1 WHERE value > 0;
+
+-- Create a trigger to test database events
+CREATE TRIGGER trg_t1 AFTER UPDATE ON t1 BEGIN
+    INSERT INTO t2 VALUES(OLD.id, 'Update event');
+END;
+
+-- Test table alteration and schema changes
+ALTER TABLE t1 RENAME TO t3;
+ALTER TABLE t3 ADD COLUMN description TEXT;
+
+-- Update data to test DML operations
+UPDATE t3 SET value = 50.5 WHERE id = 1;
+
+-- Query to test joins and view interaction
+SELECT * FROM t3 JOIN v1 ON t3.id = v1.id;

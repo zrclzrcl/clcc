@@ -1,0 +1,58 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    salary DECIMAL,
+    department VARCHAR
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+    ('Alice', 50000.00, 'Sales'),
+    ('Bob', 60000.00, 'Engineering'),
+    ('Charlie', 70000.00, 'Engineering'),
+    ('David', 55000.00, 'Sales'),
+    ('Eve', 80000.00, 'Management');
+
+CREATE VIEW high_earners AS
+SELECT name, salary
+FROM employees
+WHERE salary > 65000.00;
+
+SELECT * FROM high_earners;
+
+SELECT department, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department
+ORDER BY avg_salary DESC;
+
+-- DuckDB specific: Using APPROX_COUNT_DISTINCT for approximate distinct count
+SELECT APPROX_COUNT_DISTINCT(department) FROM employees;
+
+-- DuckDB specific: UNNEST to flatten arrays (example)
+CREATE TABLE array_table (id INTEGER, data INTEGER[]);
+INSERT INTO array_table VALUES (1, [1, 2, 3]), (2, [4, 5]);
+SELECT id, UNNEST(data) AS value FROM array_table;
+
+-- Using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Demonstrate string functions
+SELECT name, UPPER(name), LENGTH(name) FROM employees;
+
+-- Test case-insensitive comparisons
+SELECT * FROM employees WHERE LOWER(name) = 'alice';
+
+-- Test NULL handling
+INSERT INTO employees (name, department) VALUES (NULL, 'Unknown');
+SELECT * FROM employees WHERE name IS NULL;
+
+--Demonstrate date functions (creating a new table since there isn't a date column)
+CREATE TABLE events (event_date DATE, description VARCHAR);
+INSERT INTO events VALUES ('2024-01-01', 'New Year'), ('2024-03-15', 'Something');
+SELECT event_date, DATE_TRUNC('month', event_date) FROM events;
+
+-- Demonstrate list comprehensions (DuckDB specific)
+SELECT LIST_VALUE(1, 2, 3, 4); -- example of list creation
+
+-- Demonstrates filtering within the table
+SELECT * FROM employees WHERE department LIKE '%Eng%';

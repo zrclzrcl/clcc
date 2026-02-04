@@ -1,0 +1,30 @@
+CREATE TABLE test_int (id INTEGER PRIMARY KEY, value INT);
+CREATE TABLE test_text (id INTEGER PRIMARY KEY, value TEXT);
+CREATE TABLE test_date (id INTEGER PRIMARY KEY, value DATE);
+CREATE TABLE test_null (id INTEGER PRIMARY KEY, value TEXT);
+
+INSERT INTO test_int VALUES(1, 100), (2, 200), (3, NULL);
+INSERT INTO test_text VALUES(1, 'apple'), (2, 'Banana'), (3, 'cherry');
+INSERT INTO test_date VALUES(1, '2024-01-01'), (2, '2024-02-28'), (3, NULL);
+INSERT INTO test_null VALUES(1, NULL), (2, 'test'), (3, NULL);
+
+WITH cte AS (
+    SELECT value, ROW_NUMBER() OVER (ORDER BY value) as rn
+    FROM test_text
+)
+SELECT * FROM cte WHERE rn % 2 = 0;
+
+SELECT id, value FROM test_int WHERE value IS NULL;
+SELECT id, value FROM test_date WHERE value >= '2024-01-01';
+
+UPDATE test_text SET value = upper(value) WHERE id = 1;
+ALTER TABLE test_null RENAME COLUMN value TO data;
+
+SELECT id, data FROM test_null WHERE data IS NOT NULL;
+SELECT * FROM test_int UNION SELECT * FROM test_date;
+
+SELECT DISTINCT value FROM test_text ORDER BY value DESC;
+SELECT COUNT(*) as total FROM test_int HAVING total > 2;
+
+DELETE FROM test_int WHERE id = 3;
+INSERT INTO test_int VALUES(4, 400);

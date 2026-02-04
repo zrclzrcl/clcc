@@ -1,0 +1,53 @@
+CREATE TABLE lineitem (
+    orderkey INTEGER,
+    partkey INTEGER,
+    suppkey INTEGER,
+    linenumber INTEGER,
+    quantity INTEGER,
+    extendedprice DECIMAL(15,2),
+    discount DECIMAL(15,2),
+    tax DECIMAL(15,2),
+    returnflag VARCHAR(1),
+    linestatus VARCHAR(1),
+    shipdate DATE,
+    shipinstruct VARCHAR(25),
+    shipmode VARCHAR(10),
+    comment VARCHAR(44)
+);
+
+INSERT INTO lineitem VALUES
+(1, 15519, 7706, 1, 17, 18377.93, 0.04, 0.02, 'N', 'O', '1996-03-13', 'DELIVER IN PERSON', 'TRUCK', ' Clerk instructions regarding special'),
+(1, 6731, 7310, 2, 36, 46983.36, 0.09, 0.06, 'N', 'O', '1996-04-12', 'DELIVER IN PERSON', 'MAIL', 'Carefully. final deposits detect slyly agai');
+
+CREATE TABLE orders (
+    orderkey INTEGER,
+    custkey INTEGER,
+    orderstatus VARCHAR(1),
+    totalprice DECIMAL(15,2),
+    orderdate DATE,
+    orderpriority VARCHAR(15),
+    clerk VARCHAR(15),
+    shippriority INTEGER,
+    comment VARCHAR(79)
+);
+
+INSERT INTO orders VALUES
+(1, 370, 'O', 182356.20, '1996-01-02', '5-LOW', 'Clerk#000000951', 0, 'nstructions sleep furiously across the blithely pending acco'),
+(2, 1123, 'O', 173972.70, '1996-12-01', '1-URGENT', 'Clerk#000000900', 0, 'efully silent deposits boost. carefully. final, express instr');
+
+SELECT  returnflag,
+        linestatus,
+        SUM(extendedprice * (1 - discount)) AS sum_charge
+FROM    lineitem
+WHERE   shipdate <= DATE '1998-12-01' - INTERVAL '90' DAY
+GROUP BY returnflag, linestatus
+ORDER BY returnflag, linestatus;
+
+-- Demonstrating DuckDB's support for JSON functions
+SELECT json_group_array(orderkey) FROM orders WHERE custkey = 370;
+
+-- Demonstrating DuckDB's support for UNNEST
+SELECT value FROM UNNEST(['a', 'b', 'c']);
+
+-- Demonstrating DuckDB's support for range function and date operations.
+SELECT date, i FROM range(DATE '2024-01-01', DATE '2024-01-10') WITH ORDINALITY AS t(date, i);

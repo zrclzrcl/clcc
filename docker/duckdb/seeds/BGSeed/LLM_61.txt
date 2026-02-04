@@ -1,0 +1,58 @@
+PRAGMA foreign_keys=ON;
+
+-- Create a table with various data types
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN,
+    notes VARCHAR
+);
+
+-- Insert some initial data
+INSERT INTO employees (name, age, salary, hire_date, is_active, notes) VALUES
+('Alice', 30, 50000.00, '2022-01-15', TRUE, 'Good employee'),
+('Bob', 25, 40000.50, '2023-05-20', TRUE, 'New hire'),
+('Charlie', 40, 60000.75, '2021-10-01', FALSE, 'Former employee');
+
+-- Perform some basic queries
+SELECT * FROM employees WHERE age > 25;
+SELECT name, salary FROM employees WHERE is_active = TRUE;
+
+-- Test aggregate functions
+SELECT AVG(salary) FROM employees;
+SELECT MAX(age) FROM employees;
+SELECT COUNT(*) FROM employees;
+
+-- Test date functions and string manipulations which are specific to DuckDB
+SELECT hire_date, STRFTIME('%Y', hire_date) AS hire_year FROM employees;
+SELECT name, UPPER(name) FROM employees;
+
+-- Test window functions (more complex)
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Test unnesting an array
+CREATE TABLE array_test (
+    id INTEGER,
+    values INTEGER[]
+);
+
+INSERT INTO array_test VALUES (1, list(1,2,3));
+INSERT INTO array_test VALUES (2, list(4,5,6));
+SELECT id, value FROM array_test, UNNEST(values) AS value;
+
+-- Use try_cast. DuckDB specific and very useful for fuzzing type conversions.
+SELECT TRY_CAST('hello' AS INTEGER);
+SELECT TRY_CAST(123 AS VARCHAR);
+
+-- Test a CREATE VIEW statement to test view functionality
+CREATE VIEW active_employees AS SELECT name, salary FROM employees WHERE is_active = TRUE;
+SELECT * FROM active_employees;
+
+-- DELETE some data
+DELETE FROM employees WHERE name = 'Charlie';
+
+-- VACUUM to ensure data integrity
+VACUUM;

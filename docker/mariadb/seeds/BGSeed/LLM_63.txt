@@ -1,0 +1,49 @@
+CREATE DATABASE IF NOT EXISTS fuzz_test;
+USE fuzz_test;
+
+-- Test CREATE TABLE with various options
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    data JSON NULL,
+    FULLTEXT INDEX name_idx (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Test INSERT with different data types and NULL values
+INSERT INTO test_table (name, value, data) VALUES
+('Test Entry 1', 123.45, '{"key1": "value1", "key2": 123}'),
+('Test Entry 2', NULL, NULL),
+('Test Entry 3', 987.65, '{"key3": true, "key4": ["a", "b", "c"]}');
+
+-- Test UPDATE statement
+UPDATE test_table SET value = 500.00 WHERE name = 'Test Entry 1';
+
+-- Test DELETE statement
+DELETE FROM test_table WHERE value IS NULL;
+
+-- Test SELECT statement with various clauses
+SELECT * FROM test_table WHERE value > 100 ORDER BY name DESC LIMIT 10;
+
+-- Test LOCK TABLES and UNLOCK TABLES (MariaDB specific)
+LOCK TABLES test_table WRITE;
+-- Perform operations while table is locked (e.g., INSERT, UPDATE, DELETE)
+UNLOCK TABLES;
+
+-- Test stored procedure (MariaDB specific)
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS GetTestEntries(IN min_value DECIMAL(10, 2))
+BEGIN
+    SELECT * FROM test_table WHERE value >= min_value;
+END //
+DELIMITER ;
+
+CALL GetTestEntries(200.00);
+
+-- Test User Defined Function (UDF) (MariaDB specific - requires configuration for UDFs)
+-- This requires a compiled UDF to be loaded.  The specific function would be OS dependent and would need to be placed in the plugin directory.
+-- Note that due to security concerns regarding UDFs and fuzzing, loading them automatically is often disabled and requires manual steps outside the fuzzer itself.
+-- The following is an example of calling a UDF called `my_udf`
+-- SELECT my_udf(id) FROM test_table;

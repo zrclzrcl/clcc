@@ -1,0 +1,114 @@
+CREATE SCHEMA test_fuzz;
+SET search_path = test_fuzz;
+SET standard_conforming_strings = ON;
+
+-- Basic table creation and data insertion
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY GENERATED AS IDENTITY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.org'),
+('peter_jones', 'peter.jones@example.net');
+
+-- Table with different data types
+CREATE TABLE products (
+    product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10, 2) NOT NULL,
+    inventory INTEGER DEFAULT 0,
+    available BOOLEAN DEFAULT TRUE,
+    data JSONB
+);
+
+INSERT INTO products (name, description, price, inventory, data) VALUES
+('Awesome Widget', 'A truly awesome widget.', 19.99, 100, '{"color": "blue", "weight": 0.5}'),
+('Deluxe Gadget', 'The ultimate gadget for everyone.', 49.99, 50, '{"features": ["speed", "power"], "warranty": "2 years"}');
+
+-- Table with an ENUM type
+CREATE TYPE order_status AS ENUM ('pending', 'processing', 'shipped', 'delivered', 'canceled');
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY GENERATED AS IDENTITY,
+    user_id INTEGER REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    status order_status DEFAULT 'pending'
+);
+
+INSERT INTO orders (user_id, status) VALUES
+(1, 'processing'),
+(2, 'shipped'),
+(1, 'delivered');
+
+-- Basic SELECT queries
+SELECT * FROM users;
+SELECT username, email FROM users WHERE id = 1;
+SELECT name, price FROM products WHERE price > 20;
+
+-- JOIN query
+SELECT u.username, o.order_date, o.status
+FROM users u
+JOIN orders o ON u.id = o.user_id;
+
+-- Aggregate functions
+SELECT COUNT(*) FROM users;
+SELECT AVG(price) FROM products;
+SELECT MAX(price) FROM products;
+SELECT SUM(inventory) FROM products;
+SELECT user_id, COUNT(*) FROM orders GROUP BY user_id;
+
+-- ORDER BY, LIMIT, OFFSET
+SELECT * FROM products ORDER BY price DESC LIMIT 10 OFFSET 0;
+
+-- UPDATE and DELETE statements
+UPDATE products SET price = 24.99 WHERE name = 'Awesome Widget';
+DELETE FROM products WHERE product_id = '00000000-0000-0000-0000-000000000000'; -- Invalid UUID, won't delete anything
+
+-- CASE statement
+SELECT name,
+       CASE
+           WHEN price < 20 THEN 'Cheap'
+           WHEN price < 50 THEN 'Moderate'
+           ELSE 'Expensive'
+       END AS price_category
+FROM products;
+
+-- UNION, INTERSECT, EXCEPT
+CREATE TABLE users_backup AS SELECT * FROM users WHERE id < 3;
+
+SELECT username FROM users UNION SELECT username FROM users_backup;
+SELECT username FROM users INTERSECT SELECT username FROM users_backup;
+SELECT username FROM users EXCEPT SELECT username FROM users_backup;
+
+-- DISTINCT
+SELECT DISTINCT status FROM orders;
+
+-- Subquery
+SELECT name FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+-- WITH clause (Common Table Expression)
+WITH expensive_products AS (
+    SELECT name, price FROM products WHERE price > 30
+)
+SELECT name FROM expensive_products;
+
+-- Generate UUID extension (if not already enabled)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Using WITH ORDINALITY
+SELECT username, row_number
+FROM users
+WITH ORDINALITY row_number;
+
+-- Using COLLATION
+CREATE COLLATION german (locale = 'de_DE');
+CREATE TABLE collation_test (
+    name TEXT COLLATE german
+);
+INSERT INTO collation_test (name) VALUES ('äöü'), ('aou');
+SELECT name FROM collation_test ORDER BY name;

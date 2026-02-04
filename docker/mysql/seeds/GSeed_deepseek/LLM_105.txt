@@ -1,0 +1,89 @@
+-- Initial seed for MySQL fuzz testing
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age TINYINT UNSIGNED,
+    balance DECIMAL(10, 2),
+    status ENUM('active', 'inactive'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    data JSON
+);
+
+-- Test edge cases with extreme values and nulls
+INSERT INTO test_table (name, age, balance, status, data)
+VALUES 
+    ('Test User 1', 0, -999.99, 'active', '{"key": "value"}'),
+    ('Test User 2', 255, NULL, 'inactive', NULL),
+    ('边缘测试用户', 100, 9999999999.99, 'active', '{"name": "边缘测试用户", "age": 100}');
+
+-- Create a table with various data types for testing
+CREATE TABLE test_types (
+    id INT PRIMARY KEY,
+    tinyint_col TINYINT,
+    bool_col BOOLEAN,
+    smallint_col SMALLINT,
+    mediumint_col MEDIUMINT,
+    int_col INT,
+    bigint_col BIGINT,
+    float_col FLOAT(10, 2),
+    double_col DOUBLE,
+    decimal_col DECIMAL(10, 5),
+    char_col CHAR(50) DEFAULT 'default',
+    varchar_col VARCHAR(200),
+    text_col TEXT,
+    blob_col BLOB,
+    date_col DATE,
+    time_col TIME,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP,
+    binary_col BINARY(16),
+    varbinary_col VARBINARY(32)
+);
+
+-- Insert test data with edge cases
+INSERT INTO test_types 
+VALUES 
+    (0, -128, TRUE, -32768, -8388608, -2147483648, -9223372036854775808, 999.99, 999999999.99999, 999999999.99999, 'char', 'varchar', 'text', 'blob', '2023-12-31', '23:59:59', '2023-12-31 23:59:59', '2023-12-31 23:59:59', BINARY 'binary_data', VARBINARY 'varbinary_data'),
+    (1, NULL, FALSE, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- Test unique constraints and indexes
+CREATE TABLE unique_test (
+    id INT PRIMARY KEY,
+    email VARCHAR(255) UNIQUE,
+    index test_index (email)
+);
+
+INSERT INTO unique_test VALUES 
+    (1, 'test@example.com'),
+    (2, 'another@example.com');
+
+-- Test foreign key constraints
+CREATE TABLE parent_table (
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE child_table (
+    id INT PRIMARY KEY,
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES parent_table(id)
+);
+
+INSERT INTO parent_table VALUES (1);
+INSERT INTO child_table VALUES (1, 1), (2, NULL); -- Testing foreign key violation
+
+-- Test triggers and stored procedures
+DELIMITER $$
+CREATE TRIGGER after_insert_test AFTER INSERT ON test_table FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log VALUES (NEW.id, NEW.name, NOW());
+END$$
+DELIMITER ;
+
+-- Test ALTER TABLE operations
+ALTER TABLE test_table ADD COLUMN new_col INT;
+ALTER TABLE test_table DROP COLUMN balance;
+
+-- Test complex queries and edge cases
+EXPLAIN SELECT * FROM test_table WHERE name LIKE '%test%' AND status = 'active';
+SELECT COUNT(*) AS total_records FROM test_table;

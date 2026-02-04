@@ -1,0 +1,32 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER, email TEXT UNIQUE);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT NOT NULL, order_date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, product_name TEXT NOT NULL, price REAL CHECK(price > 0));
+
+BEGIN;
+INSERT INTO users (name, age, email) VALUES ('Alice', 30, 'alice@example.com');
+INSERT INTO users (name, age, email) VALUES ('Bob', 25, 'bob@example.com');
+INSERT INTO orders (user_id, product, order_date) VALUES (1, 'Widget', '2023-01-15');
+INSERT INTO orders (user_id, product, order_date) VALUES (1, 'Gadget', '2023-01-20');
+INSERT INTO orders (user_id, product, order_date) VALUES (2, 'Thingamajig', '2023-02-01');
+COMMIT;
+
+CREATE INDEX idx_users_age ON users(age);
+CREATE INDEX idx_orders_date ON orders(order_date DESC);
+CREATE INDEX idx_products_price ON products(price);
+
+SELECT name, COUNT(order_id) AS order_count 
+FROM users 
+LEFT JOIN orders ON users.id = orders.user_id 
+GROUP BY users.id 
+HAVING order_count > 0;
+
+SELECT product_name, SUM(price) AS total_sales 
+FROM products 
+LEFT JOIN orders ON product_name = product 
+GROUP BY product_name 
+ORDER BY total_sales DESC;
+
+SELECT users.name, products.product_name 
+FROM users, products 
+WHERE users.id IN (SELECT user_id FROM orders WHERE order_date >= '2023-01-01') 
+AND products.product_id NOT IN (SELECT DISTINCT order_id FROM orders);

@@ -1,0 +1,50 @@
+SET @old_sql_mode=@@SQL_MODE;
+SET SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @SESSION.information_schema_stats_expiry = 0;
+
+-- Test CREATE TABLE with various options, including MariaDB-specific options.
+CREATE TABLE test_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    geom GEOMETRY SRID 4326,
+    data JSON,
+    FULLTEXT INDEX name_index (name) WITH PARSER ngram
+) ENGINE=InnoDB AUTO_INCREMENT=1000 ROW_FORMAT=DYNAMIC COMPRESSION='zstd';
+
+-- Test INSERT with various data types, including JSON.
+INSERT INTO test_table (name, value, geom, data) VALUES
+('Test Name 1', 123.45, ST_GeomFromText('POINT(10 20)', 4326), '{"key1": "value1", "key2": 123}');
+INSERT INTO test_table (name, value, geom, data) VALUES
+('Test Name 2', 67.89, ST_GeomFromText('LINESTRING(0 0, 1 1)', 4326), '{"key3": true, "key4": null}');
+
+-- Test UPDATE with spatial functions and JSON functions.
+UPDATE test_table SET value = value * 1.1, data = JSON_SET(data, '$.new_key', 'new_value') WHERE id = 1;
+UPDATE test_table SET geom = ST_Buffer(geom, 1) WHERE id = 2;
+
+-- Test SELECT with spatial functions, JSON functions, and window functions.
+SELECT id, name, value, ST_AsText(geom), JSON_EXTRACT(data, '$.key1'),
+       ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+FROM test_table WHERE MBRContains(ST_GeomFromText('POLYGON((9 19, 11 19, 11 21, 9 21, 9 19))', 4326), geom);
+
+-- Test INSERT DELAYED (MariaDB specific).  Requires enabling the feature.
+-- SET GLOBAL insert_id=1;
+-- INSERT DELAYED INTO test_table (name) VALUES ('Delayed Insert');
+
+-- Test CREATE TRIGGER with BEFORE INSERT and AFTER UPDATE.
+CREATE TRIGGER test_trigger_before_insert
+BEFORE INSERT ON test_table
+FOR EACH ROW
+SET NEW.name = UPPER(NEW.name);
+
+CREATE TRIGGER test_trigger_after_update
+AFTER UPDATE ON test_table
+FOR EACH ROW
+SET @updated_row_id = OLD.id;
+
+-- Test ALTER TABLE with ADD COLUMN and MODIFY COLUMN.
+ALTER TABLE test_table ADD COLUMN description TEXT AFTER name;
+ALTER TABLE test_table MODIFY COLUMN value DECIMAL(12, 4);
+
+SET SQL_MODE=@old_sql_mode;

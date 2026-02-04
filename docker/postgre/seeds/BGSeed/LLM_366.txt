@@ -1,0 +1,148 @@
+CREATE TABLE table_test (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    value INTEGER
+);
+
+INSERT INTO table_test (name, value) VALUES ('test1', 10);
+INSERT INTO table_test (name, value) VALUES ('test2', 20);
+INSERT INTO table_test (name, value) VALUES ('test3', 30);
+
+SELECT * FROM table_test;
+
+UPDATE table_test SET value = 15 WHERE name = 'test1';
+
+DELETE FROM table_test WHERE value = 30;
+
+CREATE INDEX idx_name ON table_test (name);
+
+SELECT name, value FROM table_test WHERE value > 10 ORDER BY name;
+
+CREATE VIEW view_test AS SELECT name, value FROM table_test WHERE value < 25;
+
+SELECT * FROM view_test;
+
+DROP VIEW view_test;
+
+CREATE TABLE table_test2 (
+    id SERIAL PRIMARY KEY,
+    table_test_id INTEGER REFERENCES table_test(id),
+    description TEXT
+);
+
+INSERT INTO table_test2 (table_test_id, description) VALUES (1, 'Description for test1');
+INSERT INTO table_test2 (table_test_id, description) VALUES (2, 'Description for test2');
+
+SELECT * FROM table_test2;
+
+SELECT t1.name, t2.description
+FROM table_test t1
+JOIN table_test2 t2 ON t1.id = t2.table_test_id;
+
+CREATE FUNCTION add_values(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_values(5, 7);
+
+DROP FUNCTION add_values(INTEGER, INTEGER);
+
+CREATE TYPE composite_type AS (
+  name varchar(50),
+  value integer
+);
+
+CREATE TABLE table_test3 (
+  id SERIAL PRIMARY KEY,
+  data composite_type
+);
+
+INSERT INTO table_test3 (data) VALUES (ROW('test4', 40));
+SELECT * FROM table_test3;
+
+DROP TABLE table_test3;
+DROP TYPE composite_type;
+
+CREATE TABLE table_partition_parent (
+    log_date date NOT NULL,
+    log_level text NOT NULL,
+    message text
+) PARTITION BY RANGE (log_date);
+
+CREATE TABLE table_partition_202301 PARTITION OF table_partition_parent
+    FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+
+INSERT INTO table_partition_parent (log_date, log_level, message) VALUES ('2023-01-15', 'INFO', 'Log message 1');
+
+SELECT * FROM table_partition_parent;
+
+DROP TABLE table_partition_parent;
+
+CREATE TABLE table_generated_column (
+    a INTEGER,
+    b INTEGER GENERATED ALWAYS AS (a * 2) STORED
+);
+
+INSERT INTO table_generated_column (a) VALUES (5);
+SELECT * FROM table_generated_column;
+
+CREATE TABLE table_with_identity (
+    id INT GENERATED ALWAYS AS IDENTITY,
+    name TEXT
+);
+
+INSERT INTO table_with_identity (name) VALUES ('Test');
+SELECT * FROM table_with_identity;
+
+DROP TABLE table_with_identity;
+DROP TABLE table_generated_column;
+
+-- Test for common table expressions (CTE)
+WITH regional_sales AS (
+    SELECT region, SUM(amount) AS total_sales
+    FROM orders
+    GROUP BY region
+), top_regions AS (
+    SELECT region
+    FROM regional_sales
+    WHERE total_sales > (SELECT AVG(total_sales) FROM regional_sales)
+)
+SELECT region,
+       product,
+       SUM(quantity) AS product_units,
+       SUM(amount) AS product_sales
+FROM orders
+WHERE region IN (SELECT region FROM top_regions)
+GROUP BY region, product
+ORDER BY region, product;
+
+-- Basic permission check
+CREATE USER test_user;
+GRANT SELECT ON table_test TO test_user;
+REVOKE SELECT ON table_test FROM test_user;
+DROP USER test_user;
+
+-- Test for trigger
+
+CREATE FUNCTION trigger_function()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'A row was inserted into table_test';
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER after_insert
+AFTER INSERT ON table_test
+FOR EACH ROW
+EXECUTE FUNCTION trigger_function();
+
+INSERT INTO table_test (name, value) VALUES ('Trigger test', 42);
+
+DROP TRIGGER after_insert ON table_test;
+DROP FUNCTION trigger_function();
+
+DROP TABLE table_test2;
+DROP TABLE table_test;

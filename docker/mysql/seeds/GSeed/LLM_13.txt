@@ -1,0 +1,56 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number INT UNIQUE,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME NULL
+);
+
+-- Create a stored procedure to transfer funds
+DELIMITER //
+CREATE PROCEDURE transfer_funds(
+    IN from_account INT,
+    IN to_account INT,
+    IN amount DECIMAL(10, 2)
+)
+BEGIN
+    -- Start a transaction
+    START TRANSACTION;
+
+    -- Check if the source account has sufficient balance
+    SELECT balance INTO @from_balance FROM accounts WHERE account_number = from_account FOR UPDATE;
+    IF @from_balance < amount THEN
+        -- If insufficient balance, rollback the transaction
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient balance';
+    END IF;
+
+    -- Deduct the amount from the source account
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+
+    -- Add the amount to the destination account
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+
+    -- Commit the transaction
+    COMMIT;
+END //
+DELIMITER ;
+
+-- Insert some sample accounts
+INSERT INTO accounts (account_number, balance) VALUES (12345, 1000.00);
+INSERT INTO accounts (account_number, balance) VALUES (67890, 500.00);
+
+-- Call the stored procedure to transfer funds
+CALL transfer_funds(12345, 67890, 200.00);
+
+-- Select all accounts
+SELECT * FROM accounts;
+
+-- Test update with expression in default value
+ALTER TABLE accounts ADD COLUMN interest_rate DECIMAL(5,4) DEFAULT (balance * 0.01);
+UPDATE accounts SET interest_rate = DEFAULT(interest_rate);
+
+-- Test spatial data type (requires MySQL version with spatial support enabled)
+CREATE TABLE spatial_data (id INT PRIMARY KEY AUTO_INCREMENT, geom GEOMETRY);
+INSERT INTO spatial_data (geom) VALUES (ST_GeomFromText('POINT(1 1)'));
+SELECT ST_AsText(geom) FROM spatial_data;

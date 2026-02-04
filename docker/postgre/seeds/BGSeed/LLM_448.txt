@@ -1,0 +1,88 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department_id) REFERENCES departments (id);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'Los Angeles');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES ('Alice Smith', 60000.00, '2022-01-15', 1);
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES ('Bob Johnson', 75000.00, '2021-05-20', 2);
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES ('Charlie Brown', 90000.00, '2020-11-01', 3);
+
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, description, price) VALUES ('Laptop', 'High-performance laptop', 1200.00);
+INSERT INTO products (name, description, price) VALUES ('Mouse', 'Wireless mouse', 25.00);
+
+CREATE TABLE orders (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    address TEXT,
+    contact_info JSONB
+);
+
+INSERT INTO customers (name, address, contact_info) VALUES ('David Lee', '123 Main St', '{"email": "david.lee@example.com", "phone": "555-1234"}');
+INSERT INTO orders (customer_id, total_amount) VALUES (1, 1225.00);
+
+SELECT * FROM employees WHERE salary > 70000;
+SELECT name, location FROM departments WHERE location LIKE 'New%';
+SELECT AVG(salary) FROM employees;
+SELECT COUNT(*) FROM products;
+SELECT * FROM orders ORDER BY order_date DESC LIMIT 10;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, password) VALUES ('testuser', 'password123');
+
+CREATE TABLE books (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  author VARCHAR(255),
+  publication_year INTEGER,
+  genre VARCHAR(50)
+);
+
+INSERT INTO books (title, author, publication_year, genre) VALUES
+('Pride and Prejudice', 'Jane Austen', 1813, 'Romance'),
+('1984', 'George Orwell', 1949, 'Dystopian'),
+('To Kill a Mockingbird', 'Harper Lee', 1960, 'Southern Gothic');
+
+CREATE TABLE generated_ids (
+    id INT GENERATED ALWAYS AS IDENTITY,
+    description VARCHAR(255)
+);
+
+INSERT INTO generated_ids (description) VALUES ('First generated ID');
+INSERT INTO generated_ids (description) VALUES ('Second generated ID');
+
+SELECT * FROM generated_ids;

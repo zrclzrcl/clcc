@@ -1,0 +1,99 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    registration_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date TIMESTAMPTZ DEFAULT now(),
+    total_amount DECIMAL(12, 2) CHECK (total_amount >= 0),
+    status VARCHAR(50) CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')) DEFAULT 'pending'
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10, 2) NOT NULL CHECK (unit_price > 0)
+);
+
+INSERT INTO products (name, description, price) VALUES
+    ('Laptop', 'High-performance laptop with 16GB RAM', 1200.00),
+    ('Mouse', 'Ergonomic wireless mouse', 25.00),
+    ('Keyboard', 'Mechanical keyboard with RGB lighting', 100.00),
+    ('Monitor', '27-inch curved monitor', 300.00),
+    ('Headphones', 'Noise-cancelling headphones', 150.00);
+
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+    ('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave'),
+    ('Alice', 'Johnson', 'alice.johnson@example.com', '555-123-4567', '789 Pine Ln'),
+    ('Bob', 'Williams', 'bob.williams@example.com', '111-222-3333', '101 Elm Rd');
+
+INSERT INTO orders (customer_id, total_amount, status) VALUES
+    (1, 1325.00, 'processing'),
+    (2, 125.00, 'shipped'),
+    (3, 450.00, 'delivered'),
+    (4, 25.00, 'pending');
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+    (1, 1, 1, 1200.00),
+    (1, 2, 5, 25.00),
+    (2, 3, 1, 100.00),
+    (2, 2, 1, 25.00),
+    (3, 4, 1, 300.00),
+    (3, 5, 1, 150.00),
+    (4, 2, 1, 25.00);
+
+SELECT * FROM products WHERE price > 100;
+SELECT name, price FROM products ORDER BY price DESC;
+SELECT COUNT(*) FROM customers;
+SELECT AVG(total_amount) FROM orders;
+SELECT c.first_name, o.order_date, o.total_amount FROM customers c JOIN orders o ON c.customer_id = o.customer_id WHERE c.last_name = 'Doe';
+SELECT p.name, SUM(oi.quantity) AS total_quantity_sold FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.name ORDER BY total_quantity_sold DESC;
+UPDATE products SET price = price * 1.1 WHERE product_id = 1;
+DELETE FROM products WHERE product_id = 5;
+SELECT status, COUNT(*) FROM orders GROUP BY status;
+SELECT description FROM products WHERE description LIKE '%laptop%';
+SELECT first_name, last_name FROM customers WHERE registration_date = CURRENT_DATE;
+SELECT order_id, order_date FROM orders WHERE order_date BETWEEN '2024-01-01' AND now();
+SELECT order_id, total_amount FROM orders ORDER BY total_amount ASC NULLS LAST;
+SELECT generate_series(1, 10);
+SELECT md5('test');
+SELECT encode(digest('test', 'sha256'), 'hex');
+SELECT substring('foobar' from 4);
+SELECT split_part('abc~@~def~@~ghi', '~@~', 2);
+SELECT to_tsvector('english', 'A fat cat sat on a mat - it ate a fat rat');
+CREATE INDEX idx_products_name ON products (name);
+CREATE UNIQUE INDEX idx_customers_email ON customers (email);
+SELECT product_id, name, price FROM products WHERE product_id IN (SELECT product_id FROM order_items WHERE quantity > 2);
+SELECT first_name, last_name FROM customers WHERE EXISTS (SELECT 1 FROM orders WHERE orders.customer_id = customers.customer_id AND total_amount > 1000);
+SELECT name, price FROM products WHERE price > (SELECT AVG(price) FROM products);
+SELECT setseed(0.5); SELECT random();
+SELECT current_database();
+SELECT version();
+SELECT inet_client_addr();
+SELECT pg_backend_pid();
+SELECT pg_cancel_backend(pg_backend_pid());
+SELECT pg_terminate_backend(pg_backend_pid());
+SELECT txid_current();
+SELECT txid_current_if_assigned();
+SELECT txid_status(txid_current());
+SELECT lo_create(16384);
+SELECT lo_unlink(16384);
+SELECT pg_read_file('pg_hba.conf', 0, 1024);

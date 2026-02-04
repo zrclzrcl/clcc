@@ -1,0 +1,78 @@
+BEGIN;
+
+-- Create tables for testing
+CREATE TABLE test_table_1 (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    value INTEGER
+);
+
+CREATE TABLE test_table_2 (
+    id SERIAL PRIMARY KEY,
+    ref_id INTEGER REFERENCES test_table_1(id),
+    description TEXT
+);
+
+-- Insert data into tables
+INSERT INTO test_table_1 (name, value) VALUES
+('Alice', 10),
+('Bob', 20),
+('Charlie', 30);
+
+INSERT INTO test_table_2 (ref_id, description) VALUES
+(1, 'Alice\'s first entry'),
+(2, 'Bob\'s entry'),
+(3, 'Charlie\'s record');
+
+-- Declare cursors
+DECLARE cursor_1 CURSOR FOR SELECT * FROM test_table_1 WHERE value > 15;
+DECLARE cursor_2 SCROLL CURSOR FOR SELECT * FROM test_table_2 ORDER BY id DESC;
+DECLARE cursor_3 BINARY CURSOR FOR SELECT id, name FROM test_table_1;
+DECLARE cursor_4 CURSOR WITH HOLD FOR SELECT ref_id, description FROM test_table_2 WHERE ref_id IN (1, 2);
+
+-- Fetch data using cursors
+FETCH NEXT FROM cursor_1;
+FETCH LAST FROM cursor_2;
+FETCH PRIOR FROM cursor_2;
+FETCH FIRST FROM cursor_3;
+FETCH ABSOLUTE 1 FROM cursor_4;
+
+-- Update data through cursor
+UPDATE test_table_1 SET value = 40 WHERE CURRENT OF cursor_1;
+
+-- Delete data through cursor
+DELETE FROM test_table_2 WHERE CURRENT OF cursor_2;
+
+-- Move cursor
+MOVE FORWARD 2 FROM cursor_1;
+MOVE BACKWARD 1 FROM cursor_2;
+
+-- Fetch all rows
+FETCH ALL FROM cursor_3;
+
+-- Close cursors
+CLOSE cursor_1;
+CLOSE cursor_2;
+CLOSE cursor_3;
+CLOSE cursor_4;
+
+-- Test cursor with join
+DECLARE cursor_join CURSOR FOR SELECT t1.name, t2.description FROM test_table_1 t1 JOIN test_table_2 t2 ON t1.id = t2.ref_id;
+FETCH NEXT FROM cursor_join;
+CLOSE cursor_join;
+
+-- Test cursor with aggregation
+DECLARE cursor_agg CURSOR FOR SELECT ref_id, COUNT(*) FROM test_table_2 GROUP BY ref_id;
+FETCH NEXT FROM cursor_agg;
+CLOSE cursor_agg;
+
+-- Test cursor with subquery
+DECLARE cursor_subquery CURSOR FOR SELECT * FROM test_table_1 WHERE id IN (SELECT ref_id FROM test_table_2 WHERE description LIKE '%entry%');
+FETCH NEXT FROM cursor_subquery;
+CLOSE cursor_subquery;
+
+-- cleanup
+DROP TABLE test_table_2;
+DROP TABLE test_table_1;
+
+END;

@@ -1,0 +1,108 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (emp_id, emp_name, salary, department, hire_date) VALUES
+(1, 'John Doe', 60000.00, 'Sales', '2022-01-15'),
+(2, 'Jane Smith', 75000.00, 'Marketing', '2021-05-20'),
+(3, 'Peter Jones', 55000.00, 'Sales', '2023-03-10'),
+(4, 'Mary Brown', 80000.00, 'Engineering', '2020-11-01');
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering'), ('HR');
+
+-- Stored Procedure with error handling
+DELIMITER //
+CREATE PROCEDURE UpdateSalary(IN empId INT, IN newSalary DECIMAL(10, 2))
+BEGIN
+    DECLARE originalSalary DECIMAL(10, 2);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL; -- Re-raise the exception
+    END;
+
+    START TRANSACTION;
+
+    SELECT salary INTO originalSalary FROM employees WHERE emp_id = empId FOR UPDATE;
+
+    IF originalSalary IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Employee not found.';
+    END IF;
+
+    IF newSalary < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Salary cannot be negative.';
+    END IF;
+
+    UPDATE employees SET salary = newSalary WHERE emp_id = empId;
+
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL UpdateSalary(1, 65000.00); -- Update John Doe's salary
+
+-- Test negative salary update (expect error)
+-- CALL UpdateSalary(1, -1000);
+
+-- Views and Common Table Expressions (CTE)
+CREATE VIEW HighSalaryEmployees AS
+SELECT emp_name, salary, department FROM employees WHERE salary > 70000;
+
+WITH SalesEmployees AS (
+    SELECT emp_name, salary FROM employees WHERE department = 'Sales'
+)
+SELECT AVG(salary) AS average_sales_salary FROM SalesEmployees;
+
+-- Fulltext Index and Search
+ALTER TABLE employees ADD FULLTEXT INDEX emp_name_fulltext (emp_name);
+
+SELECT emp_name FROM employees WHERE MATCH (emp_name) AGAINST ('John' IN NATURAL LANGUAGE MODE);
+
+-- Window Functions
+SELECT
+    emp_name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank_in_dept
+FROM
+    employees;
+
+-- JSON Functions
+ALTER TABLE employees ADD COLUMN preferences JSON;
+
+UPDATE employees SET preferences = '{"favorite_color": "blue", "hobbies": ["reading", "hiking"]}' WHERE emp_id = 1;
+UPDATE employees SET preferences = '{"favorite_color": "red", "hobbies": ["coding", "gaming"]}' WHERE emp_id = 2;
+
+SELECT emp_name, preferences->'$.favorite_color' AS favorite_color FROM employees;
+
+-- Spatial Data (requires spatial extensions to be enabled, but demonstrates the intent)
+CREATE TABLE offices (
+    office_id INT PRIMARY KEY,
+    office_name VARCHAR(50),
+    location POINT SRID 0
+);
+
+--  Error handling & logging (simulated) - using variables to log the attempt
+
+SET @error_message = '';
+SET @employee_id = 999;
+
+SELECT * FROM employees WHERE emp_id = @employee_id;
+
+IF ROW_COUNT() = 0 THEN
+    SET @error_message = CONCAT('Employee with ID ', @employee_id, ' not found');
+    SELECT @error_message AS error_log;
+END IF;
+
+-- SHOW command
+SHOW TABLES;
+SHOW INDEX FROM employees;

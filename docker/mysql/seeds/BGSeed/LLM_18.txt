@@ -1,0 +1,49 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @session.auto_increment_increment=5;
+SET @session.auto_increment_offset=10;
+SET GLOBAL validate_password.policy=LOW;
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    a INT,
+    b VARCHAR(255),
+    c ENUM('x-small', 'small', 'medium', 'large', 'x-large')
+);
+INSERT INTO t1 (a, b, c) VALUES
+(1, 'test1', 'small'),
+(2, 'test2', 'medium'),
+(3, 'test3', 'large'),
+(4, 'test4', 'x-small');
+CREATE INDEX idx_a ON t1(a);
+ANALYZE TABLE t1;
+SELECT * FROM t1 WHERE a > 1 ORDER BY id DESC LIMIT 2;
+UPDATE t1 SET b = 'updated' WHERE a = 2;
+DELETE FROM t1 WHERE id = 4;
+ALTER TABLE t1 ADD COLUMN d JSON;
+UPDATE t1 SET d = '{"key1": "value1", "key2": 123}' WHERE id = 1;
+SELECT * FROM t1 WHERE JSON_EXTRACT(d, '$.key1') = 'value1';
+CREATE PROCEDURE my_procedure(IN param1 INT)
+BEGIN
+    SELECT * FROM t1 WHERE a > param1;
+END //
+DELIMITER ;
+CALL my_procedure(1);
+DROP PROCEDURE my_procedure;
+CREATE VIEW my_view AS SELECT a, b FROM t1 WHERE a > 1;
+SELECT * FROM my_view;
+DROP VIEW my_view;
+CREATE TABLE t2 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    t1_id INT,
+    FOREIGN KEY (t1_id) REFERENCES t1(id) ON DELETE CASCADE
+);
+INSERT INTO t2 (t1_id) VALUES (1), (2);
+SHOW CREATE TABLE t1;
+SHOW INDEX FROM t1;
+EXPLAIN SELECT * FROM t1 WHERE a = 2;
+RENAME TABLE t1 TO t1_renamed;
+RENAME TABLE t1_renamed TO t1;
+DROP TABLE t2;
+SET sql_mode=@old_sql_mode;
+SET @session.auto_increment_increment=1;
+SET @session.auto_increment_offset=1;

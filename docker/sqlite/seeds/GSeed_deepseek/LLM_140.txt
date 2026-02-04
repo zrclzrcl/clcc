@@ -1,0 +1,53 @@
+-- Initial seed for SQLite database fuzz testing
+CREATE TABLE "test_table_1" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+    "value" REAL CHECK(value >= 0),
+    "timestamp" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "status" TEXT CHECK(status IN ('active', 'inactive'))
+);
+
+INSERT INTO "test_table_1" ("name", "value") VALUES
+('Test Entry 1', 123.45),
+('Test Entry 2', -678.90), -- Testing edge case with negative value (should fail due to CHECK constraint)
+('Test Entry 3', 0);        -- Testing boundary condition
+
+CREATE TABLE "test_table_2" (
+    "id" INTEGER PRIMARY KEY,
+    "parent_id" INTEGER REFERENCES "test_table_1"(id),
+    "data" BLOB
+);
+
+INSERT INTO "test_table_2" ("id", "parent_id", "data") VALUES
+(1, 1, X'010203'),          -- Testing binary data insertion
+(2, NULL, X'040506');       -- Testing NULL parent_id
+
+CREATE INDEX "idx_test_data" ON "test_table_2" ("data"); -- Testing index creation on BLOB column
+
+WITH RECURSIVE cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 5
+)
+SELECT * FROM cte;           -- Testing recursive CTE
+
+SELECT t1.name, t2.data 
+FROM "test_table_1" t1
+JOIN "test_table_2" t2 ON t1.id = t2.parent_id
+UNION ALL
+SELECT t1.name || ' (copy)', t2.data FROM "test_table_1" t1
+JOIN "test_table_2" t2 ON t1.id = t2.parent_id; -- Testing UNION with string concatenation
+
+DROP TABLE IF EXISTS "test_table_3";             -- Testing DROP TABLE on non-existent table (should not fail)
+CREATE TABLE "test_table_3" ("a" INTEGER, "b" INTEGER);
+INSERT INTO "test_table_3" VALUES (1, 2), (3, 4);
+SELECT a || '.' || b AS combined FROM "test_table_3"; -- Testing string concatenation with dot separator
+
+-- Edge case testing
+CREATE TABLE "long_column_name_table" (
+    "this_is_a_very_long_column_name_that_exceeds_normal_limits" TEXT
+); 
+INSERT INTO "long_column_name_table" VALUES ('Testing long column name');
+
+-- Testing ALTER TABLE (SQLite-specific behavior)
+ALTER TABLE "test_table_1" ADD COLUMN "new_col" TEXT DEFAULT 'default_value';

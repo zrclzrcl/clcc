@@ -1,0 +1,197 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_name ON test_table (name);
+
+INSERT INTO test_table (name, value) VALUES
+('Alice', 10),
+('Bob', 20),
+('Charlie', 30),
+('David', 40),
+('Eve', 50);
+
+SELECT * FROM test_table WHERE value > 25;
+
+UPDATE test_table SET value = value + 5 WHERE name LIKE 'B%';
+
+DELETE FROM test_table WHERE id = 5;
+
+SELECT COUNT(*) FROM test_table;
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'Initial value' WHERE description IS NULL;
+
+CREATE VIEW test_view AS
+SELECT name, value FROM test_table WHERE value > 15;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+CREATE MATERIALIZED VIEW materialized_test_view AS
+SELECT name, value FROM test_table WHERE value > 15;
+
+SELECT * FROM materialized_test_view;
+
+REFRESH MATERIALIZED VIEW materialized_test_view;
+
+DROP MATERIALIZED VIEW materialized_test_view;
+
+CREATE FUNCTION increment_value(input_id INTEGER, increment_by INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE test_table SET value = value + increment_by WHERE id = input_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_value(1, 5);
+
+SELECT * FROM test_table WHERE id = 1;
+
+DROP FUNCTION increment_value(INTEGER, INTEGER);
+
+CREATE TABLE parent_table (
+    id SERIAL PRIMARY KEY,
+    parent_name VARCHAR(255)
+);
+
+CREATE TABLE child_table (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent_table(id),
+    child_name VARCHAR(255)
+);
+
+INSERT INTO parent_table (parent_name) VALUES ('Parent 1'), ('Parent 2');
+INSERT INTO child_table (parent_id, child_name) VALUES (1, 'Child 1'), (1, 'Child 2'), (2, 'Child 3');
+
+SELECT * FROM parent_table JOIN child_table ON parent_table.id = child_table.parent_id;
+
+DELETE FROM parent_table WHERE id = 2;
+
+-- Demonstrate window functions
+SELECT
+    name,
+    value,
+    RANK() OVER (ORDER BY value DESC) as value_rank
+FROM test_table;
+
+-- Demonstrate Common Table Expressions (CTEs)
+WITH RankedValues AS (
+    SELECT
+        name,
+        value,
+        RANK() OVER (ORDER BY value DESC) as value_rank
+    FROM test_table
+)
+SELECT name, value FROM RankedValues WHERE value_rank <= 2;
+
+-- Demonstrate DISTINCT ON
+SELECT DISTINCT ON (name) name, value FROM test_table ORDER BY name, value DESC;
+
+-- Demonstrate UNION ALL
+SELECT name, value FROM test_table WHERE value > 20
+UNION ALL
+SELECT name, value FROM test_table WHERE name LIKE 'A%';
+
+-- Demonstrate INTERSECT
+SELECT name FROM test_table WHERE value > 10
+INTERSECT
+SELECT name FROM test_table WHERE name LIKE '%e';
+
+-- Demonstrate EXCEPT
+SELECT name FROM test_table
+EXCEPT
+SELECT name FROM test_table WHERE value < 30;
+
+-- Test various data types
+CREATE TABLE data_types_test (
+    smallint_col SMALLINT,
+    integer_col INTEGER,
+    bigint_col BIGINT,
+    decimal_col DECIMAL(10,2),
+    numeric_col NUMERIC(12,4),
+    real_col REAL,
+    double_precision_col DOUBLE PRECISION,
+    boolean_col BOOLEAN,
+    char_col CHAR(10),
+    varchar_col VARCHAR(50),
+    text_col TEXT,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    timestamptz_col TIMESTAMPTZ,
+    interval_col INTERVAL
+);
+
+INSERT INTO data_types_test VALUES (
+    1, 2, 3, 1234.56, 987654.3210, 1.23, 4.56789, TRUE,
+    'char12345', 'varchar12345', 'text12345', '2024-01-01', '2024-01-01 10:00:00', '2024-01-01 10:00:00+00', '1 day 2 hours'
+);
+
+SELECT * FROM data_types_test;
+
+DROP TABLE data_types_test;
+
+-- Test jsonb
+CREATE TABLE jsonb_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO jsonb_test (data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}'),
+('{"name": "Jane", "age": 25, "city": "London"}');
+
+SELECT data -> 'name' AS name FROM jsonb_test;
+SELECT data ->> 'name' AS name FROM jsonb_test;
+SELECT * FROM jsonb_test WHERE data @> '{"age": 30}';
+SELECT * FROM jsonb_test WHERE data #> '{name}' = '"John"';
+
+DROP TABLE jsonb_test;
+
+-- Test array
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    names TEXT[]
+);
+
+INSERT INTO array_test (names) VALUES
+(ARRAY['Alice', 'Bob', 'Charlie']),
+(ARRAY['David', 'Eve']);
+
+SELECT names[1] FROM array_test;
+SELECT * FROM array_test WHERE 'Bob' = ANY(names);
+
+DROP TABLE array_test;
+
+-- Check constraint
+CREATE TABLE check_test (
+    id SERIAL PRIMARY KEY,
+    value INTEGER CHECK (value > 0)
+);
+
+INSERT INTO check_test (value) VALUES (1);
+-- Should fail: INSERT INTO check_test (value) VALUES (-1);
+
+DROP TABLE check_test;
+
+-- Test unique constraint
+CREATE TABLE unique_test (
+    id SERIAL PRIMARY KEY,
+    value INTEGER UNIQUE
+);
+
+INSERT INTO unique_test (value) VALUES (1);
+-- Should fail: INSERT INTO unique_test (value) VALUES (1);
+
+DROP TABLE unique_test;
+
+-- Cleanup
+DROP TABLE test_table;
+DROP TABLE parent_table;
+DROP TABLE child_table;
+DROP FUNCTION IF EXISTS increment_value(INTEGER, INTEGER);

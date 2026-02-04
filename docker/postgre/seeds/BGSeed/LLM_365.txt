@@ -1,0 +1,60 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id VARCHAR(20) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id)
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering'),
+('Human Resources'),
+('Finance');
+
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, dept_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '2022-01-15', 'SALES_REP', 60000.00, 0.15, (SELECT dept_id FROM departments WHERE dept_name = 'Sales')),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '2021-05-20', 'MKT_MGR', 80000.00, 0.00, (SELECT dept_id FROM departments WHERE dept_name = 'Marketing')),
+('Peter', 'Jones', 'peter.jones@example.com', '555-123-4567', '2023-03-10', 'ENG_LEAD', 90000.00, 0.00, (SELECT dept_id FROM departments WHERE dept_name = 'Engineering')),
+('Mary', 'Brown', 'mary.brown@example.com', '111-222-3333', '2022-09-01', 'HR_MGR', 75000.00, 0.00, (SELECT dept_id FROM departments WHERE dept_name = 'Human Resources')),
+('David', 'Wilson', 'david.wilson@example.com', '444-555-6666', '2023-07-05', 'FIN_ANALYST', 65000.00, 0.05, (SELECT dept_id FROM departments WHERE dept_name = 'Finance'));
+
+SELECT * FROM employees;
+SELECT first_name, last_name FROM employees WHERE salary > 70000;
+SELECT dept_name FROM departments ORDER BY dept_name;
+UPDATE employees SET salary = salary * 1.10 WHERE dept_id = (SELECT dept_id FROM departments WHERE dept_name = 'Sales');
+DELETE FROM employees WHERE emp_id = 5;
+SELECT AVG(salary) FROM employees;
+SELECT COUNT(*) FROM employees WHERE dept_id = (SELECT dept_id FROM departments WHERE dept_name = 'Engineering');
+SELECT MAX(salary), MIN(salary) FROM employees;
+SELECT dept_id, COUNT(*) FROM employees GROUP BY dept_id;
+SELECT e.first_name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+SELECT e.first_name, d.dept_name FROM employees e LEFT JOIN departments d ON e.dept_id = d.dept_id;
+SELECT e.first_name, d.dept_name FROM employees e RIGHT JOIN departments d ON e.dept_id = d.dept_id;
+
+-- PostgreSQL specific features
+CREATE INDEX idx_last_name ON employees (last_name);
+ALTER TABLE employees ADD COLUMN full_name TEXT GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED;
+SELECT full_name FROM employees WHERE full_name LIKE 'J%';
+SELECT emp_id, row_number() OVER (ORDER BY salary DESC) FROM employees;
+SELECT emp_id, rank() OVER (ORDER BY salary DESC) FROM employees;
+SELECT emp_id, dense_rank() OVER (ORDER BY salary DESC) FROM employees;
+SELECT generate_series(1, 10);
+SELECT * FROM pg_timezone_names WHERE name LIKE '%America%';
+EXPLAIN SELECT * FROM employees WHERE last_name = 'Smith';
+SELECT current_database();
+SELECT version();

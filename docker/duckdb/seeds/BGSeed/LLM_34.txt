@@ -1,0 +1,76 @@
+CREATE TABLE employees (
+    employee_id INTEGER PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    salary DECIMAL,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id INTEGER PRIMARY KEY,
+    department_name VARCHAR,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    location_id INTEGER PRIMARY KEY,
+    city VARCHAR,
+    country_id VARCHAR
+);
+
+CREATE TABLE countries (
+    country_id VARCHAR PRIMARY KEY,
+    country_name VARCHAR
+);
+
+-- Insert some initial data
+INSERT INTO countries (country_id, country_name) VALUES
+('US', 'United States'),
+('CA', 'Canada'),
+('UK', 'United Kingdom');
+
+INSERT INTO locations (location_id, city, country_id) VALUES
+(1, 'New York', 'US'),
+(2, 'Toronto', 'CA'),
+(3, 'London', 'UK');
+
+INSERT INTO departments (department_id, department_name, location_id) VALUES
+(10, 'Sales', 1),
+(20, 'Marketing', 2),
+(30, 'Engineering', 3);
+
+INSERT INTO employees (employee_id, first_name, last_name, salary, department_id) VALUES
+(1, 'John', 'Doe', 60000.00, 10),
+(2, 'Jane', 'Smith', 75000.00, 20),
+(3, 'Peter', 'Jones', 90000.00, 30);
+
+-- Create an index
+CREATE INDEX idx_last_name ON employees (last_name);
+
+-- Example DuckDB specific functionality - Using UNNEST and SEQUENCE
+SELECT value FROM UNNEST(SEQUENCE(1, 10));
+
+-- Example DuckDB specific - Using a STRUCT
+SELECT STRUCT_PACK(i := 1, j := 2);
+
+-- Example of window function usage
+SELECT employee_id, first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Example of using JSON
+CREATE TABLE json_test (
+    id INTEGER,
+    data JSON
+);
+
+INSERT INTO json_test VALUES (1, '{"name": "Alice", "age": 30}');
+
+SELECT id, json_extract_string(data, '$.name') FROM json_test;
+
+-- Test case insensitive LIKE
+SELECT * FROM employees WHERE first_name ILIKE '%john%';
+
+-- Test date functions
+SELECT CURRENT_DATE;
+SELECT DATE('2024-01-01');

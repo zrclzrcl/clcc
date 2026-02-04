@@ -1,0 +1,112 @@
+CREATE TABLESPACE my_tablespace LOCATION '/tmp/my_tablespace';
+
+CREATE ROLE my_role LOGIN PASSWORD 'password' SUPERUSER CREATEDB CREATEROLE INHERIT;
+
+CREATE DATABASE my_database WITH OWNER = my_role ENCODING = 'UTF8' TABLESPACE = my_tablespace;
+
+\connect my_database my_role
+
+CREATE SCHEMA my_schema AUTHORIZATION my_role;
+
+SET search_path TO my_schema;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Bob', 'sad');
+INSERT INTO person (name, current_mood) VALUES ('Charlie', 'ok');
+
+CREATE INDEX person_name_idx ON person (name);
+
+CREATE VIEW happy_people AS
+SELECT name FROM person WHERE current_mood = 'happy';
+
+CREATE FUNCTION greet(name text) RETURNS text AS $$
+    SELECT 'Hello, ' || name || '!';
+$$ LANGUAGE SQL;
+
+SELECT greet(name) FROM person;
+
+CREATE AGGREGATE average(numeric) (
+    SFUNC = numeric_add,
+    STYPE = numeric,
+    FINALFUNC = numeric_avg
+);
+
+SELECT average(col1) FROM (VALUES (1), (2), (3), (4)) AS mytable(col1);
+
+CREATE DOMAIN posint AS integer CHECK (VALUE > 0);
+
+CREATE SEQUENCE my_sequence START 1 INCREMENT BY 1;
+
+SELECT nextval('my_sequence');
+
+CREATE RULE update_person AS ON UPDATE TO person
+DO INSTEAD NOTHING;
+
+UPDATE person SET current_mood = 'happy' WHERE name = 'Bob';
+
+CREATE TEXT SEARCH CONFIGURATION my_config ( COPY = english );
+
+ALTER TEXT SEARCH CONFIGURATION my_config
+ADD MAPPING FOR word, asciiword, hword_asciipart WITH english_stem;
+
+SELECT to_tsvector('my_config', 'A fat  cat sat on a mat.');
+
+CREATE TRIGGER person_trigger
+BEFORE INSERT OR UPDATE
+ON person
+FOR EACH ROW
+EXECUTE FUNCTION some_function();
+
+CREATE OR REPLACE FUNCTION some_function()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.name := upper(NEW.name);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO person (name, current_mood) VALUES ('David', 'ok');
+
+ALTER TABLE person ADD COLUMN age integer;
+
+ALTER TABLE person ALTER COLUMN age TYPE numeric USING age::numeric;
+
+ALTER TABLE person RENAME COLUMN age TO person_age;
+
+ALTER TABLE person ADD CONSTRAINT age_positive CHECK (person_age > 0);
+
+CREATE MATERIALIZED VIEW mv_person AS SELECT * FROM person;
+
+REFRESH MATERIALIZED VIEW mv_person;
+
+CREATE FOREIGN DATA WRAPPER my_wrapper;
+
+CREATE SERVER my_server FOREIGN DATA WRAPPER my_wrapper;
+
+CREATE USER MAPPING FOR my_role SERVER my_server;
+
+CREATE POLICY person_policy ON person FOR ALL TO my_role USING (current_mood = 'happy');
+
+EXPLAIN SELECT * FROM person WHERE name = 'Alice';
+
+ANALYZE person;
+
+LISTEN person_updates;
+
+UNLISTEN person_updates;
+
+TRUNCATE person;
+
+DROP TABLE person CASCADE;
+DROP TYPE mood;
+DROP SCHEMA my_schema CASCADE;
+DROP DATABASE my_database;
+DROP ROLE my_role;
+DROP TABLESPACE my_tablespace;

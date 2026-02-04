@@ -1,0 +1,17 @@
+CREATE TABLE t1(a INT, b VARCHAR(50), c DATE);
+INSERT INTO t1 VALUES (1, 'test', '2023-01-01'), (2, NULL, '2023-01-02'), (3, 'duckdb', '2023-01-03');
+CREATE TABLE t2(x INT PRIMARY KEY, y DECIMAL(5,2), z BOOLEAN);
+INSERT INTO t2 VALUES (10, 12.34, TRUE), (20, NULL, FALSE), (30, 98.76, TRUE);
+CREATE TABLE t3(m TEXT, n INT UNIQUE, o TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO t3 VALUES ('data', 100, '2023-01-01T12:34:56'), ('test', 200, NULL), ('sample', 300, '2023-01-02T09:08:07');
+WITH cte AS (SELECT a, b FROM t1 WHERE c >= '2023-01-01'), aggr AS (SELECT x, SUM(y) OVER(PARTITION BY z) as total FROM t2)
+SELECT DISTINCT ON (a) a, b, c, x, y, z 
+FROM t1
+JOIN t2 ON a = x / 10
+LEFT JOIN t3 ON n = a * 100
+WHERE c >= '2023-01-01' AND z IS TRUE
+UNION ALL
+SELECT -a as neg_a, b || '-' || m as combined_str, c + INTERVAL '1 day', x / 10 as div_x, y * 100 as scaled_y, z::INT 
+FROM t1
+JOIN t3 ON a = n / 100
+WHERE m LIKE 'test%' OR m IS NULL;

@@ -1,0 +1,29 @@
+CREATE TABLE test_fuzz (
+    c0 INT,
+    c1 BIGINT DEFAULT 9223372036854775807,
+    c2 VARCHAR(255) NOT NULL,
+    c3 DATE
+);
+
+INSERT INTO test_fuzz (c0, c1, c2, c3) VALUES 
+(-2147483648, 9223372036854775807, 'test', '2024-01-01'),
+(0, -9223372036854775808, NULL, '1970-01-01'),
+(2147483647, 0, 'edge', '9999-12-31');
+
+SELECT c0 * 2 AS doubled_value FROM test_fuzz;
+SELECT c1 + 1 AS incremented_value FROM test_fuzz WHERE c2 IS NOT NULL;
+SELECT CONCAT(c2, '') AS concatenated_string FROM test_fuzz LIMIT 5;
+SELECT MIN(c0) FROM test_fuzz GROUP BY c1 HAVING COUNT(*) > 1;
+
+UPDATE test_fuzz SET c1 = c1 + 10 WHERE c0 < 0;
+INSERT INTO test_fuzz (c0, c2) SELECT c0, 'inserted' FROM test_fuzz WHERE c0 > 0;
+
+START TRANSACTION;
+SELECT * FROM test_fuzz FOR UPDATE;
+COMMIT;
+
+CREATE INDEX idx_c2 ON test_fuzz(c2);
+CALL mysql_proc();
+
+SELECT 1 / 0;
+SELECT SUBSTRING(c2, 1, 10) FROM test_fuzz LIMIT 1;

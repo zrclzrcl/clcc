@@ -1,0 +1,39 @@
+CREATE TEMPORARY TABLE fuzz_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data VARCHAR(255),
+    num DECIMAL(10, 2)
+);
+
+INSERT INTO fuzz_table (data, num) VALUES ('initial value', 123.45);
+
+WITH RECURSIVE NumberSeries AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM NumberSeries WHERE n < 10
+)
+SELECT
+    f.id,
+    f.data,
+    f.num,
+    CASE
+        WHEN f.num > (SELECT AVG(num) FROM fuzz_table) THEN 'Above Average'
+        ELSE 'Below Average'
+    END AS comparison
+FROM fuzz_table f
+JOIN NumberSeries ns ON f.id = ns.n
+WHERE f.data LIKE '%value%'
+OR EXISTS (SELECT 1 FROM fuzz_table WHERE num = f.num * 2)
+LIMIT 5;
+
+-- Attempt to trigger unique MySQL behavior with JSON functions and generated column:
+ALTER TABLE fuzz_table ADD COLUMN json_data JSON;
+UPDATE fuzz_table SET json_data = JSON_OBJECT('key1', 'value1', 'key2', num);
+ALTER TABLE fuzz_table ADD COLUMN virtual_col INT AS (JSON_EXTRACT(json_data, '$.key2'));
+
+SELECT id, data, num, json_data, virtual_col FROM fuzz_table WHERE JSON_CONTAINS(json_data, '{"key1": "value1"}');
+
+-- Test spatial functions. Requires Spatial extensions to be enabled.
+CREATE TEMPORARY TABLE spatial_table (id INT PRIMARY KEY, location POINT);
+INSERT INTO spatial_table (id, location) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+INSERT INTO spatial_table (id, location) VALUES (2, ST_GeomFromText('POINT(2 2)'));
+SELECT id, ST_AsText(location) FROM spatial_table WHERE ST_Distance(location, ST_GeomFromText('POINT(0 0)')) < 3;

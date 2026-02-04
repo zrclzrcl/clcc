@@ -1,0 +1,122 @@
+CREATE SCHEMA fuzz_test;
+SET search_path = fuzz_test;
+
+-- Create a table with various data types
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    quantity INTEGER DEFAULT 0,
+    available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    data jsonb
+);
+
+-- Insert some sample data
+INSERT INTO products (name, description, price, quantity, available, data) VALUES
+('Product A', 'This is product A', 25.50, 100, TRUE, '{"color": "red", "size": "medium"}'),
+('Product B', 'This is product B', 10.00, 50, FALSE, '{"color": "blue", "size": "small"}'),
+('Product C', 'This is product C', 100.00, 25, TRUE, '{"color": "green", "size": "large"}');
+
+-- Select all products
+SELECT * FROM products;
+
+-- Select products with price greater than 50
+SELECT * FROM products WHERE price > 50;
+
+-- Update the quantity of Product A
+UPDATE products SET quantity = 150 WHERE name = 'Product A';
+
+-- Delete Product B
+DELETE FROM products WHERE name = 'Product B';
+
+-- Add a new column to the table
+ALTER TABLE products ADD COLUMN rating INTEGER;
+
+-- Update the rating for some products
+UPDATE products SET rating = 4 WHERE name = 'Product A';
+UPDATE products SET rating = 5 WHERE name = 'Product C';
+
+-- Create an index on the name column
+CREATE INDEX idx_products_name ON products (name);
+
+-- Create a view to show the name and price of products
+CREATE VIEW product_prices AS
+SELECT name, price FROM products;
+
+-- Select from the view
+SELECT * FROM product_prices;
+
+-- Create a function to calculate the total value of a product
+CREATE OR REPLACE FUNCTION calculate_total_value(price DECIMAL, quantity INTEGER)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * quantity;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Use the function
+SELECT name, calculate_total_value(price, quantity) AS total_value FROM products;
+
+-- Create a trigger to update the created_at timestamp when a product is updated
+CREATE OR REPLACE FUNCTION update_created_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.created_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_products_created_at
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION update_created_at();
+
+-- Update a product to trigger the trigger
+UPDATE products SET price = 27.00 WHERE name = 'Product A';
+
+-- Using WITH clause (Common Table Expression)
+WITH expensive_products AS (
+    SELECT * FROM products WHERE price > 50
+)
+SELECT * FROM expensive_products ORDER BY price DESC;
+
+-- Using generate_series()
+SELECT generate_series(1, 10);
+
+-- DISTINCT ON example
+CREATE TABLE distinct_test (
+    id SERIAL PRIMARY KEY,
+    group_id INTEGER,
+    value VARCHAR(255)
+);
+
+INSERT INTO distinct_test (group_id, value) VALUES
+(1, 'A'), (1, 'B'), (1, 'C'),
+(2, 'D'), (2, 'E'), (2, 'F');
+
+SELECT DISTINCT ON (group_id) group_id, value FROM distinct_test ORDER BY group_id, value;
+
+-- Example using jsonb operators
+SELECT name, data ->> 'color' AS color FROM products;
+SELECT name, data FROM products WHERE data @> '{"color": "red"}'::jsonb;
+
+-- Example using array
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES (ARRAY['tag1', 'tag2', 'tag3']);
+
+SELECT * FROM array_test WHERE 'tag2' = ANY(tags);
+
+-- Example using LIMIT and OFFSET
+SELECT * FROM products LIMIT 2 OFFSET 1;
+
+-- Example using GROUP BY and HAVING
+SELECT available, AVG(price) FROM products GROUP BY available HAVING AVG(price) > 20;
+
+-- Example using subquery
+SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products);

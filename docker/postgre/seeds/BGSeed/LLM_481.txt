@@ -1,0 +1,84 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(255),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 50000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+('Eve Wilson', 90000.00, 'Engineering', '2022-08-25');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 65000
+ORDER BY average_salary DESC;
+
+SELECT name, salary
+FROM employees
+WHERE salary BETWEEN 50000 AND 80000
+AND department IN ('Sales', 'Marketing')
+ORDER BY salary;
+
+UPDATE employees
+SET salary = salary * 1.10
+WHERE department = 'Engineering';
+
+DELETE FROM employees
+WHERE hire_date < '2021-01-01';
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary), MIN(salary), AVG(salary) FROM employees;
+
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+-- PostgreSQL specific features
+SELECT version();
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- Using generate_series function
+SELECT generate_series(1, 5);
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Common Table Expression (CTE)
+WITH DepartmentAvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.salary, d.avg_salary
+FROM employees e
+JOIN DepartmentAvgSalaries d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Try some unusual operators and casting
+SELECT '123'::integer + 456;
+SELECT 5 = 5.0;
+SELECT 5 <> 5.0;
+SELECT id FROM employees WHERE salary IS NOT NULL;
+
+DROP FUNCTION increment(INTEGER);
+DROP TABLE employees;

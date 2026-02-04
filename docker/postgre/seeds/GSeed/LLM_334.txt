@@ -1,0 +1,115 @@
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+CREATE TABLE orders (
+    order_id integer,
+    customer_id integer,
+    order_date date
+);
+
+CREATE TABLE order_items (
+    order_id integer,
+    product_no integer,
+    quantity integer
+);
+
+INSERT INTO products (product_no, name, price) VALUES (1, 'Cheese', 9.99);
+INSERT INTO products (product_no, name, price) VALUES (2, 'Bread', 1.99);
+INSERT INTO products (product_no, name, price) VALUES (3, 'Milk', 2.50);
+INSERT INTO products (product_no, name, price) VALUES (4, 'Eggs', 4.00);
+
+INSERT INTO orders (order_id, customer_id, order_date) VALUES (101, 1, '2024-01-01');
+INSERT INTO orders (order_id, customer_id, order_date) VALUES (102, 2, '2024-01-02');
+INSERT INTO orders (order_id, customer_id, order_date) VALUES (103, 1, '2024-01-03');
+
+INSERT INTO order_items (order_id, product_no, quantity) VALUES (101, 1, 2);
+INSERT INTO order_items (order_id, product_no, quantity) VALUES (101, 2, 1);
+INSERT INTO order_items (order_id, product_no, quantity) VALUES (102, 3, 3);
+INSERT INTO order_items (order_id, product_no, quantity) VALUES (103, 4, 6);
+
+SELECT * FROM products WHERE price > 2.00;
+SELECT name, price FROM products ORDER BY price DESC;
+SELECT AVG(price) FROM products;
+SELECT COUNT(*) FROM orders;
+SELECT customer_id, MAX(order_date) FROM orders GROUP BY customer_id;
+SELECT o.order_id, p.name, oi.quantity FROM orders o JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_no = p.product_no;
+
+UPDATE products SET price = 10.99 WHERE product_no = 1;
+DELETE FROM products WHERE product_no = 4;
+
+CREATE VIEW expensive_products AS SELECT product_no, name FROM products WHERE price > 5.00;
+SELECT * FROM expensive_products;
+DROP VIEW expensive_products;
+
+CREATE INDEX product_price_idx ON products (price);
+DROP INDEX product_price_idx;
+
+-- PostgreSQL-specific features
+
+SELECT version();
+SELECT current_database();
+SELECT inet_client_addr();
+SELECT gen_random_uuid();
+SELECT pg_backend_pid();
+SELECT pg_sleep(0.01);
+
+-- Using window functions
+
+SELECT product_no, name, price, RANK() OVER (ORDER BY price DESC) as price_rank FROM products;
+
+-- Using Common Table Expressions (CTEs)
+
+WITH ProductSummary AS (
+    SELECT AVG(price) as avg_price, COUNT(*) as product_count FROM products
+)
+SELECT * FROM ProductSummary;
+
+-- Using generate_series function
+
+SELECT generate_series(1, 10);
+
+-- Using interval data type
+
+SELECT NOW() + INTERVAL '1 day';
+SELECT order_date + INTERVAL '1 week' FROM orders;
+
+-- Using jsonb data type
+
+CREATE TABLE json_table (
+    id serial PRIMARY KEY,
+    data jsonb
+);
+INSERT INTO json_table (data) VALUES ('{"name": "John", "age": 30}');
+SELECT data -> 'name' FROM json_table;
+DROP TABLE json_table;
+
+-- Advanced aggregate functions
+SELECT corr(product_no, price) from products;
+
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY price) FROM products;
+
+-- Try casting of different datatypes
+SELECT CAST('123' AS INTEGER);
+SELECT CAST(123 AS TEXT);
+SELECT CAST('2024-01-05' AS DATE);
+
+-- Conditional expressions
+SELECT product_no, name, price, CASE WHEN price > 5 THEN 'Expensive' ELSE 'Cheap' END AS price_category FROM products;
+
+-- Try some text search functions
+SELECT name FROM products WHERE name LIKE '%ea%';
+SELECT name FROM products WHERE name ILIKE '%EA%';
+
+-- Error handling block
+DO $$
+BEGIN
+  RAISE NOTICE 'Starting transaction';
+  INSERT INTO products (product_no, name, price) VALUES (1, 'New Cheese', 9.99);
+EXCEPTION
+  WHEN unique_violation THEN
+    RAISE NOTICE 'Caught unique_violation exception';
+END;
+$$;

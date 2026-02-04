@@ -1,0 +1,98 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"age": 30, "city": "New York"}'),
+('Bob', 20, '{"age": 25, "city": "Los Angeles"}'),
+('Charlie', 15, '{"age": 35, "city": "Chicago"}');
+
+SELECT * FROM test_table WHERE value > 12;
+SELECT name, value FROM test_table ORDER BY value DESC;
+UPDATE test_table SET value = value + 5 WHERE name = 'Alice';
+DELETE FROM test_table WHERE id = 3;
+SELECT jsonb_pretty(data) FROM test_table;
+SELECT data -> 'age' FROM test_table;
+SELECT * FROM test_table WHERE data @> '{"city": "New York"}';
+SELECT * FROM test_table WHERE data ? 'age';
+ALTER TABLE test_table ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+CREATE INDEX idx_test_table_name ON test_table (name);
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 10;
+SELECT * FROM test_view;
+DROP VIEW test_view;
+SELECT COUNT(*) FROM test_table;
+SELECT AVG(value) FROM test_table;
+SELECT MAX(value) FROM test_table;
+SELECT MIN(value) FROM test_table;
+SELECT SUM(value) FROM test_table;
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+DROP FUNCTION increment(INTEGER);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00);
+
+SELECT product_name, price FROM products WHERE price BETWEEN 50 AND 1500;
+SELECT product_name FROM products WHERE product_name LIKE 'K%';
+SELECT product_name FROM products WHERE product_name ILIKE 'k%';
+SELECT * FROM products ORDER BY price ASC NULLS LAST;
+SELECT generate_series(1, 10);
+SELECT pg_sleep(0.1);
+SELECT current_database();
+SELECT inet_client_addr();
+SELECT inet_client_port();
+
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(100),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com');
+
+SELECT * FROM users WHERE username = 'john_doe';
+SELECT username, created_at FROM users ORDER BY created_at DESC;
+UPDATE users SET email = 'new_email@example.com' WHERE username = 'jane_smith';
+DELETE FROM users WHERE id = 1;
+
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  order_date DATE NOT NULL,
+  total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (user_id, order_date, total_amount) VALUES
+(1, '2024-01-15', 150.00),
+(2, '2024-01-20', 200.00);
+
+SELECT * FROM orders WHERE user_id = 2;
+SELECT o.id, u.username, o.order_date, o.total_amount
+FROM orders o
+JOIN users u ON o.user_id = u.id;
+
+SELECT u.username, COUNT(o.id) AS order_count
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.username
+ORDER BY order_count DESC;

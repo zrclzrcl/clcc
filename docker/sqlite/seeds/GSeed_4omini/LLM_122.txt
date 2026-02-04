@@ -1,0 +1,15 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (name, age) VALUES ('Alice', 30), ('Bob', 25);
+INSERT INTO users (name, age) VALUES ('Charlie', NULL);
+UPDATE users SET age = 40 WHERE name = 'Alice';
+DELETE FROM users WHERE age < 30;
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount) VALUES (1, 150.75), (2, 75.50);
+SELECT u.name, SUM(o.amount) AS total_spent 
+FROM users u 
+JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id;
+
+CREATE INDEX idx_user_name ON users(name);
+PRAGMA foreign_keys = ON;

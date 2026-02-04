@@ -1,0 +1,24 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, salary REAL, department_id INTEGER);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT UNIQUE);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employee_department ON employees(department_id);
+CREATE INDEX IF NOT EXISTS idx_employee_age ON employees(age);
+INSERT INTO departments(id, name) VALUES(1, 'HR'), (2, 'Engineering'), (3, 'Marketing');
+INSERT INTO employees(id, name, age, salary, department_id) VALUES(1, 'Alice', 30, 70000.0, 2), 
+                                                             (2, 'Bob', 25, 50000.0, 2), 
+                                                             (3, 'Charlie', 35, 60000.0, 1);
+SELECT e.name, e.salary, d.name AS department_name 
+FROM employees e 
+JOIN departments d ON e.department_id = d.id 
+WHERE e.age > 28 
+ORDER BY e.salary DESC;
+
+-- Use the RAISE function to simulate an error during testing
+CREATE TRIGGER raise_error BEFORE INSERT ON employees 
+BEGIN 
+    SELECT RAISE(ABORT, 'Inserting is not allowed during testing'); 
+END;
+
+-- Test upsert functionality
+INSERT INTO employees(id, name, age, salary, department_id) 
+VALUES(4, 'David', 40, 80000.0, 1) 
+ON CONFLICT(id) DO UPDATE SET salary = excluded.salary + 1000;

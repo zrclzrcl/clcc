@@ -1,0 +1,85 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_ALL_TABLES';
+SET @old_gtid_mode=@@gtid_mode;
+SET GLOBAL gtid_mode=OFF;
+SET @old_cte_max_recursion_depth = @@cte_max_recursion_depth;
+SET @@cte_max_recursion_depth = 1000;
+
+-- Create a table with various data types and constraints
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2) DEFAULT 0.00,
+    manager_id INT,
+    department_id INT,
+    CHECK (salary > 0)
+);
+
+-- Create a related table for departments
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+-- Create a table for jobs
+CREATE TABLE jobs (
+    job_id INT PRIMARY KEY AUTO_INCREMENT,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+-- Add foreign key constraints (ensure tables exist first)
+ALTER TABLE employees ADD CONSTRAINT FK_job_id FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+ALTER TABLE employees ADD CONSTRAINT FK_department_id FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+-- Insert some sample data
+INSERT INTO departments (department_name) VALUES ('Sales'), ('Marketing'), ('IT'), ('HR');
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Sales Representative', 40000, 70000), ('Marketing Specialist', 50000, 80000), ('Software Engineer', 70000, 120000), ('HR Manager', 60000, 90000);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 55000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-02-20', 2, 65000.00, 2),
+('Alice', 'Johnson', 'alice.johnson@example.com', '2023-03-10', 3, 80000.00, 3),
+('Bob', 'Williams', 'bob.williams@example.com', '2023-04-01', 4, 75000.00, 4);
+
+-- Test some queries with different operators and functions
+SELECT first_name, last_name FROM employees WHERE salary > 60000 AND department_id = 3;
+SELECT department_name FROM departments WHERE department_id IN (1, 2);
+SELECT AVG(salary) FROM employees;
+SELECT LOWER(first_name), UPPER(last_name) FROM employees;
+
+-- Test a JOIN operation
+SELECT e.first_name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.department_id;
+
+-- Test a subquery
+SELECT first_name FROM employees WHERE department_id IN (SELECT department_id FROM departments WHERE department_name LIKE '%ing%');
+
+-- Test an UPDATE statement
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+-- Test a DELETE statement
+DELETE FROM employees WHERE salary < 50000;
+
+-- Test some MariaDB-specific features
+-- Create a virtual column
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(101) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name));
+
+-- Create a SEQUENCE
+CREATE SEQUENCE employee_seq START WITH 5 INCREMENT BY 1;
+
+-- Use the sequence to insert a new employee
+INSERT INTO employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES (NEXT VALUE FOR employee_seq, 'New', 'Employee', 'new.employee@example.com', '2024-01-01', 1, 50000, 1);
+
+-- Show the grants for current user
+SHOW GRANTS FOR CURRENT_USER;
+
+-- Reset variables
+SET sql_mode=@old_sql_mode;
+SET GLOBAL gtid_mode=@old_gtid_mode;
+SET @@cte_max_recursion_depth = @old_cte_max_recursion_depth;

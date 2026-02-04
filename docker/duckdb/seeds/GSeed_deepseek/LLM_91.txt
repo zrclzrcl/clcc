@@ -1,0 +1,23 @@
+CREATE TABLE t1(a INT NOT NULL, b TEXT, c REAL);
+INSERT INTO t1 VALUES 
+    (0, 'test', 3.14),
+    (1, null, null),
+    (2147483647, 'max int', -2147483648.5);
+CREATE UNIQUE INDEX idx_t1 ON t1(abs(a));
+CREATE TABLE t2(d BLOB, e TEXT DEFAULT 'default');
+INSERT INTO t2 VALUES 
+    (x'00ff', 'binary data'),
+    (null, 'another entry');
+WITH cte AS (
+    SELECT a, quote(b) as quoted_b, hex(c)
+    FROM t1
+)
+SELECT *, row_number() OVER (ORDER BY a) as rn,
+       rank() OVER (PARTITION BY quoted_b ORDER BY a) as rnk
+FROM cte;
+SELECT count(*), sum(a) 
+FROM t1 
+GROUP BY abs(a);
+SELECT * 
+FROM t2 
+WHERE e LIKE 'a%';

@@ -1,0 +1,80 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN CHECK (status IN (true, false)),
+    UNIQUE (name)
+);
+
+-- Create a table with foreign key constraint
+CREATE TABLE related_table (
+    id INT PRIMARY KEY,
+    test_id INT REFERENCES test_table(id) ON DELETE CASCADE
+);
+
+-- Create an index on the name column for faster lookups
+CREATE INDEX idx_name ON test_table(name);
+
+-- Create a virtual column and index
+ALTER TABLE test_table ADD COLUMN length_name AS (LENGTH(name));
+CREATE INDEX idx_length_name ON test_table(length_name);
+
+-- Insert sample data with edge cases
+INSERT INTO test_table VALUES
+    (1, 'test', 100.5, CURRENT_TIMESTAMP, true),
+    (2, NULL, NULL, NULL, false); -- Testing NULL values
+
+-- Create a CTE to test complex queries
+WITH cte AS (
+    SELECT id, name, value,
+           RANK() OVER (ORDER BY value DESC) as rank_value
+    FROM test_table
+)
+SELECT * FROM cte;
+
+-- Test window functions and aggregate functions
+SELECT 
+    id, 
+    name, 
+    value,
+    ROW_NUMBER() OVER () as row_num,
+    NTILE(4) OVER (ORDER BY value) as ntile_val
+FROM test_table;
+
+-- Test REPLACE statement for upsert functionality
+REPLACE INTO test_table VALUES
+    (3, 'new_test', 200.75, CURRENT_TIMESTAMP, true),
+    (1, 'test_updated', 150.25, CURRENT_TIMESTAMP, false);
+
+-- Create a table with partitioning (DuckDB-specific)
+CREATE TABLE partitioned_table (
+    id INT,
+    date DATE
+) PARTITIONED BY (date);
+
+-- Insert data into the partitioned table
+INSERT INTO partitioned_table VALUES
+    (1, '2023-01-01'),
+    (2, '2023-01-02');
+
+-- Create a virtual table using FTS for text search
+CREATE VIRTUAL TABLE fts_table USING fts5(
+    content='test_table',
+    tokenize = 'porter'
+);
+
+-- Test transactions to ensure data consistency
+BEGIN TRANSACTION;
+    INSERT INTO test_table VALUES (4, 'transaction_test', 300.0, CURRENT_TIMESTAMP, true);
+    SAVEPOINT sp1;
+    UPDATE test_table SET status = false WHERE id = 4;
+    ROLLBACK TO sp1;
+COMMIT;
+
+-- Test PRAGMA statements for configuration
+PRAGMA enable_case_sensitive_like; -- DuckDB-specific pragma
+
+-- Clean up the database (optional)
+-- DROP TABLE IF EXISTS test_table, related_table, partitioned_table, fts_table;

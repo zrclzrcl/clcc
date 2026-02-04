@@ -1,0 +1,27 @@
+-- Create a test table with sample data
+CREATE TABLE testtbl (
+    id SERIAL PRIMARY KEY,
+    value INT NOT NULL
+);
+
+-- Insert sample values into the table
+INSERT INTO testtbl (value) VALUES
+(1), (2), (3), (4), (5),
+(6), (7), (8), (9), (10);
+
+-- Test boolean conditions with numerical comparisons
+
+-- Select rows where value is greater than 5
+SELECT id, value FROM testtbl WHERE value > 5 ORDER BY id;
+
+-- Select rows where value is less than or equal to 3
+SELECT id, value FROM testtbl WHERE value <= 3 ORDER BY id;
+
+-- Test combined conditions using AND
+SELECT id, value FROM testtbl WHERE value >= 4 AND value <=7 ORDER BY id;
+
+-- Test combined conditions using OR
+SELECT id, value FROM testtbl WHERE value <=2 OR value >=9 ORDER BY id;
+
+-- Clean up by dropping the test table
+DROP TABLE testtbl;

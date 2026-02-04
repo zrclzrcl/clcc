@@ -1,0 +1,95 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET auto_increment_increment=1;
+SET @character_set_client  = @@character_set_client;
+SET @character_set_connection = @@character_set_connection;
+SET @character_set_results = @@character_set_results;
+SET @collation_connection  = @@collation_connection;
+SET character_set_client  = utf8mb4;
+SET character_set_connection = utf8mb4;
+SET character_set_results = utf8mb4;
+SET collation_connection  = utf8mb4_general_ci;
+
+CREATE TABLE `test_table` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `data` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `value` DECIMAL(10,2) DEFAULT NULL,
+  `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `enum_col` ENUM('option1', 'option2', 'option3') DEFAULT NULL,
+  `json_col` JSON DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `data_index` (`data`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `test_table` (`data`, `value`, `enum_col`, `json_col`) VALUES
+('Test Data 1', 123.45, 'option1', '{"key1": "value1", "key2": 123}'),
+('Test Data 2', 678.90, 'option2', '{"key3": "value3", "key4": true}'),
+('Test Data 3', 987.65, 'option3', '{"key5": "value5", "key6": null}');
+
+CREATE PROCEDURE `test_procedure`(IN input_id INT)
+BEGIN
+  SELECT * FROM `test_table` WHERE `id` = input_id;
+END;
+
+CREATE FUNCTION `test_function`(input_value INT) RETURNS INT DETERMINISTIC
+BEGIN
+  RETURN input_value * 2;
+END;
+
+CREATE TRIGGER `test_trigger_insert`
+AFTER INSERT ON `test_table`
+FOR EACH ROW
+BEGIN
+  INSERT INTO `test_table` (`data`) VALUES ('Triggered by insert on id: ' + CAST(NEW.id AS CHAR));
+END;
+
+ALTER TABLE `test_table` ADD COLUMN `new_column` INT DEFAULT 0;
+
+UPDATE `test_table` SET `value` = `value` * 1.1 WHERE `id` IN (1,2);
+
+DELETE FROM `test_table` WHERE `data` LIKE 'Test Data%';
+
+SELECT * FROM `test_table` WHERE `timestamp` > DATE_SUB(NOW(), INTERVAL 1 DAY);
+
+EXPLAIN SELECT * FROM `test_table` WHERE `data` = 'Some Data';
+
+SHOW CREATE TABLE `test_table`;
+
+SHOW VARIABLES LIKE 'character_set%';
+
+SELECT SLEEP(1);
+
+SET @user_variable = 100;
+
+SELECT @user_variable;
+
+DROP PROCEDURE IF EXISTS `test_procedure`;
+
+DROP FUNCTION IF EXISTS `test_function`;
+
+-- Partition the table
+ALTER TABLE `test_table` PARTITION BY RANGE (id) (
+    PARTITION p0 VALUES LESS THAN (5),
+    PARTITION p1 VALUES LESS THAN (10),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+-- Test spatial data type and functions
+CREATE TABLE `spatial_table` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `point` POINT NOT NULL
+);
+INSERT INTO `spatial_table` (`point`) VALUES (ST_GeomFromText('POINT(1 1)'));
+SELECT ST_AsText(`point`) FROM `spatial_table`;
+
+-- Test fulltext index
+ALTER TABLE `test_table` ADD FULLTEXT INDEX `data_fulltext` (`data`);
+SELECT * FROM `test_table` WHERE MATCH (`data`) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Reset environment
+SET sql_mode = @old_sql_mode;
+SET auto_increment_increment = @auto_increment_increment;
+SET character_set_client  = @character_set_client;
+SET character_set_connection = @character_set_connection;
+SET character_set_results = @character_set_results;
+SET collation_connection  = @collation_connection;

@@ -1,0 +1,30 @@
+CREATE TABLE t1(
+    id INTEGER,
+    name TEXT,
+    value NUMERIC,
+    date_col DATE
+);
+
+INSERT INTO t1 VALUES 
+(0, 'Test', 3.14, '2023-01-01'),
+(1, NULL, -99999999, '2023-01-02'),
+(2, 'EdgeCase', 1e200, '2023-01-03');
+
+SELECT id, name, value, date_col FROM t1 WHERE value > 0;
+
+SELECT SUM(value) AS total_value, AVG(value) AS avg_value 
+FROM t1 
+GROUP BY name 
+HAVING COUNT(*) > 1;
+
+SELECT id, name, RANK() OVER (ORDER BY value DESC) as rank 
+FROM t1;
+
+WITH cte AS (
+    SELECT id, value FROM t1 WHERE id < 2
+)
+SELECT * FROM cte;
+
+UPDATE t1 SET name = 'Updated' WHERE id = 0;
+
+DELETE FROM t1 WHERE date_col >= '2023-01-02';

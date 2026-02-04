@@ -1,0 +1,107 @@
+CREATE TABLE t1 (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    age INT,
+    email TEXT
+);
+
+CREATE TABLE t2 (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES t1(id),
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO t1 (name, age, email) VALUES
+    ('Alice', 30, 'alice@example.com'),
+    ('Bob', 25, 'bob@example.com'),
+    ('Charlie', 40, 'charlie@example.com');
+
+INSERT INTO t2 (customer_id, order_date, total_amount) VALUES
+    (1, '2024-01-15', 150.00),
+    (2, '2024-02-01', 200.50),
+    (1, '2024-02-10', 75.25);
+
+SELECT * FROM t1 WHERE age > 25;
+
+SELECT name, email FROM t1 ORDER BY name;
+
+SELECT AVG(age) FROM t1;
+
+SELECT t1.name, t2.order_date, t2.total_amount
+FROM t1
+INNER JOIN t2 ON t1.id = t2.customer_id;
+
+UPDATE t1 SET email = 'new_email@example.com' WHERE id = 3;
+
+DELETE FROM t2 WHERE order_id = 2;
+
+CREATE INDEX idx_name ON t1 (name);
+
+DROP INDEX idx_name;
+
+ALTER TABLE t1 ADD COLUMN address TEXT;
+
+ALTER TABLE t1 DROP COLUMN address;
+
+CREATE VIEW view_t1 AS SELECT name, age FROM t1;
+
+SELECT * FROM view_t1;
+
+DROP VIEW view_t1;
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+CREATE TABLE t3 (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  data JSONB
+);
+
+INSERT INTO t3 (data) VALUES ('{"name": "value"}');
+
+SELECT data -> 'name' FROM t3;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Pete', 'happy');
+SELECT * FROM person;
+
+CREATE DOMAIN posint AS integer CHECK (VALUE > 0);
+
+CREATE TABLE quantity_check (
+    quantity posint
+);
+
+INSERT INTO quantity_check VALUES (5);
+
+SELECT version();
+
+SHOW server_version;
+
+CREATE TABLESPACE my_tablespace LOCATION '/path/to/tablespace';
+
+DROP TABLESPACE my_tablespace;
+
+-- Test some window functions
+SELECT name, age, RANK() OVER (ORDER BY age DESC) FROM t1;
+SELECT name, age, DENSE_RANK() OVER (ORDER BY age DESC) FROM t1;
+SELECT name, age, ROW_NUMBER() OVER (ORDER BY age DESC) FROM t1;
+
+-- Test some aggregate functions
+SELECT COUNT(*) FROM t1;
+SELECT SUM(age) FROM t1;
+SELECT MAX(age) FROM t1;
+SELECT MIN(age) FROM t1;

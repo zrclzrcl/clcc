@@ -1,0 +1,24 @@
+-- Sample initial seed for a hypothetical DBMS
+
+-- Create a simple table
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255)
+);
+
+-- Insert some data
+INSERT INTO users (id, name, email) VALUES (1, 'John Doe', 'john.doe@example.com');
+INSERT INTO users (id, name, email) VALUES (2, 'Jane Smith', 'jane.smith@example.com');
+
+-- Select data
+SELECT * FROM users;
+
+-- Update data
+UPDATE users SET email = 'new.email@example.com' WHERE id = 1;
+
+-- Delete data
+DELETE FROM users WHERE id = 2;
+
+-- Drop the table
+DROP TABLE users;

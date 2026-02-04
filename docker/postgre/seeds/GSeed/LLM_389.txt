@@ -1,0 +1,141 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    job_id VARCHAR(20) NOT NULL,
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id),
+    manager_id INTEGER
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering'),
+('Human Resources'),
+('Finance');
+
+INSERT INTO employees (first_name, last_name, email, job_id, salary, dept_id) VALUES
+('John', 'Doe', 'john.doe@example.com', 'SALES_REP', 60000.00, (SELECT dept_id FROM departments WHERE dept_name = 'Sales')),
+('Jane', 'Smith', 'jane.smith@example.com', 'MKT_MGR', 75000.00, (SELECT dept_id FROM departments WHERE dept_name = 'Marketing')),
+('Peter', 'Jones', 'peter.jones@example.com', 'ENG_LEAD', 90000.00, (SELECT dept_id FROM departments WHERE dept_name = 'Engineering')),
+('Alice', 'Brown', 'alice.brown@example.com', 'HR_MGR', 70000.00, (SELECT dept_id FROM departments WHERE dept_name = 'Human Resources')),
+('Bob', 'Wilson', 'bob.wilson@example.com', 'FIN_ANALYST', 65000.00, (SELECT dept_id FROM departments WHERE dept_name = 'Finance'));
+
+UPDATE employees SET commission_pct = 0.15 WHERE job_id = 'SALES_REP';
+UPDATE employees SET phone_number = '555-123-4567' WHERE first_name = 'John';
+
+SELECT * FROM employees WHERE salary > 70000 ORDER BY last_name;
+SELECT dept_name FROM departments WHERE dept_id IN (SELECT dept_id FROM employees WHERE salary > 65000);
+SELECT first_name, last_name, salary FROM employees WHERE dept_id = (SELECT dept_id FROM departments WHERE dept_name = 'Engineering') AND salary > 80000;
+
+CREATE INDEX idx_employee_name ON employees (last_name, first_name);
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+UPDATE employees SET bonus = salary * 0.10 WHERE job_id LIKE '%MGR%';
+
+DELETE FROM employees WHERE emp_id NOT IN (SELECT min(emp_id) FROM employees GROUP BY first_name, last_name);
+
+SELECT COUNT(*) AS total_employees, AVG(salary) AS average_salary FROM employees;
+SELECT dept_name, COUNT(*) AS employee_count FROM departments JOIN employees ON departments.dept_id = employees.dept_id GROUP BY dept_name ORDER BY employee_count DESC;
+
+SELECT e1.first_name AS employee_name, e2.first_name AS manager_name FROM employees e1 LEFT JOIN employees e2 ON e1.manager_id = e2.emp_id;
+
+CREATE VIEW high_earners AS SELECT first_name, last_name, salary FROM employees WHERE salary > 75000;
+SELECT * FROM high_earners ORDER BY salary DESC;
+
+SELECT first_name, last_name, COALESCE(phone_number, 'N/A') AS phone FROM employees;
+SELECT first_name, last_name, NULLIF(email, 'N/A') AS email FROM employees;
+
+SELECT first_name, last_name, EXTRACT(YEAR FROM hire_date) AS hire_year FROM employees;
+SELECT first_name, last_name, AGE(hire_date) AS time_employed FROM employees;
+
+SELECT first_name, last_name, salary FROM employees WHERE first_name LIKE 'J%' OR last_name LIKE '%s';
+
+SELECT first_name, last_name, salary FROM employees WHERE salary BETWEEN 60000 AND 70000;
+
+SELECT first_name, last_name, salary FROM employees WHERE dept_id IS NULL;
+
+SELECT first_name, last_name, salary,
+       CASE
+           WHEN salary > 80000 THEN 'High'
+           WHEN salary > 65000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+SELECT generate_series(1, 10);
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- Testing with JSONB
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "Product A", "price": 25.99, "details": {"color": "red", "size": "medium"}}'),
+('{"name": "Product B", "price": 15.50, "details": {"color": "blue", "size": "small"}}');
+
+SELECT data -> 'name' FROM json_test;
+SELECT data ->> 'name' FROM json_test;
+SELECT data -> 'details' ->> 'color' FROM json_test;
+
+CREATE TEXT SEARCH DICTIONARY english_stem (
+    template = snowball,
+    language = english
+);
+
+CREATE TEXT SEARCH CONFIGURATION public.english2 ( copy = pg_catalog.english );
+
+ALTER TEXT SEARCH CONFIGURATION public.english2
+    ALTER MAPPING FOR word, asciiword, hword, hword_asciipart
+    WITH english_stem;
+
+-- Table with tsvector for full-text search.
+CREATE TABLE articles (
+  id SERIAL PRIMARY KEY,
+  title TEXT,
+  content TEXT,
+  tsv tsvector
+);
+
+CREATE INDEX articles_tsv_idx ON articles USING GIN (tsv);
+
+-- Trigger to automatically update the tsvector column.
+CREATE OR REPLACE FUNCTION articles_tsvector_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.tsv :=
+    setweight(to_tsvector('public.english2', coalesce(NEW.title,'')), 'A') ||
+    setweight(to_tsvector('public.english2', coalesce(NEW.content,'')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE
+ON articles FOR EACH ROW EXECUTE PROCEDURE articles_tsvector_trigger();
+
+INSERT INTO articles (title, content) VALUES
+('PostgreSQL Fuzzing', 'This article discusses strategies for fuzzing PostgreSQL.');
+
+SELECT * FROM articles WHERE tsv @@ to_tsquery('public.english2', 'fuzzing & postgresql');

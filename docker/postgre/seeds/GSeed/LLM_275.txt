@@ -1,0 +1,117 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00),
+('Monitor', 300.00);
+
+INSERT INTO customers (name, email) VALUES
+('Alice Smith', 'alice.smith@example.com'),
+('Bob Johnson', 'bob.johnson@example.com');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 375.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 5, 75.00);
+
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+UPDATE products SET price = 1300.00 WHERE name = 'Laptop';
+DELETE FROM products WHERE name = 'Mouse';
+
+SELECT o.id, c.name AS customer_name, o.order_date, o.total_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+
+SELECT p.name, SUM(oi.quantity) AS total_quantity_sold
+FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+GROUP BY p.name
+ORDER BY total_quantity_sold DESC;
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+BEGIN;
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+UPDATE products SET price = price * 0.9 WHERE id = 2;
+COMMIT;
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 500;
+
+SELECT name, price FROM products ORDER BY price DESC LIMIT 2;
+
+CREATE VIEW customer_orders AS
+SELECT c.name AS customer_name, COUNT(o.id) AS total_orders
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.name;
+
+SELECT * FROM customer_orders;
+
+DROP VIEW customer_orders;
+
+CREATE OR REPLACE FUNCTION total_order_amount(customer_id INT)
+RETURNS DECIMAL(10, 2) AS $$
+BEGIN
+    RETURN (SELECT SUM(total_amount) FROM orders WHERE customer_id = $1);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT total_order_amount(1);
+
+DROP FUNCTION total_order_amount(INT);
+
+PREPARE get_product_by_id (INT) AS
+SELECT * FROM products WHERE id = $1;
+
+EXECUTE get_product_by_id(1);
+
+DEALLOCATE get_product_by_id;
+
+TRUNCATE TABLE order_items;
+
+ALTER TABLE customers ADD COLUMN phone_number VARCHAR(20);
+
+UPDATE customers SET phone_number = '123-456-7890' WHERE id = 1;
+
+SELECT id, name, phone_number FROM customers;
+
+ALTER TABLE customers DROP COLUMN phone_number;
+
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE customers;
+DROP TABLE products;

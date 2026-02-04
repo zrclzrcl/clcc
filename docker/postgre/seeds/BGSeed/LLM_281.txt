@@ -1,0 +1,170 @@
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+-- Insert data using different methods
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('Test1', 10, '{"key1": "value1"}');
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('Test2', 20, '{"key2": "value2", "key3": 3}');
+INSERT INTO fuzz_test_table (name, value) VALUES ('Test3', 30);
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('Test4', 40, 'null');
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('Test5', 50, '{"key4": true, "key5": false}');
+
+-- Select data with various conditions
+SELECT * FROM fuzz_test_table WHERE value > 20;
+SELECT name, value FROM fuzz_test_table WHERE name LIKE 'Test%';
+SELECT data FROM fuzz_test_table WHERE data IS NOT NULL;
+SELECT * FROM fuzz_test_table ORDER BY value DESC;
+SELECT COUNT(*) FROM fuzz_test_table;
+
+-- Update data
+UPDATE fuzz_test_table SET value = 60 WHERE name = 'Test1';
+UPDATE fuzz_test_table SET data = '{"updated": true}' WHERE value = 30;
+UPDATE fuzz_test_table SET name = 'UpdatedName' WHERE id = 2;
+
+-- Delete data
+DELETE FROM fuzz_test_table WHERE value < 15;
+DELETE FROM fuzz_test_table WHERE name = 'Test4';
+DELETE FROM fuzz_test_table WHERE data IS NULL;
+
+-- Alter table operations
+ALTER TABLE fuzz_test_table ADD COLUMN description TEXT;
+ALTER TABLE fuzz_test_table ALTER COLUMN value TYPE BIGINT;
+ALTER TABLE fuzz_test_table RENAME COLUMN name TO item_name;
+
+-- Index operations
+CREATE INDEX idx_item_name ON fuzz_test_table (item_name);
+CREATE INDEX idx_value ON fuzz_test_table (value);
+
+-- Explain statement
+EXPLAIN SELECT * FROM fuzz_test_table WHERE item_name = 'UpdatedName';
+
+-- Vacuum analyze
+VACUUM ANALYZE fuzz_test_table;
+
+-- Try some jsonb operations
+SELECT data -> 'key2' FROM fuzz_test_table WHERE item_name = 'Test2';
+SELECT data ->> 'key2' FROM fuzz_test_table WHERE item_name = 'Test2';
+SELECT * FROM fuzz_test_table WHERE data @> '{"key4": true}';
+
+-- Use WITH clause
+WITH subquery AS (SELECT * FROM fuzz_test_table WHERE value > 30) SELECT * FROM subquery WHERE item_name LIKE '%Name%';
+
+-- Create a view
+CREATE VIEW fuzz_test_view AS SELECT item_name, value FROM fuzz_test_table WHERE value > 25;
+
+-- Select from the view
+SELECT * FROM fuzz_test_view;
+
+-- Drop the view
+DROP VIEW fuzz_test_view;
+
+-- Constraints
+ALTER TABLE fuzz_test_table ADD CONSTRAINT value_check CHECK (value > 0);
+
+-- Check constraint violation
+INSERT INTO fuzz_test_table (item_name, value) VALUES ('NegativeTest', -10);
+
+-- Cleanup table for multiple runs
+DELETE FROM fuzz_test_table;
+
+-- Insert using DEFAULT values
+INSERT INTO fuzz_test_table (item_name, value, data) VALUES (DEFAULT, DEFAULT, DEFAULT);
+
+-- Generate series
+SELECT * FROM generate_series(1, 10);
+
+-- Some window functions
+SELECT item_name, value, ROW_NUMBER() OVER (ORDER BY value DESC) FROM fuzz_test_table;
+
+-- Triggers (requires a function)
+CREATE OR REPLACE FUNCTION test_trigger_func()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Someone just did % on fuzz_test_table', TG_OP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER test_trigger
+AFTER INSERT OR UPDATE OR DELETE ON fuzz_test_table
+FOR EACH ROW
+EXECUTE FUNCTION test_trigger_func();
+
+INSERT INTO fuzz_test_table (item_name, value) VALUES ('TriggerTest', 100);
+UPDATE fuzz_test_table SET value = 200 WHERE item_name = 'TriggerTest';
+DELETE FROM fuzz_test_table WHERE item_name = 'TriggerTest';
+
+DROP TRIGGER test_trigger ON fuzz_test_table;
+DROP FUNCTION test_trigger_func();
+
+-- Different data types
+CREATE TABLE data_types_test (
+    smallint_col SMALLINT,
+    integer_col INTEGER,
+    bigint_col BIGINT,
+    decimal_col DECIMAL(10, 2),
+    numeric_col NUMERIC(12, 4),
+    real_col REAL,
+    double_col DOUBLE PRECISION,
+    serial_col SERIAL,
+    boolean_col BOOLEAN,
+    char_col CHAR(10),
+    varchar_col VARCHAR(20),
+    text_col TEXT,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    timestamptz_col TIMESTAMPTZ,
+    time_col TIME,
+    timetz_col TIMETZ,
+    interval_col INTERVAL
+);
+
+INSERT INTO data_types_test (smallint_col, integer_col, bigint_col, decimal_col, numeric_col, real_col, double_col, boolean_col, char_col, varchar_col, text_col, date_col, timestamp_col, timestamptz_col, time_col, timetz_col, interval_col) VALUES (1, 1000, 1000000, 1234.56, 9876.5432, 1.23, 4.56789, TRUE, 'char', 'varchar', 'text', '2024-01-01', '2024-01-01 12:00:00', '2024-01-01 12:00:00+00', '12:00:00', '12:00:00+00', '1 year');
+SELECT * FROM data_types_test;
+DROP TABLE data_types_test;
+
+-- Sequences
+CREATE SEQUENCE my_sequence START WITH 1 INCREMENT BY 1;
+SELECT nextval('my_sequence');
+SELECT currval('my_sequence');
+SELECT setval('my_sequence', 10);
+DROP SEQUENCE my_sequence;
+
+-- Temporary table
+CREATE TEMP TABLE temp_table (id INT);
+INSERT INTO temp_table VALUES (1);
+SELECT * FROM temp_table;
+DROP TABLE temp_table;
+
+-- Foreign table (requires extension) - skipped for simplicity as extension setup is env dependent
+
+-- Table inheritance - parent table creation
+CREATE TABLE parent_table (id INT PRIMARY KEY, name TEXT);
+CREATE TABLE child_table (value INT) INHERITS (parent_table);
+INSERT INTO parent_table (id, name) VALUES (1, 'Parent');
+INSERT INTO child_table (id, name, value) VALUES (2, 'Child', 100);
+SELECT * FROM parent_table;
+SELECT * FROM child_table;
+DROP TABLE child_table;
+DROP TABLE parent_table;
+
+-- Partitioned Tables
+CREATE TABLE measurement (
+    logdate date not null,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2024m01 PARTITION OF measurement
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+INSERT INTO measurement (logdate, peaktemp, unitsales) VALUES ('2024-01-15', 30, 10);
+SELECT * FROM measurement;
+
+DROP TABLE measurement_y2024m01;
+DROP TABLE measurement;
+-- Cleanup
+DROP TABLE fuzz_test_table;

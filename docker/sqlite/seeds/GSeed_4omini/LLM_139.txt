@@ -1,0 +1,40 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
+);
+
+INSERT INTO users (username, email) VALUES
+('test_user', 'test_user@example.com'),
+('duplicate_user', 'duplicate@example.com'),
+('edge_case_user', 'edge_case@example.com');
+
+UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE username = 'test_user';
+
+DELETE FROM users WHERE id IN (SELECT id FROM users WHERE email LIKE '%@example.com' LIMIT 2);
+
+CREATE TABLE logs (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    action_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO logs (user_id, action) VALUES
+(1, 'Logged In'),
+(1, 'Updated Profile'),
+(2, 'Failed Login Attempt');
+
+SELECT u.username, l.action, l.action_time
+FROM users u
+JOIN logs l ON u.id = l.user_id
+WHERE l.action_time > DATE('now', '-1 day')
+ORDER BY l.action_time DESC
+LIMIT 5;
+
+CREATE INDEX idx_users_email ON users(email);
+
+SELECT COUNT(*) FROM users WHERE created_at > DATE('now', '-1 month');

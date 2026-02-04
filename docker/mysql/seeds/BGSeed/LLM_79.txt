@@ -1,0 +1,124 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number VARCHAR(20) UNIQUE NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO accounts (account_number, balance) VALUES
+('ACC123', 1000.00),
+('ACC456', 500.00),
+('ACC789', 2500.75);
+
+-- Stored procedure example
+DELIMITER //
+CREATE PROCEDURE transfer_funds(
+    IN from_account VARCHAR(20),
+    IN to_account VARCHAR(20),
+    IN amount DECIMAL(15, 2)
+)
+BEGIN
+    START TRANSACTION;
+
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds('ACC123', 'ACC456', 200.00);
+
+-- Trigger example
+CREATE TABLE account_history (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT,
+    old_balance DECIMAL(15, 2),
+    new_balance DECIMAL(15, 2),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+DELIMITER //
+CREATE TRIGGER account_balance_update
+AFTER UPDATE ON accounts
+FOR EACH ROW
+BEGIN
+    INSERT INTO account_history (account_id, old_balance, new_balance)
+    VALUES (OLD.id, OLD.balance, NEW.balance);
+END //
+DELIMITER ;
+
+UPDATE accounts SET balance = 1100.00 WHERE account_number = 'ACC123';
+
+-- View example
+CREATE VIEW account_summary AS
+SELECT account_number, balance FROM accounts;
+
+SELECT * FROM account_summary;
+
+-- Index usage example (force index)
+CREATE INDEX idx_account_number ON accounts (account_number);
+SELECT * FROM accounts FORCE INDEX (idx_account_number) WHERE account_number = 'ACC456';
+
+-- Fulltext index and search
+ALTER TABLE accounts ADD FULLTEXT INDEX idx_account_fulltext (account_number);
+SELECT * FROM accounts WHERE MATCH(account_number) AGAINST ('ACC%' IN BOOLEAN MODE);
+
+-- Partitioned table example (simplified for initial seed) - only range partitioning supported directly within a table
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY,
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+)
+PARTITION BY RANGE( YEAR(sale_date) ) (
+    PARTITION p0 VALUES LESS THAN (2022),
+    PARTITION p1 VALUES LESS THAN (2023),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO sales (sale_id, sale_date, amount) VALUES
+(1, '2021-12-31', 100.00),
+(2, '2022-01-01', 200.00),
+(3, '2023-01-01', 300.00);
+
+SELECT * FROM sales PARTITION (p0);
+
+-- Spatial Data example, Requires MySQL version 5.7.5 or higher
+CREATE TABLE places (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO places (name, location) VALUES
+('Office', ST_GeomFromText('POINT(10 10)')),
+('Home', ST_GeomFromText('POINT(20 20)'));
+
+SELECT name, ST_AsText(location) FROM places WHERE ST_Distance_Sphere(location, ST_GeomFromText('POINT(15 15)')) < 10000;
+
+-- JSON example
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    details JSON
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "model": "XPS 13", "price": 1200}');
+
+SELECT name, details->'$.brand' AS brand FROM products;
+
+PREPARE stmt FROM 'SELECT * FROM accounts WHERE account_number = ?';
+SET @account_number = 'ACC123';
+EXECUTE stmt USING @account_number;
+
+-- Test case insensitive collation
+CREATE TABLE test_case (
+  id INT,
+  value VARCHAR(255) COLLATE utf8mb4_general_ci
+);
+
+INSERT INTO test_case VALUES (1, 'abc'), (2, 'ABC');
+
+SELECT * FROM test_case WHERE value = 'abc'; -- Should return both rows.

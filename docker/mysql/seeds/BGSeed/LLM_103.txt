@@ -1,0 +1,148 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET @@auto_increment_increment=1;
+
+-- Create tables with diverse data types and constraints
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    department ENUM('Sales', 'Marketing', 'Engineering', 'HR') NOT NULL,
+    bonus_eligible BOOLEAN DEFAULT FALSE,
+    email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY AUTO_INCREMENT,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+CREATE TABLE projects (
+    project_id INT PRIMARY KEY AUTO_INCREMENT,
+    project_name VARCHAR(100) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    budget DECIMAL(12, 2)
+);
+
+CREATE TABLE employee_projects (
+    emp_id INT,
+    project_id INT,
+    role VARCHAR(50),
+    PRIMARY KEY (emp_id, project_id),
+    FOREIGN KEY (emp_id) REFERENCES employees(emp_id),
+    FOREIGN KEY (project_id) REFERENCES projects(project_id)
+);
+
+-- Insert sample data
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco'),
+('HR', 'Chicago');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department, bonus_eligible, email) VALUES
+('John', 'Doe', '2020-01-15', 60000.00, 'Sales', TRUE, 'john.doe@example.com'),
+('Jane', 'Smith', '2019-05-20', 75000.00, 'Marketing', FALSE, 'jane.smith@example.com'),
+('Robert', 'Jones', '2021-03-10', 90000.00, 'Engineering', TRUE, 'robert.jones@example.com'),
+('Emily', 'Brown', '2022-07-01', 55000.00, 'HR', FALSE, 'emily.brown@example.com');
+
+INSERT INTO projects (project_name, start_date, end_date, budget) VALUES
+('Project Alpha', '2023-01-01', '2023-12-31', 500000.00),
+('Project Beta', '2023-03-15', '2024-03-15', 750000.00);
+
+INSERT INTO employee_projects (emp_id, project_id, role) VALUES
+(1, 1, 'Sales Lead'),
+(2, 2, 'Marketing Manager'),
+(3, 1, 'Software Engineer'),
+(4, 2, 'HR Coordinator');
+
+-- Complex queries for fuzzing
+
+-- Window functions and aggregations
+SELECT
+    emp_id,
+    first_name,
+    salary,
+    department,
+    AVG(salary) OVER (PARTITION BY department) AS avg_dept_salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Subqueries and EXISTS clause
+SELECT dept_name
+FROM departments
+WHERE EXISTS (SELECT 1 FROM employees WHERE employees.department = departments.dept_name AND salary > 70000);
+
+-- Stored procedure with error handling (delimiters required for multi-statement definitions)
+DELIMITER //
+CREATE PROCEDURE UpdateSalary(IN empId INT, IN newSalary DECIMAL(10, 2))
+BEGIN
+    DECLARE oldSalary DECIMAL(10, 2);
+
+    SELECT salary INTO oldSalary FROM employees WHERE emp_id = empId;
+
+    IF oldSalary IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Employee not found.';
+    ELSEIF newSalary < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid salary.';
+    ELSE
+        UPDATE employees SET salary = newSalary WHERE emp_id = empId;
+    END IF;
+END //
+DELIMITER ;
+
+CALL UpdateSalary(1, 65000.00);
+-- Trigger example (needs separate table for audit)
+CREATE TABLE employee_salary_audit (
+    audit_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER salary_update_trigger
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary <> OLD.salary THEN
+        INSERT INTO employee_salary_audit (emp_id, old_salary, new_salary)
+        VALUES (OLD.emp_id, OLD.salary, NEW.salary);
+    END IF;
+END //
+DELIMITER ;
+UPDATE employees SET salary = 70000 WHERE emp_id = 1;
+
+-- Full-text search example (requires a FULLTEXT index)
+ALTER TABLE employees ADD FULLTEXT INDEX name_search (first_name, last_name);
+SELECT * FROM employees WHERE MATCH(first_name, last_name) AGAINST ('John*' IN BOOLEAN MODE);
+
+-- Common Table Expression (CTE)
+WITH HighSalaryEmployees AS (
+    SELECT emp_id, first_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM HighSalaryEmployees ORDER BY salary DESC;
+
+-- JSON functions (insert some JSON data first)
+ALTER TABLE employees ADD COLUMN preferences JSON;
+UPDATE employees SET preferences = '{"theme": "dark", "notifications": {"email": true, "sms": false}}' WHERE emp_id = 1;
+SELECT emp_id, JSON_EXTRACT(preferences, '$.theme') AS theme FROM employees;
+
+-- Spatial Data Type (requires spatial index, needs a geometry column).  Adding an example without index for testing purpose as well.
+ALTER TABLE departments ADD COLUMN location_point POINT;
+UPDATE departments SET location_point = ST_GeomFromText('POINT(-74.0060 40.7128)') WHERE dept_name = 'Sales';
+SELECT dept_name, ST_AsText(location_point) FROM departments WHERE dept_name = 'Sales';
+
+--Cleanup
+DROP TRIGGER IF EXISTS salary_update_trigger;
+DROP PROCEDURE IF EXISTS UpdateSalary;
+SET @@auto_increment_increment=@auto_increment_increment;
+SET sql_mode = @old_sql_mode;

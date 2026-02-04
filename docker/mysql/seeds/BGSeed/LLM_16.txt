@@ -1,0 +1,61 @@
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login DATETIME NULL
+);
+
+CREATE TABLE posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', 'password123'),
+('testuser2', 'test2@example.com', 'password456');
+
+INSERT INTO posts (user_id, title, content) VALUES
+((SELECT id FROM users WHERE username = 'testuser1'), 'My First Post', 'This is the content of my first post.'),
+((SELECT id FROM users WHERE username = 'testuser2'), 'Another Post', 'Another post with some interesting content.');
+
+INSERT INTO comments (post_id, user_id, comment) VALUES
+((SELECT id FROM posts WHERE title = 'My First Post'), (SELECT id FROM users WHERE username = 'testuser2'), 'Great post!'),
+((SELECT id FROM posts WHERE title = 'Another Post'), (SELECT id FROM users WHERE username = 'testuser1'), 'I enjoyed reading this.');
+
+-- Testing special MySQL features
+
+-- Using JSON functions
+UPDATE users SET last_login = NOW() WHERE username = 'testuser1';
+SELECT JSON_OBJECT('id', id, 'username', username) AS user_json FROM users WHERE username = 'testuser1';
+
+-- Using window functions
+SELECT username, COUNT(*) OVER () AS total_users FROM users;
+
+-- Using stored procedure
+DELIMITER //
+CREATE PROCEDURE GetUserCount()
+BEGIN
+    SELECT COUNT(*) FROM users;
+END //
+DELIMITER ;
+
+CALL GetUserCount();
+DROP PROCEDURE GetUserCount;

@@ -1,0 +1,46 @@
+CREATE TABLE `employees` (
+  `emp_no` int NOT NULL,
+  `birth_date` date NOT NULL,
+  `first_name` varchar(14) NOT NULL,
+  `last_name` varchar(16) NOT NULL,
+  `gender` enum('M','F') NOT NULL,
+  `hire_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (1, '1990-01-01', 'John', 'Doe', 'M', '2020-01-01');
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (2, '1991-02-02', 'Jane', 'Smith', 'F', '2021-02-02');
+
+CREATE OR REPLACE PROCEDURE `sp_example`(IN emp_id INT)
+BEGIN
+    SELECT * FROM employees WHERE emp_no = emp_id;
+END;
+
+CALL sp_example(1);
+
+CREATE OR REPLACE FUNCTION `fn_example`(emp_id INT) RETURNS VARCHAR(50) DETERMINISTIC
+BEGIN
+    DECLARE full_name VARCHAR(50);
+    SELECT CONCAT(first_name, ' ', last_name) INTO full_name FROM employees WHERE emp_no = emp_id;
+    RETURN full_name;
+END;
+
+SELECT fn_example(2);
+
+CREATE TABLE `salaries` (
+  `emp_no` int NOT NULL,
+  `salary` int NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`,`from_date`),
+  CONSTRAINT `salaries_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES (1, 50000, '2020-01-01', '9999-01-01');
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES (2, 60000, '2021-02-02', '9999-01-01');
+
+-- MariaDB Specific: Using SEQUENCE
+CREATE SEQUENCE employee_seq START WITH 3 INCREMENT BY 1;
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES (NEXT VALUE FOR employee_seq, '1992-03-03', 'Peter', 'Jones', 'M', '2022-03-03');
+
+SELECT * FROM employees WHERE emp_no = LAST_INSERT_ID();

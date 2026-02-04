@@ -1,0 +1,90 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    data JSONB
+);
+
+INSERT INTO employees (name, age, salary, hire_date, data) VALUES
+('Alice Smith', 30, 60000.00, '2022-01-15', '{"department": "Sales", "level": "Associate"}'),
+('Bob Johnson', 40, 80000.00, '2021-05-20', '{"department": "Engineering", "level": "Senior"}'),
+('Charlie Brown', 25, 50000.00, '2023-03-10', '{"department": "Marketing", "level": "Junior"}');
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+SELECT * FROM employees WHERE age > 28;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE age > 50;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(255) UNIQUE;
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+CREATE VIEW employee_summary AS
+SELECT name, age, salary FROM employees;
+
+SELECT * FROM employee_summary WHERE salary > 55000;
+
+DROP VIEW employee_summary;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Engineering'), ('Marketing');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Engineering';
+UPDATE employees SET dept_id = 3 WHERE department = 'Marketing';
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+-- Example with arrays
+CREATE TABLE items (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO items (tags) VALUES (ARRAY['electronics', 'gadget', 'new']);
+INSERT INTO items (tags) VALUES (ARRAY['clothing', 'fashion']);
+
+SELECT * FROM items WHERE 'electronics' = ANY(tags);
+
+-- Example with UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(255) UNIQUE NOT NULL
+);
+
+INSERT INTO users (username) VALUES ('testuser');
+
+SELECT * FROM users;
+
+DROP TABLE users;
+
+DROP TABLE items;
+DROP TABLE employees;
+DROP TABLE departments;

@@ -1,0 +1,67 @@
+-- Set optimizer switches relevant to MariaDB
+SET optimizer_switch='index_merge=on,block_nested_loop=off';
+
+-- Create table with various data types and constraints
+CREATE TABLE posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    author VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    views INT DEFAULT 0 CHECK (views >= 0),
+    metadata JSON
+);
+
+-- Add indexes for query optimization
+CREATE INDEX idx_author ON posts(author);
+CREATE INDEX idx_created_at ON posts(created_at);
+
+-- Insert sample data with edge cases
+INSERT INTO posts (title, content, author, created_at, views, metadata)
+VALUES
+    ('First Post', 'Hello World!', 'John Doe', '2023-01-01 00:00:00', 100, '{"tags": ["welcome", "getting-started"]}'),
+    ('Edge Case Test', NULL, 'Jane Smith', '2023-01-02 00:00:00', 0, '{"test": true}');
+
+-- Create related table with foreign key
+CREATE TABLE comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT,
+    content TEXT NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id)
+);
+
+-- Insert data into comments table
+INSERT INTO comments (post_id, content, author)
+VALUES
+    (1, 'Great post!', 'Jane Smith'),
+    (2, 'This is a test comment.', 'John Doe');
+
+-- Stored procedure to add a comment
+DELIMITER //
+CREATE PROCEDURE AddComment(IN p_post_id INT, IN p_content TEXT, IN p_author VARCHAR(100))
+BEGIN
+    INSERT INTO comments (post_id, content, author) VALUES (p_post_id, p_content, p_author);
+END//
+DELIMITER ;
+
+-- Trigger to update views when a post is inserted
+CREATE TRIGGER after_insert_post
+AFTER INSERT ON posts
+FOR EACH ROW
+UPDATE posts SET views = 1 WHERE id = NEW.id;
+
+-- View combining posts and comments
+CREATE VIEW post_comments AS
+SELECT p.title, c.content, c.author, c.created_at
+FROM posts p
+JOIN comments c ON p.id = c.post_id;
+
+-- Complex query with JSON operations
+SELECT p.title, p.metadata->>'$.tags' AS tags,
+       COUNT(c.id) AS comment_count
+FROM posts p
+LEFT JOIN comments c ON p.id = c.post_id
+WHERE p.author = 'John Doe'
+GROUP BY p.id;

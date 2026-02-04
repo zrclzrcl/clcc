@@ -1,0 +1,57 @@
+-- Initial seed for DuckDB fuzz testing
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN NOT NULL CHECK (status IN (TRUE, FALSE)),
+    data BYTEA,
+    description TEXT UNIQUE
+);
+
+INSERT INTO test_table VALUES 
+(1, 'Test Name', 100.50, '2023-10-01 12:00:00', TRUE, '\xdeadbeef', 'Unique Description'),
+(2, NULL, -50.75, DEFAULT, FALSE, NULL, 'Another Unique Desc');
+
+CREATE TABLE test_table_2 (
+    id INTEGER PRIMARY KEY,
+    fk_id INTEGER REFERENCES test_table(id),
+    data_point FLOAT,
+    category VARCHAR(50) CHECK (category IN ('A', 'B', 'C'))
+);
+
+INSERT INTO test_table_2 VALUES 
+(1, 1, 10.5, 'A'),
+(2, NULL, -20.3, 'C');
+
+SELECT t.id, t.name, t.value, t.created_at, t.status,
+       t2.data_point, t2.category
+FROM test_table t
+LEFT JOIN test_table_2 t2 ON t.id = t2.fk_id
+WHERE t.status = TRUE AND (t.value > 50 OR t2.data_point < 0)
+GROUP BY t.id, t.name, t.value, t.created_at, t.status,
+         t2.data_point, t2.category
+HAVING COUNT(*) > 1
+ORDER BY t.id DESC;
+
+WITH cte AS (
+    SELECT id, name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as rn
+    FROM test_table
+)
+SELECT * FROM cte WHERE rn <= 5;
+
+SELECT DISTINCT status, 
+               EXTRACT(MINUTE FROM created_at),
+               COALESCE(value, 0.0) + abs(data_point) AS total_value
+FROM test_table t
+JOIN test_table_2 t2 ON t.id = t2.fk_id
+WHERE name LIKE 'T%' OR description IS NOT NULL
+ORDER BY status, total_value;
+
+SELECT * FROM test_table
+CROSS JOIN LATERAL (
+    SELECT data_point + 10 as adjusted_point
+    FROM test_table_2 t2
+    WHERE t2.fk_id = test_table.id
+) AS lateral_join;

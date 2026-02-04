@@ -1,0 +1,79 @@
+DROP TABLE IF EXISTS test.fuzz_table;
+CREATE TABLE test.fuzz_table (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  value INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO test.fuzz_table (name, value) VALUES ('test1', 10), ('test2', 20), ('test3', NULL);
+
+-- Test INSERT ... ON DUPLICATE KEY UPDATE
+INSERT INTO test.fuzz_table (name, value) VALUES ('test1', 100) ON DUPLICATE KEY UPDATE value = 100;
+
+-- Test REPLACE statement
+REPLACE INTO test.fuzz_table (name, value) VALUES ('test4', 40);
+
+-- Test common SELECT queries
+SELECT * FROM test.fuzz_table WHERE value > 15;
+SELECT name, value FROM test.fuzz_table ORDER BY value DESC;
+SELECT COUNT(*) FROM test.fuzz_table;
+SELECT AVG(value) FROM test.fuzz_table;
+
+-- Test MariaDB specific feature: window functions
+SELECT
+  name,
+  value,
+  ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+FROM
+  test.fuzz_table;
+
+-- Test MariaDB specific feature: SEQUENCE engine
+DROP TABLE IF EXISTS test.seq_table;
+CREATE TABLE test.seq_table (
+  id INT NOT NULL,
+  value VARCHAR(255)
+) ENGINE=SEQUENCE;
+
+INSERT INTO test.seq_table VALUES (1, 'first');
+SELECT * FROM test.seq_table;
+
+-- Test JSON functions
+ALTER TABLE test.fuzz_table ADD COLUMN json_data JSON;
+UPDATE test.fuzz_table SET json_data = JSON_OBJECT('key1', 'value1', 'key2', 2);
+SELECT JSON_EXTRACT(json_data, '$.key1') FROM test.fuzz_table;
+SELECT * FROM test.fuzz_table WHERE JSON_CONTAINS(json_data, '{"key2": 2}');
+
+-- Test stored procedures (simple example)
+DROP PROCEDURE IF EXISTS test.get_fuzz_table_count;
+DELIMITER //
+CREATE PROCEDURE test.get_fuzz_table_count(OUT total INT)
+BEGIN
+  SELECT COUNT(*) INTO total FROM test.fuzz_table;
+END //
+DELIMITER ;
+
+CALL test.get_fuzz_table_count(@total);
+SELECT @total;
+
+-- Test user-defined variables
+SET @my_var = 100;
+SELECT * FROM test.fuzz_table WHERE value > @my_var;
+
+-- Test Dynamic Columns (MariaDB Specific)
+DROP TABLE IF EXISTS test.dynamic_columns_table;
+CREATE TABLE test.dynamic_columns_table (id INT, attributes MEDIUMBLOB) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin ROW_FORMAT=DYNAMIC;
+
+INSERT INTO test.dynamic_columns_table SET id = 1, attributes = COLUMN_CREATE('color', 'red', 'size', 'large');
+SELECT id, COLUMN_GET(attributes, 'color' AS CHAR) FROM test.dynamic_columns_table;
+
+-- Test ANALYZE TABLE
+ANALYZE TABLE test.fuzz_table;
+
+-- Test OPTIMIZE TABLE
+OPTIMIZE TABLE test.fuzz_table;
+
+-- Test locking tables
+LOCK TABLE test.fuzz_table READ;
+UNLOCK TABLES;

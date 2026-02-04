@@ -1,0 +1,20 @@
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+SET optimizer_switch = 'derived_merge=off';
+CREATE TABLE t1 (a INT PRIMARY KEY, b VARCHAR(255), c INT, d TEXT, e JSON);
+CREATE TABLE t2 (x INT, y INT, z INT, FULLTEXT INDEX idx_z (z)) ENGINE=InnoDB;
+INSERT INTO t1 (a, b, c, d, e) VALUES (1, 'test1', 10, 'long text', '{"key1": "value1", "key2": 123}');
+INSERT INTO t1 (a, b, c, d, e) VALUES (2, 'test2', 20, 'another long text', '{"key3": "value3", "key4": 456}');
+INSERT INTO t2 (x, y, z) VALUES (1, 1, 'word1 word2 word3');
+INSERT INTO t2 (x, y, z) VALUES (2, 2, 'word4 word5 word6');
+ANALYZE TABLE t1;
+ANALYZE TABLE t2;
+ALTER TABLE t1 ADD COLUMN f FLOAT AFTER e;
+ALTER TABLE t2 ADD SPATIAL INDEX(x);
+SELECT * FROM t1 WHERE JSON_EXTRACT(e, '$.key1') = 'value1';
+SELECT * FROM t2 WHERE MATCH(z) AGAINST('word1' IN BOOLEAN MODE);
+CREATE PROCEDURE simpleproc (OUT param1 INT)
+BEGIN
+  SELECT COUNT(*) INTO param1 FROM t1;
+END;
+CALL simpleproc(@count);
+SELECT @count;

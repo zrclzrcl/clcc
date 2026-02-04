@@ -1,0 +1,62 @@
+SET optimizer_switch='use_invisible_indexes=on';
+SET @old_optimizer_switch = @@optimizer_switch;
+
+CREATE TABLE t1 (
+    a INT PRIMARY KEY,
+    b CHAR(20),
+    c DATE
+) ENGINE=InnoDB;
+
+INSERT INTO t1 VALUES (1, 'test', '2023-01-01'), (2, NULL, '2024-01-01');
+
+CREATE TABLE t2 (
+    x INT,
+    y CHAR(5),
+    z DATE
+);
+
+INSERT INTO t2 VALUES (1, 'data', '2023-01-01'), (2, 'test', '2024-01-01');
+
+EXPLAIN SELECT * FROM t1 WHERE b IN (SELECT y FROM t2 WHERE z > '2023-01-01');
+
+PREPARE stmt FROM "SELECT a, b FROM t1 WHERE c = ?";
+EXECUTE stmt USING '2023-01-01';
+
+SET SQL_MODE=(SELECT REPLACE(@@SQL_MODE, 'ONLY_FULL_GROUP_BY', ''));
+
+SELECT * FROM t1
+WHERE (a, b) IN (
+    SELECT x, y FROM t2
+    WHERE z LIKE '%2023%'
+)
+UNION
+SELECT * FROM t1
+WHERE c > '2023-01-01';
+
+CREATE TABLE columns (
+    col INT AUTO_INCREMENT PRIMARY KEY,
+    data CHAR(10)
+);
+
+EXPLAIN SELECT * FROM t1 ORDER BY (SELECT col FROM columns LIMIT 1);
+
+DELIMITER $$
+CREATE PROCEDURE test_proc()
+BEGIN
+    DECLARE x INT;
+    SET x = RAND() * 100;
+    INSERT INTO columns (data) VALUES (CONCAT('Data', x));
+END$$
+
+CALL test_proc();
+
+CREATE INDEX idx_b ON t1(b);
+
+DELIMITER $$
+CREATE TRIGGER after_insert_t1 AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO columns (data) VALUES (NEW.b);
+END$$
+
+INSERT INTO t1 VALUES (3, 'inserted', '2025-01-01');

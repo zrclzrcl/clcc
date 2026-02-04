@@ -1,0 +1,82 @@
+CREATE TABLE accounts (
+    account_number INT PRIMARY KEY,
+    account_type ENUM('checking', 'savings', 'credit'),
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    customer_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    interest_rate DECIMAL(5,4)
+);
+
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    address TEXT
+);
+
+ALTER TABLE accounts ADD FOREIGN KEY (customer_id) REFERENCES customers(customer_id);
+
+INSERT INTO customers (first_name, last_name, email, phone_number, address) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '555-123-4567', '123 Main St'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '555-987-6543', '456 Oak Ave');
+
+INSERT INTO accounts (account_number, account_type, balance, customer_id, interest_rate) VALUES
+(12345, 'checking', 1000.00, 1, 0.001),
+(67890, 'savings', 5000.00, 1, 0.01),
+(13579, 'credit', -200.00, 2, 0.18);
+
+-- Stored Procedure to transfer funds (demonstrates procedural code)
+DELIMITER //
+CREATE PROCEDURE transfer_funds(
+    IN from_account INT,
+    IN to_account INT,
+    IN amount DECIMAL(10, 2)
+)
+BEGIN
+    START TRANSACTION;
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds(12345, 67890, 100.00);
+
+-- Check constraints (MySQL 8.0+) - Not widely used, but relevant for fuzzing.
+ALTER TABLE accounts ADD CONSTRAINT chk_balance CHECK (balance >= -1000); -- overdraft limit
+ALTER TABLE accounts ADD CONSTRAINT chk_interest_rate CHECK (interest_rate >= 0.0 AND interest_rate <= 0.25);
+
+-- Window Function - demonstrates advanced SQL functionality
+SELECT
+    account_number,
+    account_type,
+    balance,
+    RANK() OVER (ORDER BY balance DESC) AS balance_rank
+FROM
+    accounts;
+
+-- Common Table Expression (CTE)
+WITH HighBalanceAccounts AS (
+    SELECT account_number, balance
+    FROM accounts
+    WHERE balance > 1000
+)
+SELECT * FROM HighBalanceAccounts;
+
+-- Fulltext index and search
+ALTER TABLE customers ADD FULLTEXT INDEX name_address (first_name, last_name, address);
+
+SELECT * FROM customers WHERE MATCH(first_name, last_name, address) AGAINST ('Alice Main' IN NATURAL LANGUAGE MODE);
+
+-- Spatial Data
+CREATE TABLE cities (
+    city_name VARCHAR(50),
+    location POINT SRID 0
+);
+
+INSERT INTO cities (city_name, location) VALUES ('New York', ST_GeomFromText('POINT(40.7128 -74.0060)'));
+INSERT INTO cities (city_name, location) VALUES ('Los Angeles', ST_GeomFromText('POINT(34.0522 -118.2437)'));
+
+SELECT city_name FROM cities WHERE ST_Distance_Sphere(location, ST_GeomFromText('POINT(40.7 -74.0)')) < 10000; -- meters from NYC

@@ -1,0 +1,91 @@
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+INSERT INTO products (product_name, description, price, category) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.00, 'Electronics'),
+('T-shirt', 'Comfortable cotton t-shirt', 25.00, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker with timer', 80.00, 'Home Goods'),
+('The Lord of the Rings', 'Classic fantasy novel', 15.00, 'Books');
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    order_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Stored Procedure example
+DELIMITER //
+CREATE PROCEDURE GetProductPrice(IN productName VARCHAR(255), OUT productPrice DECIMAL(10, 2))
+BEGIN
+    SELECT price INTO productPrice FROM products WHERE product_name = productName;
+END //
+DELIMITER ;
+
+CALL GetProductPrice('Laptop', @laptop_price);
+SELECT @laptop_price;
+
+-- User-defined function example
+DELIMITER //
+CREATE FUNCTION CalculateTotalPrice (quantity INT, price DECIMAL(10,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+  DECLARE total DECIMAL(10,2);
+  SET total = quantity * price;
+  RETURN total;
+END //
+DELIMITER ;
+
+SELECT CalculateTotalPrice(2, 25.00);
+
+-- Fulltext index and search
+ALTER TABLE products ADD FULLTEXT(product_name, description);
+SELECT * FROM products WHERE MATCH (product_name, description) AGAINST ('laptop' IN NATURAL LANGUAGE MODE);
+
+-- JSON example
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "silver", "weight": 2.5}' WHERE product_name = 'Laptop';
+SELECT product_name, details->'$.color' AS color FROM products WHERE product_name = 'Laptop';
+
+-- Window Function Example (MariaDB 10.3+)
+SELECT
+    product_name,
+    price,
+    AVG(price) OVER () AS average_price
+FROM
+    products;
+
+-- Dynamic column example
+CREATE TABLE dynamic_table (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  attributes MEDIUMBLOB
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+INSERT INTO dynamic_table (name, attributes) VALUES ('Item1', COLUMN_CREATE('color', 'red', 'size', 'large'));
+SELECT id, name, COLUMN_GET(attributes, 'color' AS CHAR) AS color FROM dynamic_table;
+
+-- GIS functions example (requires spatial data support enabled)
+CREATE TABLE places (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO places (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 20)'));
+SELECT name, ST_AsText(location) FROM places;

@@ -1,0 +1,16 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, total REAL, 
+                     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE);
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, product_name TEXT, price REAL);
+CREATE TRIGGER update_user_age AFTER UPDATE ON users WHEN OLD.age < NEW.age BEGIN
+  INSERT INTO orders(user_id, total) VALUES(NEW.id, 29.99);
+END;
+INSERT INTO users(name, age) VALUES('Alice', 30);
+INSERT INTO products(product_name, price) VALUES('Widget', 19.99);
+INSERT INTO orders(user_id, total) VALUES(1, 19.99);
+SELECT users.name, avg(orders.total) AS average_spent FROM users 
+JOIN orders ON users.id = orders.user_id GROUP BY users.name;
+CREATE INDEX idx_users_name ON users(name);
+ALTER TABLE products ADD COLUMN inventory INTEGER DEFAULT 0;
+DROP TABLE IF EXISTS temp_orders;
+CREATE TABLE temp_orders AS SELECT * FROM orders WHERE total > 10;

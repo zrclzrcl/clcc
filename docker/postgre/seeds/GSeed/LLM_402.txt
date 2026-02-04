@@ -1,0 +1,138 @@
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+INSERT INTO products (product_no, name, price) VALUES
+    (1, 'Cheese', 9.99),
+    (2, 'Bread', 1.49),
+    (3, 'Milk', 2.99);
+
+CREATE TABLE orders (
+    order_id integer,
+    customer_id integer,
+    product_no integer,
+    quantity integer
+);
+
+INSERT INTO orders (order_id, customer_id, product_no, quantity) VALUES
+    (100, 1, 1, 2),
+    (101, 1, 2, 1),
+    (102, 2, 3, 3);
+
+SELECT * FROM products WHERE price > 5.00;
+
+SELECT name, price FROM products ORDER BY price DESC;
+
+SELECT o.order_id, c.customer_id, p.name
+FROM orders o
+JOIN products p ON o.product_no = p.product_no
+JOIN (SELECT 1 AS customer_id) c ON o.customer_id = c.customer_id;
+
+UPDATE products SET price = 10.99 WHERE product_no = 1;
+
+DELETE FROM products WHERE product_no = 2;
+
+CREATE INDEX price_idx ON products (price);
+
+SELECT COUNT(*) FROM orders;
+
+SELECT AVG(price) FROM products;
+
+SELECT MAX(price) FROM products;
+
+SELECT MIN(price) FROM products;
+
+SELECT SUM(quantity) FROM orders;
+
+SELECT customer_id, SUM(quantity) AS total_quantity FROM orders GROUP BY customer_id;
+
+SELECT product_no, AVG(quantity) AS avg_quantity FROM orders GROUP BY product_no HAVING AVG(quantity) > 1;
+
+CREATE VIEW expensive_products AS
+SELECT product_no, name, price FROM products WHERE price > 8.00;
+
+SELECT * FROM expensive_products;
+
+DROP VIEW expensive_products;
+
+ALTER TABLE products ADD COLUMN description text;
+
+UPDATE products SET description = 'Delicious cheese' WHERE product_no = 1;
+
+ALTER TABLE products DROP COLUMN description;
+
+DROP INDEX price_idx;
+
+DROP TABLE orders;
+
+DROP TABLE products;
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+    ('Alice', 'Sales', 60000.00),
+    ('Bob', 'Marketing', 70000.00),
+    ('Charlie', 'Engineering', 80000.00);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+ORDER BY average_salary DESC;
+
+SELECT * FROM employees WHERE name LIKE 'A%';
+
+SELECT * FROM employees WHERE salary BETWEEN 65000 AND 85000;
+
+SELECT * FROM employees WHERE department IN ('Sales', 'Marketing');
+
+SELECT name FROM employees UNION SELECT 'David';
+
+SELECT name FROM employees EXCEPT SELECT 'Alice';
+
+SELECT name FROM employees INTERSECT SELECT 'Alice';
+
+SELECT EXISTS (SELECT 1 FROM employees WHERE department = 'HR');
+
+SELECT CASE
+    WHEN salary > 75000 THEN 'High'
+    WHEN salary > 65000 THEN 'Medium'
+    ELSE 'Low'
+    END AS salary_level, name
+FROM employees;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(salary DECIMAL, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN salary * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, calculate_bonus(salary, 0.10) AS bonus FROM employees;
+
+DROP FUNCTION calculate_bonus(DECIMAL, DECIMAL);
+
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    message TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() at time zone 'utc')
+);
+
+INSERT INTO logs (message) VALUES ('User logged in');
+
+SELECT * FROM logs;
+
+CREATE TABLE items (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO items (data) VALUES ('{"name": "Widget", "price": 19.99}');
+
+SELECT data ->> 'name' AS item_name FROM items;

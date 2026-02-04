@@ -1,0 +1,98 @@
+-- Initial seed for MariaDB fuzz testing
+SET @old_max_connections = @@global.max_connections;
+SET @old_binlog_format = @@global.binlog_format;
+
+-- Create test tables with various data types and constraints
+CREATE TABLE IF NOT EXISTS test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data JSON,
+    UNIQUE INDEX idx_name (name)
+) ENGINE = InnoDB ROW_FORMAT = DYNAMIC;
+
+-- Create a partitioned table for testing
+CREATE TABLE IF NOT EXISTS partitioned_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    transaction_date DATE
+) ENGINE = InnoDB
+PARTITION BY RANGE (YEAR(transaction_date)) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2022),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Create a table for testing full-text search
+CREATE TABLE IF NOT EXISTS ft_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    FULLTEXT INDEX idx_content (content)
+) ENGINE = InnoDB;
+
+-- Insert sample data into tables
+INSERT INTO test_table (name, value, status, data)
+VALUES
+    ('Test1', 100.5, 'active', '{"key": "value"}'),
+    ('Test2', NULL, 'inactive', NULL),
+    ('Test3', 200.75, 'active', '{"array": [1,2,3]}');
+
+-- Insert data into partitioned table
+INSERT INTO partitioned_test (amount, transaction_date)
+VALUES
+    (100.00, '2019-01-01'),
+    (200.00, '2021-06-15'),
+    (300.00, '2023-12-31');
+
+-- Insert data for full-text search
+INSERT INTO ft_test (content)
+VALUES
+    ('This is a test document.'),
+    ('Another sample text here.'),
+    ('Full-text indexing example.');
+
+-- Create a stored procedure for testing
+DELIMITER $$
+CREATE PROCEDURE test_proc(IN p_id INT, OUT p_result DECIMAL(10, 2))
+BEGIN
+    SELECT SUM(value) INTO p_result FROM test_table WHERE id = p_id;
+END$$
+DELIMITER ;
+
+-- Create a trigger for testing
+CREATE TRIGGER before_update_test
+BEFORE UPDATE ON test_table
+FOR EACH ROW
+BEGIN
+    IF NEW.value < 0 THEN
+        SET NEW.value = ABS(NEW.value);
+    END IF;
+END;
+
+-- Test complex queries
+SELECT t1.id, t1.name, t2.amount 
+FROM test_table t1
+JOIN partitioned_test t2 ON YEAR(t2.transaction_date) = YEAR(CURDATE())
+WHERE t1.status = 'active'
+ORDER BY t1.created_at DESC
+LIMIT 10;
+
+-- Test full-text search
+SELECT * FROM ft_test
+WHERE MATCH(content) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- MariaDB-specific features
+SET GLOBAL binlog_format = 'ROW';
+WAIT FOR SLAVE COPIES 1;
+SHOW ENGINE INNODB STATUS;
+
+-- Cleanup
+DROP TABLE IF EXISTS test_table, partitioned_test, ft_test;
+DROP PROCEDURE IF EXISTS test_proc;
+DROP TRIGGER IF EXISTS before_update_test;
+
+-- Restore initial settings
+SET GLOBAL max_connections = @old_max_connections;
+SET GLOBAL binlog_format = @old_binlog_format;

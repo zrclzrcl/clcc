@@ -1,0 +1,47 @@
+DROP TABLE IF EXISTS employees;
+CREATE TABLE employees(id INT PRIMARY KEY, name VARCHAR(50), department_id INT, salary REAL);
+INSERT INTO employees(id, name, department_id, salary) VALUES
+(1, 'Alice', 1, 70000),
+(2, 'Bob', 1, 50000),
+(3, 'Charlie', 2, 60000),
+(4, 'Diana', 2, 80000),
+(5, 'Eve', 3, 90000),
+(6, 'Frank', 3, 30000);
+
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments(id INT PRIMARY KEY, name VARCHAR(50));
+INSERT INTO departments(id, name) VALUES
+(1, 'Engineering'),
+(2, 'Sales'),
+(3, 'Human Resources');
+
+CREATE INDEX idx_department_salary ON employees(department_id, salary);
+
+-- Check for the highest salary in each department
+SELECT department_id, MAX(salary) AS max_salary FROM employees GROUP BY department_id;
+
+-- Retrieve employees in a specific department along with their department name
+SELECT e.name, d.name AS department_name FROM employees e
+JOIN departments d ON e.department_id = d.id
+WHERE d.name = 'Engineering';
+
+-- Use a correlated subquery to find employees earning above the average salary of their department
+SELECT name, salary FROM employees e1 WHERE salary > (
+    SELECT AVG(salary) FROM employees e2 WHERE e1.department_id = e2.department_id
+);
+
+-- Conditional logic to categorize salary ranges
+SELECT name,
+       CASE 
+           WHEN salary < 40000 THEN 'Low'
+           WHEN salary BETWEEN 40000 AND 70000 THEN 'Medium'
+           ELSE 'High'
+       END AS salary_category
+FROM employees;
+
+-- Calculate the total salary expenditure for each department
+SELECT d.name AS department_name, SUM(e.salary) AS total_salary
+FROM employees e
+JOIN departments d ON e.department_id = d.id
+GROUP BY d.id
+ORDER BY total_salary DESC;

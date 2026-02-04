@@ -1,0 +1,71 @@
+-- Create table with various column types
+CREATE TABLE t1(
+    id INTEGER,
+    name VARCHAR(50),
+    is_active BOOLEAN,
+    amount FLOAT,
+    created_at TIMESTAMP,
+    updated_at DATE
+);
+
+-- Insert test data with different values
+INSERT INTO t1 VALUES (
+    1, 'Test Name', TRUE, 1234.56, 
+    '2024-01-01 12:34:56', '2024-01-01'
+);
+
+-- Insert edge case with NULL values
+INSERT INTO t1 VALUES (
+    2, NULL, FALSE, NULL, 
+    '2024-01-02 00:00:00', NULL
+);
+
+-- Create index for testing query optimization paths
+CREATE INDEX idx_t1_name ON t1(name);
+
+-- Create a view with window functions and CTEs
+WITH cte AS (
+    SELECT 
+        id, name, amount,
+        ROW_NUMBER() OVER (ORDER BY amount DESC) as rn
+    FROM t1
+)
+CREATE VIEW v1 AS 
+SELECT 
+    id, name, amount, rn,
+    SUM(amount) OVER () as total_amount,
+    COUNT(*) OVER (PARTITION BY is_active) as cnt_per_status
+FROM cte;
+
+-- Test aggregate functions and group by
+SELECT 
+    is_active,
+    COUNT(*) as count_rows,
+    SUM(amount) as sum_amount,
+    AVG(amount) as avg_amount,
+    MIN(created_at) as first_created,
+    MAX(updated_at) as last_updated
+FROM t1
+GROUP BY is_active;
+
+-- Test join operations with subqueries
+SELECT 
+    t1.name, t2.description
+FROM (
+    SELECT name, amount FROM t1 WHERE amount > 1000
+) AS t1
+JOIN (
+    CREATE TABLE t2(
+        id INTEGER,
+        description VARCHAR(100)
+    );
+    INSERT INTO t2 VALUES (1, 'Test Description');
+) AS t2 ON t1.id = t2.id;
+
+-- Test DuckDB-specific functions like list and array_agg
+SELECT 
+    is_active,
+    LIST(name) as names_list,
+    ARRAY_AGG(amount ORDER BY amount DESC) as amounts_desc
+FROM t1
+GROUP BY is_active;

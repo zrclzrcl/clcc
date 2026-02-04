@@ -1,0 +1,149 @@
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+CREATE TABLE inventory (
+    product_no integer,
+    quantity integer
+);
+
+INSERT INTO products (product_no, name, price) VALUES (1, 'Cheese', 9.99);
+INSERT INTO products (product_no, name, price) VALUES (2, 'Bread', 1.49);
+INSERT INTO products (product_no, name, price) VALUES (3, 'Milk', 2.99);
+
+INSERT INTO inventory (product_no, quantity) VALUES (1, 50);
+INSERT INTO inventory (product_no, quantity) VALUES (2, 100);
+INSERT INTO inventory (product_no, quantity) VALUES (3, 25);
+
+SELECT p.name, i.quantity
+FROM products p
+JOIN inventory i ON p.product_no = i.product_no;
+
+UPDATE products SET price = 10.99 WHERE name = 'Cheese';
+
+DELETE FROM inventory WHERE product_no = 3;
+
+CREATE VIEW product_availability AS
+SELECT p.name,
+       CASE
+           WHEN i.quantity > 0 THEN 'In Stock'
+           ELSE 'Out of Stock'
+       END AS availability
+FROM products p
+LEFT JOIN inventory i ON p.product_no = i.product_no;
+
+SELECT * FROM product_availability;
+
+CREATE INDEX idx_product_name ON products (name);
+
+SELECT name, price FROM products WHERE price > 5 ORDER BY price DESC LIMIT 10;
+
+SELECT AVG(price) FROM products;
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (first_name, last_name, salary, hire_date) VALUES ('John', 'Doe', 60000.00, '2022-01-15');
+INSERT INTO employees (first_name, last_name, salary, hire_date) VALUES ('Jane', 'Smith', 75000.00, '2021-05-20');
+
+SELECT * FROM employees WHERE salary > 70000;
+
+ALTER TABLE employees ADD COLUMN department VARCHAR(50);
+
+UPDATE employees SET department = 'Sales' WHERE employee_id = 1;
+UPDATE employees SET department = 'Marketing' WHERE employee_id = 2;
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (101, '2024-01-01', 150.00);
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (102, '2024-01-05', 200.00);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50)
+);
+
+INSERT INTO customers (first_name, last_name) VALUES ('Alice', 'Johnson');
+INSERT INTO customers (first_name, last_name) VALUES ('Bob', 'Williams');
+
+ALTER TABLE orders ADD CONSTRAINT fk_customer
+    FOREIGN KEY (customer_id)
+    REFERENCES customers(customer_id);
+
+SELECT c.first_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+CREATE FUNCTION greet(name text) RETURNS text AS $$
+    BEGIN
+        RETURN 'Hello, ' || name || '!';
+    END;
+$$ LANGUAGE plpgsql;
+
+SELECT greet('World');
+
+CREATE TABLE logs (
+    log_id SERIAL PRIMARY KEY,
+    log_time TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() at time zone 'utc'),
+    message TEXT
+);
+
+INSERT INTO logs (message) VALUES ('Application started.');
+
+SELECT * FROM logs;
+
+CREATE MATERIALIZED VIEW high_value_customers AS
+SELECT c.customer_id, c.first_name, SUM(o.total_amount) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.first_name
+HAVING SUM(o.total_amount) > 300;
+
+REFRESH MATERIALIZED VIEW high_value_customers;
+
+SELECT * FROM high_value_customers;
+
+CREATE TYPE address AS (
+    street VARCHAR(100),
+    city VARCHAR(50),
+    zip_code VARCHAR(10)
+);
+
+CREATE TABLE contacts (
+    contact_id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    address address
+);
+
+INSERT INTO contacts (name, address) VALUES ('Charlie Brown', ('123 Main St', 'Anytown', '12345'));
+
+SELECT (address).city FROM contacts;
+
+SELECT array_append(array[1,2], 3);
+
+CREATE DOMAIN email AS TEXT
+CHECK (VALUE ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    email email
+);
+
+INSERT INTO users (email) VALUES ('test@example.com');

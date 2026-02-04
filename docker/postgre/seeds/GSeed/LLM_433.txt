@@ -1,0 +1,76 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, age, salary, hire_date, department) VALUES
+('Alice Smith', 30, 60000.00, '2020-01-15', 'Sales'),
+('Bob Johnson', 25, 50000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 35, 75000.00, '2019-11-01', 'Engineering'),
+('David Lee', 28, 55000.00, '2022-03-10', 'Sales'),
+('Eve Wilson', 40, 90000.00, '2018-07-05', 'Engineering');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE age > 27 AND salary < 80000.00;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 2;
+
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+SELECT name, hire_date FROM employees ORDER BY hire_date DESC LIMIT 3;
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+DROP VIEW sales_employees;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.05 WHERE age > 30;
+
+SELECT * FROM employees WHERE bonus > 0;
+
+ALTER TABLE employees DROP COLUMN bonus;
+
+-- Using some PostgreSQL-specific features
+SELECT version();
+
+-- Using generate_series
+SELECT generate_series(1, 5);
+
+-- Using string_agg
+SELECT department, string_agg(name, ', ') AS employee_names FROM employees GROUP BY department;
+
+-- Using window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Create and use a temporary table
+CREATE TEMP TABLE temp_salaries AS
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+SELECT * FROM temp_salaries;
+
+DROP TABLE temp_salaries;
+
+-- Try some unusual queries
+SELECT name FROM employees WHERE name LIKE '%e%';
+
+SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 1;
+
+-- Testing NULL values
+ALTER TABLE employees ALTER COLUMN age DROP NOT NULL;
+INSERT INTO employees (name, salary, hire_date, department) VALUES ('Null Person', 40000, '2023-01-01', 'Unknown');
+SELECT * FROM employees WHERE age IS NULL;
+ALTER TABLE employees ALTER COLUMN age SET NOT NULL;
+DELETE FROM employees WHERE name = 'Null Person';
+
+DROP TABLE employees;

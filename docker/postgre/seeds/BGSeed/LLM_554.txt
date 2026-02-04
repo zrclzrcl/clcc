@@ -1,0 +1,110 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    job_id VARCHAR(10),
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id) ON DELETE SET NULL
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco'),
+('Human Resources', 'Chicago');
+
+INSERT INTO employees (first_name, last_name, email, phone_number, job_id, salary, commission_pct, dept_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567', 'Sales Rep', 60000.00, 0.10, (SELECT dept_id FROM departments WHERE dept_name = 'Sales')),
+('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', 'Marketing Manager', 80000.00, 0.15, (SELECT dept_id FROM departments WHERE dept_name = 'Marketing')),
+('Peter', 'Jones', 'peter.jones@example.com', '555-246-8013', 'Software Engineer', 90000.00, 0.05, (SELECT dept_id FROM departments WHERE dept_name = 'Engineering')),
+('Alice', 'Brown', 'alice.brown@example.com', '555-135-7912', 'HR Specialist', 65000.00, NULL, (SELECT dept_id FROM departments WHERE dept_name = 'Human Resources'));
+
+VACUUM employees;
+VACUUM departments;
+
+SELECT * FROM employees;
+SELECT first_name, last_name FROM employees WHERE salary > 70000;
+SELECT * FROM employees WHERE dept_id IS NULL;
+SELECT * FROM employees ORDER BY salary DESC LIMIT 10;
+SELECT COUNT(*) FROM employees;
+SELECT dept_name, COUNT(*) FROM departments JOIN employees ON departments.dept_id = employees.dept_id GROUP BY dept_name;
+SELECT AVG(salary) FROM employees;
+SELECT MAX(salary), MIN(salary) FROM employees;
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+SELECT * FROM employees WHERE email SIMILAR TO '%example.(com|net)';
+SELECT substring(email from '@(.*)$') FROM employees;
+SELECT length(first_name) FROM employees;
+SELECT upper(last_name) FROM employees;
+SELECT lower(first_name) FROM employees;
+SELECT replace(phone_number, '-', '') FROM employees;
+SELECT position('e' in first_name) FROM employees;
+SELECT trim(location FROM departments);
+SELECT * FROM departments WHERE dept_name ILIKE '%sales%';
+SELECT *, salary::TEXT from employees;
+SELECT *, to_char(hire_date, 'YYYY-MM-DD') FROM employees;
+SELECT *, date_trunc('month', hire_date) FROM employees;
+EXPLAIN SELECT * FROM employees WHERE salary > 75000;
+SELECT first_name || ' ' || last_name AS full_name FROM employees;
+SELECT coalesce(commission_pct, 0) FROM employees;
+SELECT nullif(commission_pct, 0.00) FROM employees;
+SELECT CASE
+    WHEN salary > 80000 THEN 'High'
+    WHEN salary > 60000 THEN 'Medium'
+    ELSE 'Low'
+    END AS salary_level
+FROM employees;
+
+-- window functions
+SELECT emp_id, first_name, salary,
+       RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+SELECT emp_id, first_name, salary,
+       DENSE_RANK() OVER (ORDER BY salary DESC) AS salary_dense_rank
+FROM employees;
+
+SELECT emp_id, first_name, salary,
+       ROW_NUMBER() OVER (ORDER BY salary DESC) AS salary_row_number
+FROM employees;
+
+CREATE OR REPLACE FUNCTION get_employee_count(dept_name_param VARCHAR)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees e JOIN departments d ON e.dept_id = d.dept_id WHERE d.dept_name = dept_name_param);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Sales');
+
+--JSON functionality
+
+DROP TABLE IF EXISTS json_example;
+
+CREATE TABLE json_example (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_example (data) VALUES
+('{"name": "Product A", "price": 25.99, "features": ["color", "size"]}'),
+('{"name": "Product B", "price": 10.50, "features": ["material", "weight"]}');
+
+SELECT data -> 'name' FROM json_example;
+SELECT data ->> 'name' FROM json_example;
+SELECT data #> '{features,0}' FROM json_example;
+SELECT data #>> '{features,0}' FROM json_example;
+SELECT * FROM json_example WHERE data @> '{"price": 25.99}';
+SELECT * FROM json_example WHERE data ? 'name';

@@ -1,0 +1,104 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email CITEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.org'),
+('peter_jones', 'peter.jones@test.com');
+
+INSERT INTO products (name, description, price) VALUES
+('Awesome T-Shirt', 'A really cool t-shirt', 25.99),
+('Amazing Mug', 'A mug that makes your coffee taste better', 12.50),
+('Fantastic Book', 'A book that will change your life', 19.99);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 41.49),
+(2, 38.49);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 25.99),
+(1, 2, 1, 12.50),
+(2, 3, 1, 19.99),
+(2, 2, 1, 12.50);
+
+SELECT * FROM users WHERE username LIKE 'john%';
+
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+
+DELETE FROM products WHERE id = 3;
+
+SELECT u.username, o.order_date, o.total_amount
+FROM users u
+JOIN orders o ON u.id = o.user_id
+WHERE o.total_amount > 40;
+
+CREATE INDEX idx_users_username ON users (username);
+
+ALTER TABLE products ADD COLUMN image_url VARCHAR(255);
+
+SELECT generate_series(1, 10);
+
+WITH user_orders AS (
+    SELECT user_id, COUNT(*) AS order_count
+    FROM orders
+    GROUP BY user_id
+)
+SELECT u.username, uo.order_count
+FROM users u
+JOIN user_orders uo ON u.id = uo.user_id;
+
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "test", "value": 123}');
+
+SELECT data -> 'name' FROM json_test;
+
+CREATE TABLE collation_test (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) COLLATE "en_US"
+);
+
+INSERT INTO collation_test (name) VALUES ('a'), ('A'), ('b');
+SELECT * FROM collation_test ORDER BY name COLLATE "en_US";
+
+CREATE TABLE like_test (
+    id SERIAL PRIMARY KEY,
+    text_data TEXT
+);
+
+INSERT INTO like_test (text_data) VALUES ('abc%def'), ('abc_def'), ('abc\def');
+
+SELECT * FROM like_test WHERE text_data LIKE 'abc\%def' ESCAPE '\';

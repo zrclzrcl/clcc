@@ -1,0 +1,130 @@
+SET GLOBAL innodb_file_format = Barracuda;
+SET GLOBAL innodb_large_prefix = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Table with various data types and constraints
+CREATE TABLE IF NOT EXISTS users (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    password CHAR(60) NOT NULL, -- For hashed passwords
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_data JSON NULL,
+    last_login DATETIME NULL
+);
+
+-- Table with foreign key and indexing
+CREATE TABLE IF NOT EXISTS posts (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FULLTEXT (title, content)
+);
+
+-- Table with spatial data type
+CREATE TABLE IF NOT EXISTS locations (
+    id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    coordinates POINT SRID 0, --  SRID 0 is a valid default, fuzzing different SRIDs might be interesting.
+    SPATIAL INDEX(coordinates)
+);
+
+-- Insert some initial data
+INSERT INTO users (username, email, password) VALUES
+('testuser1', 'test1@example.com', '$2a$10$abcdefghijklmnopqrstuvwx'), -- Dummy hashed password
+('testuser2', 'test2@example.com', '$2a$10$zyxwvutsrqponmlkjihgfed'),
+('testuser3', 'test3@example.com', '$2a$10$1234567890abcdefghijklmn');
+
+INSERT INTO posts (user_id, title, content) VALUES
+(1, 'First Post', 'This is the first post.'),
+(2, 'Second Post', 'This is another post.');
+
+INSERT INTO locations (name, coordinates) VALUES
+('Location A', ST_GeomFromText('POINT(10 10)')),
+('Location B', ST_GeomFromText('POINT(20 20)'));
+
+-- Complex query with joins, fulltext search, and spatial functions
+SELECT
+    u.username,
+    p.title,
+    l.name,
+    ST_Distance_Sphere(l.coordinates, ST_GeomFromText('POINT(11 11)')) AS distance
+FROM users u
+JOIN posts p ON u.id = p.user_id
+JOIN locations l ON ST_Contains(ST_Buffer(l.coordinates, 5), ST_GeomFromText('POINT(11 11)'))
+WHERE MATCH(p.title, p.content) AGAINST ('post' IN NATURAL LANGUAGE MODE)
+LIMIT 10;
+
+-- Test JSON functions
+UPDATE users SET profile_data = '{"age": 30, "city": "New York"}' WHERE id = 1;
+SELECT username, JSON_EXTRACT(profile_data, '$.age') AS age FROM users WHERE id = 1;
+
+-- Test stored procedure. Create a simple procedure
+DELIMITER //
+CREATE PROCEDURE GetUserCount(OUT user_count INT)
+BEGIN
+    SELECT COUNT(*) INTO user_count FROM users;
+END //
+DELIMITER ;
+
+CALL GetUserCount(@user_count);
+SELECT @user_count;
+
+-- test trigger
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255) NOT NULL,
+    record_id INT NOT NULL,
+    action VARCHAR(255) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER users_after_insert
+AFTER INSERT ON users
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, record_id, action)
+    VALUES ('users', NEW.id, 'INSERT');
+END //
+DELIMITER ;
+INSERT INTO users (username, email, password) VALUES ('triggered_user', 'trigger@example.com', 'password');
+
+-- Optimize table
+OPTIMIZE TABLE users;
+
+-- ANALYZE TABLE users; -- Consider if ANALYZE needs specific privileges
+
+SHOW CREATE TABLE users;
+
+SHOW INDEXES FROM users;
+
+FLUSH TABLES users;
+
+-- Test partitioning
+CREATE TABLE IF NOT EXISTS sales (
+    sale_id INT,
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+)
+PARTITION BY RANGE ( YEAR(sale_date) ) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2021),
+    PARTITION p2 VALUES LESS THAN (2022),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+INSERT INTO sales (sale_id, sale_date, amount) VALUES
+(1, '2019-01-01', 100.00),
+(2, '2020-01-01', 200.00),
+(3, '2021-01-01', 300.00),
+(4, '2022-01-01', 400.00);
+
+SELECT * FROM sales PARTITION (p0);

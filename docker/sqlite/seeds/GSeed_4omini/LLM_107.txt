@@ -1,0 +1,23 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, department_id INTEGER);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, name TEXT);
+CREATE TABLE projects(id INTEGER PRIMARY KEY, name TEXT, department_id INTEGER);
+CREATE VIEW department_projects AS 
+SELECT d.name AS department_name, p.name AS project_name 
+FROM departments d 
+JOIN projects p ON d.id = p.department_id 
+ORDER BY d.id;
+
+INSERT INTO departments VALUES(1, 'Engineering'), (2, 'Marketing'), (3, 'Sales');
+INSERT INTO employees VALUES(1, 'Alice', 1), (2, 'Bob', 2), (3, 'Charlie', 1), (4, 'David', 3);
+INSERT INTO projects VALUES(1, 'Project Alpha', 1), (2, 'Project Beta', 2), (3, 'Project Gamma', 1), (4, 'Project Delta', 3);
+
+SELECT * FROM employees WHERE department_id = 1 ORDER BY name;
+SELECT * FROM department_projects WHERE department_name = 'Engineering';
+SELECT e.name, COUNT(p.id) as project_count 
+FROM employees e 
+LEFT JOIN projects p ON e.department_id = p.department_id 
+GROUP BY e.id 
+HAVING project_count > 0;
+
+UPDATE employees SET department_id = 2 WHERE name = 'Charlie';
+DELETE FROM projects WHERE id = 4;

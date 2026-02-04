@@ -1,0 +1,92 @@
+CREATE TABLE public.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    data JSONB
+);
+
+INSERT INTO public.test_table (name, description, data) VALUES
+('Item 1', 'A basic item', '{"price": 10.99, "quantity": 100}'),
+('Item 2', 'A more complex item', '{"features": ["red", "large", "durable"], "manufacturer": "Acme Corp"}'),
+('Item 3', NULL, '{"is_available": true}'),
+('Item 4', 'Item with nested JSON', '{"details": {"color": "blue", "size": "medium"}}');
+
+SELECT id, name, description FROM public.test_table WHERE id = 1;
+
+UPDATE public.test_table SET description = 'Updated description' WHERE id = 1;
+
+DELETE FROM public.test_table WHERE id = 3;
+
+SELECT * FROM public.test_table WHERE data @> '{"price": 10.99}';
+
+SELECT * FROM public.test_table WHERE data ->> 'manufacturer' = 'Acme Corp';
+
+SELECT id, data -> 'details' ->> 'color' AS color FROM public.test_table WHERE data -> 'details' IS NOT NULL;
+
+CREATE INDEX idx_test_table_data ON public.test_table USING GIN (data jsonb_path_ops);
+
+EXPLAIN ANALYZE SELECT * FROM public.test_table WHERE data @> '{"features": ["red"]}';
+
+SELECT jsonb_pretty(data) FROM public.test_table WHERE id = 2;
+
+SELECT jsonb_path_exists(data, '$.features[*]?(@ == "red")') FROM public.test_table WHERE id = 2;
+
+SELECT jsonb_path_query_array(data, '$.features') FROM public.test_table WHERE id = 2;
+
+ALTER TABLE public.test_table ADD COLUMN tags TEXT[];
+UPDATE public.test_table SET tags = ARRAY['tag1', 'tag2'] WHERE id = 1;
+SELECT * FROM public.test_table WHERE tags @> ARRAY['tag1'];
+
+CREATE OR REPLACE FUNCTION public.get_item_price(item_id INT)
+RETURNS NUMERIC AS $$
+BEGIN
+    RETURN (SELECT (data ->> 'price')::NUMERIC FROM public.test_table WHERE id = item_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT public.get_item_price(1);
+
+DROP FUNCTION IF EXISTS public.get_item_price(INT);
+
+CREATE VIEW public.test_view AS SELECT id, name FROM public.test_table;
+
+SELECT * FROM public.test_view WHERE id = 1;
+
+DROP VIEW IF EXISTS public.test_view;
+
+CREATE MATERIALIZED VIEW public.test_mat_view AS SELECT id, name FROM public.test_table;
+
+SELECT * FROM public.test_mat_view;
+
+REFRESH MATERIALIZED VIEW public.test_mat_view;
+
+DROP MATERIALIZED VIEW IF EXISTS public.test_mat_view;
+
+CREATE TEMP TABLE temp_table AS SELECT * FROM public.test_table;
+
+SELECT * FROM temp_table;
+
+DROP TABLE IF EXISTS temp_table;
+
+SELECT CASE WHEN id = 1 THEN 'First' ELSE 'Other' END AS case_example FROM public.test_table;
+
+SELECT coalesce(description, 'No description') FROM public.test_table;
+
+SELECT NULLIF(description, 'A basic item') FROM public.test_table;
+
+SELECT id, name, created_at FROM public.test_table ORDER BY created_at DESC LIMIT 2;
+
+SELECT generate_series(1, 5);
+
+SELECT current_timestamp;
+
+SELECT inet '192.168.1.1';
+
+SELECT uuid_generate_v4();
+
+SELECT lo_create(0);
+
+SELECT pg_read_file('test.txt', 0, 1024);
+
+DROP TABLE IF EXISTS public.test_table CASCADE;

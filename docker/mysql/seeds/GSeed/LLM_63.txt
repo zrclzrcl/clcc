@@ -1,0 +1,83 @@
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Create a table with various data types
+CREATE TABLE IF NOT EXISTS products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED,
+    quantity INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insert some initial data
+INSERT INTO products (name, description, price, quantity) VALUES
+('Product A', 'A sample product description', 19.99, 100),
+('Product B', 'Another product with a longer description', 29.99, 50),
+('Product C', NULL, 9.99, 200);
+
+-- Test some unique MySQL features
+--  JSON column and manipulation
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "red", "size": "medium"}' WHERE id = 1;
+SELECT details->>'$.color' FROM products WHERE id = 1;
+
+--  ENUM and SET types
+CREATE TABLE IF NOT EXISTS orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    tags SET('urgent', 'fragile', 'discounted')
+);
+
+INSERT INTO orders (product_id, status, tags) VALUES
+(1, 'processing', 'urgent,fragile'),
+(2, 'shipped', 'discounted');
+
+-- Stored Procedure (simple example)
+DELIMITER //
+CREATE PROCEDURE GetProductPrice(IN product_name VARCHAR(255), OUT product_price DECIMAL(10,2))
+BEGIN
+    SELECT price INTO product_price FROM products WHERE name = product_name;
+END //
+DELIMITER ;
+
+CALL GetProductPrice('Product A', @price);
+SELECT @price;
+
+-- Trigger (simple example - logs product updates)
+CREATE TABLE IF NOT EXISTS product_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    old_price DECIMAL(10,2),
+    new_price DECIMAL(10,2),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER ProductPriceUpdate
+AFTER UPDATE
+ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price <> OLD.price THEN
+        INSERT INTO product_logs (product_id, old_price, new_price) VALUES (OLD.id, OLD.price, NEW.price);
+    END IF;
+END //
+DELIMITER ;
+
+UPDATE products SET price = 21.99 WHERE id = 1;
+
+-- Spatial Data Type
+CREATE TABLE IF NOT EXISTS locations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO locations (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 10)'));
+
+SELECT ST_AsText(location) FROM locations WHERE name = 'Office';

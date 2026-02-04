@@ -1,0 +1,81 @@
+-- Set optimizer switches to enable specific behaviors
+SET GLOBAL optimizer_switch = 'materialization=on';
+SET @old_optimizer_switch = @@optimizer_switch;
+
+-- Create a table with various data types including JSON and GIS columns
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive'),
+    metadata JSON,
+    location GEOMETRY,
+    UNIQUE KEY (name),
+    INDEX idx_created_at(created_at)
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+-- Insert sample data with edge cases
+INSERT INTO t1 (name, description, created_at, updated_at, status, metadata, location)
+VALUES 
+('Test Name', 'This is a test description.', '2023-01-01 00:00:00', NULL, 'active', '{"key": "value"}', ST_GeomFromText('POINT(1 1)')),
+(NULL, NULL, '2023-01-02 00:00:00', '2023-01-02 00:00:01', 'inactive', NULL, ST_GeomFromText('POINT(2 2)')),
+('Edge Case Name', 'Testing edge case description.', '2023-01-03 23:59:59', '2023-01-04 00:00:00', 'active', '{"test": true}', ST_GeomFromText('POINT(3 3)'));
+
+-- Create additional tables for testing joins and subqueries
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    value DECIMAL(10, 2),
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+CREATE TABLE t3 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    type ENUM('type1', 'type2'),
+    UNIQUE KEY (name)
+);
+
+-- Insert sample data into related tables
+INSERT INTO t2 (t1_id, value) VALUES (1, 100.5), (2, NULL), (3, 999.99);
+INSERT INTO t3 (name, type) VALUES ('Type 1', 'type1'), ('Type 2', 'type2');
+
+-- Test complex queries with subqueries and joins
+EXPLAIN SELECT 
+    t1.name,
+    t2.value,
+    COUNT(*) AS total_records,
+    JSON_EXTRACT(t1.metadata, '$.key') AS metadata_key,
+    ST_AsText(t1.location) AS location_text
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id
+LEFT JOIN t3 ON t1.status = t3.type
+WHERE t1.created_at >= '2023-01-01 00:00:00'
+GROUP BY t1.name, t2.value
+HAVING COUNT(*) > 0
+ORDER BY total_records DESC;
+
+-- Test window functions and JSON operations
+SELECT 
+    name,
+    created_at,
+    RANK() OVER (ORDER BY created_at) AS rank,
+    JSON_LENGTH(metadata) AS metadata_length
+FROM t1
+WHERE status = 'active';
+
+-- Test GIS operations
+SELECT 
+    name,
+    ST_Distance(location, ST_GeomFromText('POINT(0 0)')) AS distance_from_origin
+FROM t1
+ORDER BY distance_from_origin ASC;
+
+-- Test different SQL modes and settings
+SET sql_mode = 'STRICT_TRANS_TABLES';
+SHOW VARIABLES LIKE 'sql_mode';
+
+-- Reset optimizer switch for future tests
+SET GLOBAL optimizer_switch = @old_optimizer_switch;

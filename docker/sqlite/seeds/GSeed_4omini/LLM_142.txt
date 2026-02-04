@@ -1,0 +1,46 @@
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL CHECK(length(password) >= 8),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE posts (
+    post_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE comments (
+    comment_id INTEGER PRIMARY KEY,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_username ON users(username);
+CREATE INDEX idx_post_user ON posts(user_id);
+CREATE INDEX idx_comment_post ON comments(post_id);
+
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+
+INSERT INTO users (username, password) VALUES ('testuser1', 'securepassword1'), ('testuser2', 'securepassword2');
+INSERT INTO posts (user_id, content) VALUES (1, 'This is the first post by user 1'), (2, 'User 2 post content here');
+INSERT INTO comments (post_id, user_id, comment_text) VALUES (1, 1, 'Comment on post 1 by user 1'), (1, 2, 'Comment by user 2 on post 1');
+
+SELECT 
+    p.content AS post_content,
+    u.username AS author,
+    c.comment_text,
+    c.created_at
+FROM posts p
+JOIN users u ON p.user_id = u.user_id
+LEFT JOIN comments c ON p.post_id = c.post_id
+WHERE p.created_at > DATETIME('now', '-1 day')
+ORDER BY p.created_at DESC;

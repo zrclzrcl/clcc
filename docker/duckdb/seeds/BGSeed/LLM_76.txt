@@ -1,0 +1,39 @@
+DROP TABLE IF EXISTS articles;
+DROP TABLE IF EXISTS authors;
+
+CREATE TABLE authors (
+    author_id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    email VARCHAR UNIQUE
+);
+
+CREATE TABLE articles (
+    article_id INTEGER PRIMARY KEY,
+    title VARCHAR,
+    content VARCHAR,
+    author_id INTEGER REFERENCES authors(author_id),
+    publication_date DATE
+);
+
+INSERT INTO authors (name, email) VALUES ('John Doe', 'john.doe@example.com');
+INSERT INTO authors (name, email) VALUES ('Jane Smith', 'jane.smith@example.com');
+
+INSERT INTO articles (title, content, author_id, publication_date) VALUES ('DuckDB Intro', 'This is an introduction to DuckDB.', 1, '2023-10-26');
+INSERT INTO articles (title, content, author_id, publication_date) VALUES ('DuckDB Advanced', 'Advanced DuckDB features.', 2, '2023-10-27');
+
+CREATE VIEW article_summary AS
+SELECT a.title, substr(a.content, 1, 50) AS content_snippet, au.name AS author_name
+FROM articles a
+JOIN authors au ON a.author_id = au.author_id;
+
+SELECT * FROM article_summary;
+
+-- DuckDB-specific: Use UNNEST to expand an array (create a dummy array column)
+SELECT author_id, UNNEST([1, 2, 3]) AS value FROM authors;
+
+-- DuckDB-specific: Demonstrate Parquet reading.  We assume a parquet file exists (e.g., created elsewhere)
+-- Create dummy Parquet file metadata (replace with actual file if testing locally).
+-- SELECT * FROM read_parquet('dummy.parquet'); -- Commented out because 'dummy.parquet' likely does not exist.  Requires a local file for actual usage.
+
+-- DuckDB-specific: Demonstrate JSON reading
+SELECT json('{ "name": "test", "value": 1 }'):name;

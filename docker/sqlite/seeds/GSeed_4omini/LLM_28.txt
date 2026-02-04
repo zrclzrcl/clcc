@@ -1,0 +1,12 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE UNIQUE INDEX idx_username ON users(username);
+CREATE TEMP TRIGGER after_user_insert AFTER INSERT ON users BEGIN INSERT INTO logs(action, username, timestamp) VALUES('insert', new.username, CURRENT_TIMESTAMP); END;
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL NOT NULL CHECK(price > 0), stock INTEGER DEFAULT 0);
+INSERT INTO products VALUES(1, 'Widget', 19.99, 100);
+INSERT INTO products VALUES(2, 'Gadget', 29.99, 50);
+CREATE TEMP VIEW active_products AS SELECT * FROM products WHERE stock > 0;
+SELECT * FROM active_products WHERE price < 25.00;
+ALTER TABLE products ADD COLUMN description TEXT;
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, product_id INTEGER, quantity INTEGER NOT NULL CHECK(quantity > 0), order_date DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(product_id) REFERENCES products(id));
+INSERT INTO orders(user_id, product_id, quantity) VALUES(1, 1, 2);
+UPDATE products SET stock = stock - 2 WHERE id = 1 AND stock >= 2;

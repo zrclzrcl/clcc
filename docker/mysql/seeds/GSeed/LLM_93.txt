@@ -1,0 +1,57 @@
+SET sql_mode = 'STRICT_ALL_TABLES';
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price, quantity) VALUES
+('Awesome Widget', 'This widget is awesome!', 19.99, 100),
+('Deluxe Sprocket', 'A sprocket for the discerning user.', 49.99, 50),
+('Basic Gizmo', 'A simple gizmo for everyday use.', 9.99, 200);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT UNSIGNED NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+ALTER TABLE orders AUTO_INCREMENT=1000;
+
+-- MySQL specific feature: Generated Columns
+ALTER TABLE products ADD COLUMN discounted_price DECIMAL(10,2) GENERATED ALWAYS AS (price * 0.9) VIRTUAL;
+
+-- Test some edge cases with large numbers
+INSERT INTO products (name, description, price, quantity) VALUES ('Expensive Thing', 'Really expensive', 99999999.99, 1);
+
+-- Spatial data type test (MySQL specific)
+CREATE TABLE locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location GEOMETRY NOT NULL,
+    SPATIAL INDEX(location)
+);
+
+INSERT INTO locations (name, location) VALUES ('Office', ST_GeomFromText('POINT(10 10)'));
+
+-- JSON column test (MySQL specific)
+CREATE TABLE settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_name VARCHAR(255) UNIQUE,
+    setting_value JSON
+);
+
+INSERT INTO settings (setting_name, setting_value) VALUES ('default_theme', '{"theme": "dark", "font_size": 12}');

@@ -1,0 +1,44 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL), ('A'), ('B'), ('C');
+
+CREATE TABLE mixed (
+    i INTEGER,
+    s VARCHAR
+);
+
+INSERT INTO mixed VALUES (1, 'a'), (2, 'b'), (3, 'c'), (NULL, NULL), (1, 'A'), (2, 'B'), (3, 'C');
+
+-- Test string aggregations with NULLs
+SELECT STRING_AGG(s, ',') FROM strings;
+SELECT STRING_AGG(s, ',' ORDER BY s) FROM strings;
+SELECT STRING_AGG(s, ',' ORDER BY s DESC) FROM strings;
+
+-- Test integer aggregations with NULLs
+SELECT SUM(i) FROM integers;
+SELECT AVG(i) FROM integers;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test date functions (DuckDB specific)
+SELECT DATE('2023-10-26');
+SELECT STRFTIME('%Y-%m-%d', '2023-10-26');
+
+-- Test json functions (DuckDB specific)
+SELECT JSON('{"a": 1, "b": 2}');
+SELECT JSON_EXTRACT('{"a": 1, "b": 2}', '$.a');
+
+-- Test unnesting arrays (DuckDB specific)
+CREATE TABLE array_table (arr INTEGER[]);
+INSERT INTO array_table VALUES ([1,2,3]), ([4,5,6]), ([7, NULL, 9]);
+SELECT * FROM array_table;
+SELECT unnest(arr) FROM array_table;

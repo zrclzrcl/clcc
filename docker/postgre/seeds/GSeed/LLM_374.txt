@@ -1,0 +1,167 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    age INTEGER,
+    email VARCHAR(255) UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO test_table (name, age, email) VALUES
+('Alice', 30, 'alice@example.com'),
+('Bob', 25, 'bob@example.com'),
+('Charlie', 35, 'charlie@example.com');
+
+SELECT * FROM test_table WHERE age > 27;
+
+UPDATE test_table SET age = 32 WHERE name = 'Alice';
+
+DELETE FROM test_table WHERE id = 2;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(age) FROM test_table;
+
+CREATE INDEX idx_name ON test_table (name);
+
+SELECT * FROM test_table WHERE name LIKE 'A%';
+
+ALTER TABLE test_table ADD COLUMN address TEXT;
+
+UPDATE test_table SET address = '123 Main St' WHERE name = 'Alice';
+
+SELECT name, age FROM test_table ORDER BY age DESC;
+
+CREATE VIEW adult_users AS
+SELECT name, email FROM test_table WHERE age >= 18;
+
+SELECT * FROM adult_users;
+
+DROP VIEW adult_users;
+
+SELECT pg_backend_pid();
+
+SHOW server_version;
+
+SHOW data_directory;
+
+CREATE FUNCTION add_them(integer, integer) RETURNS integer
+AS 'select $1 + $2;'
+LANGUAGE SQL
+IMMUTABLE
+RETURNS NULL ON NULL INPUT;
+
+SELECT add_them(2, 3);
+
+DROP FUNCTION add_them(integer, integer);
+
+CREATE TABLE parent (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+CREATE TABLE child (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent(id),
+    child_name VARCHAR(255)
+);
+
+INSERT INTO parent (name) VALUES ('Parent1');
+INSERT INTO child (parent_id, child_name) VALUES (1, 'Child1');
+
+SELECT p.name, c.child_name
+FROM parent p
+JOIN child c ON p.id = c.parent_id;
+
+DROP TABLE child;
+DROP TABLE parent;
+
+CREATE TABLE test_range (
+    tsrange TSRANGE,
+    numrange NUMRANGE
+);
+
+INSERT INTO test_range (tsrange, numrange) VALUES (
+    '[2024-01-01 00:00:00, 2024-01-02 00:00:00)',
+    '[10, 20)'
+);
+
+SELECT * FROM test_range WHERE tsrange && '[2024-01-01 12:00:00, 2024-01-01 18:00:00)';
+
+DROP TABLE test_range;
+
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES (
+    '{"name": "John", "age": 30, "address": {"street": "Park Ave", "city": "New York"}}'
+);
+
+SELECT data ->> 'name' FROM json_test;
+SELECT data -> 'address' ->> 'city' FROM json_test;
+
+DROP TABLE json_test;
+
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    names TEXT[]
+);
+
+INSERT INTO array_test (names) VALUES (
+    ARRAY['Alice', 'Bob', 'Charlie']
+);
+
+SELECT names[1] FROM array_test;
+
+DROP TABLE array_test;
+
+-- Using window functions
+CREATE TABLE sales (
+    product VARCHAR(50),
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+);
+
+INSERT INTO sales (product, sale_date, amount) VALUES
+('A', '2023-01-01', 100.00),
+('A', '2023-01-02', 150.00),
+('B', '2023-01-01', 200.00),
+('B', '2023-01-02', 250.00);
+
+SELECT
+    product,
+    sale_date,
+    amount,
+    RANK() OVER (PARTITION BY product ORDER BY amount DESC) as rank
+FROM sales;
+
+DROP TABLE sales;
+
+-- Using CTEs
+WITH RankedSales AS (
+    SELECT
+        product,
+        sale_date,
+        amount,
+        RANK() OVER (PARTITION BY product ORDER BY amount DESC) as rank
+    FROM sales
+)
+SELECT * FROM RankedSales WHERE rank = 1;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW mv_test AS SELECT * FROM test_table;
+REFRESH MATERIALIZED VIEW mv_test;
+DROP MATERIALIZED VIEW mv_test;
+
+-- Table Partitioning
+CREATE TABLE measurement (
+    logdate date not null,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2016m01 PARTITION OF measurement
+    FOR VALUES FROM ('2016-01-01') TO ('2016-02-01');
+
+DROP TABLE measurement;

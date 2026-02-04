@@ -1,0 +1,29 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER, email TEXT UNIQUE);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id));
+CREATE INDEX idx_users_age ON users(age);
+CREATE INDEX idx_orders_user ON orders(user_id);
+
+INSERT INTO users (name, age, email) VALUES 
+    ('Alice', 30, 'alice@example.com'),
+    ('Bob', 25, 'bob@example.com'),
+    ('Charlie', 35, 'charlie@example.com');
+
+INSERT INTO orders (user_id, amount) VALUES 
+    (1, 100.50),
+    (2, 200.00),
+    (1, 150.70),
+    (3, 400.00);
+
+SELECT u.name, SUM(o.amount) as total_spent 
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id
+HAVING total_spent > 100;
+
+SELECT * FROM users 
+WHERE age BETWEEN 20 AND 40 
+ORDER BY age DESC;
+
+PRAGMA foreign_keys=ON;
+PRAGMA cache_size=-1024; -- implies using dynamic cache size

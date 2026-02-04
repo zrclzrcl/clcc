@@ -1,0 +1,48 @@
+-- Create a table with various constraints and data types
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL,
+    CHECK (value > 0)
+);
+
+-- Insert sample data into the table
+INSERT INTO t1 VALUES 
+(1, 'Item 1', 100.50, '2023-01-01 00:00:00', 'active'),
+(2, 'Item 2', 200.75, '2023-01-02 00:00:00', 'inactive');
+
+-- Create an index on a concatenated column
+CREATE INDEX idx_name ON t1 (name || '_' || status);
+
+-- Use window functions in a CTE
+WITH ranked_data AS (
+    SELECT id, name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+    FROM t1
+)
+SELECT * FROM ranked_data;
+
+-- Create a virtual table with generated columns
+CREATE VIRTUAL TABLE vt1 USING generate_series(1, 5) AS (id INTEGER);
+CREATE TRIGGER trig_vt1 AFTER INSERT ON vt1 BEGIN 
+    UPDATE t1 SET value = value + 10.0 WHERE id = new.id;
+END;
+
+-- Insert into the virtual table to trigger an update
+INSERT INTO vt1 VALUES (3);
+
+-- Alter table by adding a column and modifying constraints
+ALTER TABLE t1 ADD COLUMN description TEXT DEFAULT 'N/A';
+ALTER TABLE t1 DROP CONSTRAINT status_check;
+ALTER TABLE t1 ADD CHECK (status IN ('active', 'inactive', 'pending'));
+
+-- Use recursive CTE with window functions
+WITH RECURSIVE cte(id, name, level) AS (
+    SELECT id, name, 0 as level FROM t1 WHERE id = 1
+    UNION ALL
+    SELECT t.id, t.name, c.level + 1
+    FROM t1 t JOIN cte c ON t.value > c.value
+)
+SELECT *, SUM(level) OVER (ORDER BY level DESC) AS total_level FROM cte;

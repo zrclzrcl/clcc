@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    department VARCHAR(255),
+    salary DECIMAL(10, 2)
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'Sales', 60000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Bob', 'Marketing', 75000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Charlie', 'Engineering', 90000.00);
+INSERT INTO employees (name, department, salary) VALUES ('David', 'Sales', 62000.00);
+INSERT INTO employees (name, department, salary) VALUES ('Eve', 'Marketing', 78000.00);
+
+-- DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT department, APPROXIMATE COUNT(DISTINCT name) FROM employees GROUP BY department;
+
+-- DuckDB specific feature: date_part function
+SELECT date_part('year', current_date);
+
+-- Testing window functions
+SELECT
+    name,
+    department,
+    salary,
+    AVG(salary) OVER (PARTITION BY department) as avg_department_salary
+FROM
+    employees;
+
+--Testing string operations
+SELECT lower(name), upper(department) from employees;
+
+-- Demonstrate a join
+SELECT e.name, d.location FROM employees e JOIN departments d ON e.department = d.name;
+
+-- Demonstrate unnesting an array (DuckDB specific extension)
+CREATE TABLE array_test (arr INTEGER[]);
+INSERT INTO array_test VALUES (list([1,2,3]));
+SELECT value FROM array_test, UNNEST(arr) AS value;
+
+-- Demonstrate correlation with a subquery
+SELECT name, (SELECT COUNT(*) FROM employees) AS total_employees FROM employees;

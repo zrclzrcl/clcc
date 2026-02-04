@@ -1,0 +1,96 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    data JSONB,
+    phone_numbers TEXT[]
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments (id);
+
+INSERT INTO departments (name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'London'),
+    ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id, data, phone_numbers) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '2022-01-15', 60000.00, 1, '{"title": "Sales Representative", "level": "Junior"}', '{"123-456-7890", "098-765-4321"}'),
+    ('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 75000.00, 2, '{"title": "Marketing Manager", "level": "Mid"}', '{}'),
+    ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 90000.00, 3, '{"title": "Software Engineer", "level": "Senior"}', '{"111-222-3333"}');
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+CREATE VIEW employee_summary AS
+SELECT
+    e.first_name,
+    e.last_name,
+    d.name AS department
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id;
+
+SELECT * FROM employee_summary;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 2;
+
+SELECT jsonb_pretty(data) FROM employees;
+
+SELECT * FROM employees WHERE phone_numbers @> '{"123-456-7890"}';
+
+WITH high_earners AS (
+    SELECT id, first_name, last_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM high_earners ORDER BY salary DESC;
+
+CREATE FUNCTION calculate_bonus(employee_id INTEGER)
+RETURNS DECIMAL AS $$
+DECLARE
+    bonus DECIMAL;
+    emp_salary DECIMAL;
+BEGIN
+    SELECT salary INTO emp_salary FROM employees WHERE id = employee_id;
+    bonus := emp_salary * 0.10;
+    RETURN bonus;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1);
+
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(100) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED;
+
+SELECT full_name from employees;
+
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price NUMERIC(10, 2) NOT NULL CHECK (price > 0),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'Powerful and portable laptop', 1200.50),
+('Mouse', 'Ergonomic wireless mouse', 25.99),
+('Keyboard', 'Mechanical keyboard for gaming', 150.00);
+
+SELECT * FROM products WHERE price BETWEEN 50 AND 200;
+
+SELECT description LIKE '%laptop%' FROM products;
+
+SELECT MAX(price), MIN(price), AVG(price) FROM products;

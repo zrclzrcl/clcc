@@ -1,0 +1,57 @@
+-- Initial Seed for DuckDB Fuzz Testing
+
+-- Create a table with various data types and constraints
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data into t1
+INSERT INTO t1 (id, name, value) VALUES 
+(1, 'Item 1', 100.50),
+(2, 'Item 2', 200.75),
+(3, 'Item 3', 300.99);
+
+-- Create a table with foreign key constraints
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    quantity INTEGER CHECK (quantity >= 0)
+);
+
+-- Insert data into t2 referencing t1
+INSERT INTO t2 (id, t1_id, quantity) VALUES 
+(1, 1, 5),
+(2, 2, 10),
+(3, 3, 3);
+
+-- Create a table for testing window functions and grouping
+CREATE TABLE t3 (
+    category VARCHAR,
+    amount DECIMAL(10, 2)
+);
+
+-- Insert sample data into t3
+INSERT INTO t3 VALUES 
+('A', 100.00),
+('A', 200.00),
+('B', 150.00),
+('B', 250.00);
+
+-- Create a virtual table for testing dynamic data
+CREATE VIRTUAL TABLE vt1 USING rows_from_sql(
+    'SELECT id, name, value FROM t1'
+);
+
+-- Enable experimental features for comprehensive testing
+PRAGMA enable_experimental;
+
+-- Query with window functions and grouping
+SELECT 
+    category,
+    SUM(amount) AS total_amount,
+    RANK() OVER (ORDER BY SUM(amount) DESC) AS rank
+FROM t3
+GROUP BY category;

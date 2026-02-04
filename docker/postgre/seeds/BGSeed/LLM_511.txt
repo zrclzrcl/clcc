@@ -1,0 +1,101 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(255)
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+('Alice', 60000.00, 'Sales'),
+('Bob', 75000.00, 'Marketing'),
+('Charlie', 90000.00, 'Engineering');
+
+CREATE INDEX idx_department ON employees (department);
+
+CREATE VIEW high_earners AS
+SELECT name, salary
+FROM employees
+WHERE salary > 70000.00;
+
+SELECT * FROM high_earners;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE;
+
+CREATE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN (SELECT salary FROM employees WHERE id = emp_id) * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1, 0.1);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(255) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('HR'), ('Finance');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+SELECT * FROM employee_summary;
+
+PREPARE employee_query (INTEGER) AS
+SELECT name, salary FROM employees WHERE id = $1;
+
+EXECUTE employee_query(1);
+
+DEALLOCATE employee_query;
+
+CREATE SEQUENCE serial_number_seq START 100;
+
+SELECT nextval('serial_number_seq');
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+ALTER TABLE employees ADD COLUMN current_mood mood;
+
+UPDATE employees SET current_mood = 'happy' WHERE id = 1;
+
+SELECT * FROM employees WHERE current_mood = 'happy';
+
+CREATE UNLOGGED TABLE unlogged_data (id SERIAL PRIMARY KEY, data TEXT);
+
+INSERT INTO unlogged_data (data) VALUES ('test data');
+
+SELECT * FROM unlogged_data;
+
+CREATE ROLE readonly_user;
+GRANT SELECT ON employees TO readonly_user;
+
+-- Cleanup
+DROP TABLE employees;
+DROP TABLE departments;
+DROP VIEW high_earners;
+DROP FUNCTION calculate_bonus(INTEGER, DECIMAL);
+DROP MATERIALIZED VIEW employee_summary;
+DROP SEQUENCE serial_number_seq;
+DROP TYPE mood;
+DROP UNLOGGED TABLE unlogged_data;
+DROP ROLE readonly_user;

@@ -1,0 +1,116 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'London'),
+    ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '2022-01-15', 60000.00, 1),
+    ('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 75000.00, 2),
+    ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-01', 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+-- PostgreSQL specific features
+CREATE SEQUENCE employee_seq START WITH 1000 INCREMENT BY 1;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person VALUES ('Moe', 'happy');
+SELECT * FROM person;
+DROP TABLE person;
+DROP TYPE mood;
+
+-- JSONB example
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+    ('Laptop', '{"brand": "Dell", "model": "XPS 15", "price": 1200}');
+
+SELECT name, details -> 'brand' AS brand FROM products;
+
+-- WITH clause (Common Table Expression)
+WITH high_earners AS (
+    SELECT id, first_name, last_name
+    FROM employees
+    WHERE salary > 80000
+)
+SELECT first_name, last_name FROM high_earners;
+
+-- Using generate_series
+SELECT generate_series(1, 5);
+
+-- Using pg_catalog
+SELECT proname FROM pg_catalog.pg_proc WHERE proname LIKE 'gen%';
+
+-- Advanced Aggregation Features
+SELECT department_id, avg(salary) FROM employees GROUP BY department_id;
+
+-- Window Functions
+SELECT
+    id,
+    first_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Check constraint
+ALTER TABLE employees ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+-- Trigger example
+CREATE OR REPLACE FUNCTION prevent_negative_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.salary < 0 THEN
+    RAISE EXCEPTION 'Salary cannot be negative';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_check_trigger
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION prevent_negative_salary();
+
+DROP TRIGGER IF EXISTS salary_check_trigger ON employees;
+DROP FUNCTION IF EXISTS prevent_negative_salary();
+
+DROP TABLE products;
+
+DROP INDEX IF EXISTS idx_employee_last_name;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+DROP SEQUENCE IF EXISTS employee_seq;

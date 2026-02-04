@@ -1,0 +1,46 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+INSERT INTO users(name, age) VALUES('Alice', 30);
+INSERT INTO users(name, age) VALUES('Bob', 25);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, order_date TEXT, total_amount REAL);
+INSERT INTO orders(user_id, order_date, total_amount) VALUES(1, '2023-10-01', 150.75);
+INSERT INTO orders(user_id, order_date, total_amount) VALUES(2, '2023-10-02', 75.50);
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, product_name TEXT, price REAL);
+INSERT INTO products(product_name, price) VALUES('Widget', 19.99);
+INSERT INTO products(product_name, price) VALUES('Gadget', 29.99);
+INSERT INTO products(product_name, price) VALUES('Doodad', 49.99);
+CREATE TABLE order_items(order_item_id INTEGER PRIMARY KEY, order_id INTEGER, product_id INTEGER, quantity INTEGER);
+INSERT INTO order_items(order_id, product_id, quantity) VALUES(1, 1, 2);
+INSERT INTO order_items(order_id, product_id, quantity) VALUES(1, 2, 1);
+INSERT INTO order_items(order_id, product_id, quantity) VALUES(2, 2, 3);
+INSERT INTO order_items(order_id, product_id, quantity) VALUES(2, 3, 1);
+SELECT u.name, SUM(oi.quantity * p.price) AS total_spent
+FROM users u
+JOIN orders o ON u.id = o.user_id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON oi.product_id = p.product_id
+GROUP BY u.id;
+CREATE TABLE promotions(promo_id INTEGER PRIMARY KEY, description TEXT, discount REAL);
+INSERT INTO promotions(description, discount) VALUES('Spring Sale', 0.10);
+INSERT INTO promotions(description, discount) VALUES('Holiday Discount', 0.20);
+
+-- Testing an edge case for NULL values
+CREATE TABLE test_nulls(id INTEGER PRIMARY KEY, value TEXT);
+INSERT INTO test_nulls(value) VALUES(NULL);
+INSERT INTO test_nulls(value) VALUES('Hello');
+SELECT * FROM test_nulls WHERE value IS NULL;
+
+-- Testing string aggregation
+CREATE TABLE departments(dept_id INTEGER PRIMARY KEY, dept_name TEXT);
+INSERT INTO departments(dept_name) VALUES('Sales');
+INSERT INTO departments(dept_name) VALUES('Support');
+SELECT dept_name, GROUP_CONCAT(name) AS members
+FROM users
+JOIN orders ON users.id = orders.user_id
+GROUP BY dept_name;
+
+DROP TABLE IF EXISTS test_nulls; 
+DROP TABLE IF EXISTS promotions; 
+DROP TABLE IF EXISTS order_items; 
+DROP TABLE IF EXISTS products; 
+DROP TABLE IF EXISTS orders; 
+DROP TABLE IF EXISTS users;

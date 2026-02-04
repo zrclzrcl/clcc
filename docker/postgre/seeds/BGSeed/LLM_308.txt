@@ -1,0 +1,63 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    description TEXT,
+    attributes JSONB
+);
+
+CREATE INDEX idx_product_name ON products (product_name);
+CREATE INDEX CONCURRENTLY idx_price ON products (price);
+
+INSERT INTO products (product_name, price, description, attributes) VALUES
+('Laptop', 1200.00, 'High-performance laptop', '{"screen_size": "15 inch", "ram": "16GB"}'),
+('Mouse', 25.00, 'Wireless mouse', '{"dpi": "1600", "color": "black"}');
+
+UPDATE products SET price = 1250.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+SELECT * FROM products WHERE price > 100;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2024-01-01', 1250.00),
+(2, '2024-01-02', 25.00);
+
+CREATE VIEW high_value_orders AS
+SELECT order_id, customer_id, total_amount
+FROM orders
+WHERE total_amount > 1000;
+
+SELECT * FROM high_value_orders;
+
+SELECT p.product_name, o.order_date
+FROM products p
+JOIN orders o ON o.total_amount > (p.price * 0.5);
+
+WITH ProductSummary AS (
+    SELECT AVG(price) AS avg_price, COUNT(*) AS product_count FROM products
+)
+SELECT * FROM ProductSummary;
+
+-- Example of potential division by zero, but protected with a NULLIF
+SELECT product_name, price / NULLIF(0,0) FROM products WHERE product_id = 1;
+
+CREATE TABLE test_types (
+  id SERIAL PRIMARY KEY,
+  ts timestamp,
+  tstz timestamptz,
+  dt date,
+  tm time
+);
+
+INSERT INTO test_types (ts, tstz, dt, tm) VALUES
+  ('2024-11-18 10:00:00', '2024-11-18 10:00:00+00', '2024-11-18', '10:00:00');
+
+SELECT * from test_types;

@@ -1,0 +1,69 @@
+-- Create a table with primary key, indexes, and some sample data
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL,
+    department_id INTEGER,
+    hire_date DATE
+);
+
+-- Create an index on the department_id column for faster queries
+CREATE INDEX idx_department ON employees(department_id);
+
+-- Insert some test data into the table
+INSERT INTO employees VALUES 
+    (1, 'John Doe', 50000.00, 1, '2020-01-15'),
+    (2, 'Jane Smith', 60000.00, 2, '2021-03-20'),
+    (3, 'Bob Johnson', 55000.00, 1, '2022-07-10');
+
+-- Create a table for departments
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    location VARCHAR(100)
+);
+
+-- Insert some department data
+INSERT INTO departments VALUES 
+    (1, 'Engineering', 'New York'),
+    (2, 'Marketing', 'San Francisco');
+
+-- Create a view that joins employees and departments
+CREATE VIEW employee_departments AS
+SELECT e.id, e.name, d.name as department_name, e.salary, e.hire_date
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+-- Create an index on the view for testing purposes
+CREATE INDEX idx_employee_department ON employee_departments(id);
+
+-- Create a common table expression (CTE) with a recursive query
+WITH RECURSIVE numbers(n) AS (
+    SELECT 1
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 10
+)
+SELECT * FROM numbers;
+
+-- Test a LEFT JOIN to ensure all employees are included even if they have no department
+SELECT e.id, e.name, d.name as department_name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id;
+
+-- Test a UNION of two different queries
+(SELECT id, name, salary FROM employees WHERE department_id = 1)
+UNION
+(SELECT id, name, salary FROM employees WHERE department_id = 2);
+
+-- Test a GROUP BY with aggregate functions
+SELECT department_id, COUNT(*) as employee_count, AVG(salary) as average_salary
+FROM employees
+GROUP BY department_id;
+
+-- Test a window function
+SELECT id, name, salary,
+       ROW_NUMBER() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Vacuum the database to test maintenance operations
+VACUUM;

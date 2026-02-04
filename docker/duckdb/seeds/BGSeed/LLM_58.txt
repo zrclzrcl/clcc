@@ -1,0 +1,51 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL);
+
+-- Test NULLIF and COALESCE
+SELECT NULLIF(i, 2), COALESCE(s, 'default') FROM integers, strings LIMIT 5;
+
+-- Test CASE statements
+SELECT CASE WHEN i > 2 THEN 'large' WHEN i < 2 THEN 'small' ELSE 'medium' END FROM integers;
+
+-- Test string functions
+SELECT UPPER(s), LENGTH(s) FROM strings WHERE s IS NOT NULL;
+
+-- Test date/time functions (DuckDB specific)
+SELECT CURRENT_TIMESTAMP, DATE('2024-01-01'), DATE_TRUNC('month', CURRENT_TIMESTAMP);
+
+-- Test list/array functions (DuckDB specific)
+CREATE TABLE lists (
+  l INTEGER[]
+);
+INSERT INTO lists VALUES (LIST(1,2,3)), (LIST(4,5,NULL));
+SELECT l[1] FROM lists;
+
+-- Test aggregation
+SELECT SUM(i), AVG(i), COUNT(*), COUNT(DISTINCT s) FROM integers, strings;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers WHERE i IS NOT NULL;
+
+-- Test joins with different join types
+CREATE TABLE more_integers (j INTEGER);
+INSERT INTO more_integers VALUES (2), (4), (5);
+SELECT * FROM integers INNER JOIN more_integers ON i = j;
+SELECT * FROM integers LEFT JOIN more_integers ON i = j;
+SELECT * FROM integers RIGHT JOIN more_integers ON i = j; --DuckDB support RIGHT JOIN
+SELECT * FROM integers FULL OUTER JOIN more_integers ON i =j; --DuckDB support FULL OUTER JOIN
+
+-- Test EXCEPT and INTERSECT
+SELECT i FROM integers EXCEPT SELECT j FROM more_integers;
+SELECT i FROM integers INTERSECT SELECT j FROM more_integers;
+
+-- Test UNION ALL
+SELECT i FROM integers UNION ALL SELECT j FROM more_integers;

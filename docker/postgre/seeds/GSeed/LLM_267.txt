@@ -1,0 +1,109 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INTEGER,
+    salary NUMERIC(10, 2),
+    hire_date DATE,
+    department TEXT,
+    is_active BOOLEAN
+);
+
+INSERT INTO employee (name, age, salary, hire_date, department, is_active) VALUES
+('Alice Smith', 30, 60000.00, '2020-01-15', 'Sales', TRUE),
+('Bob Johnson', 25, 50000.00, '2021-05-20', 'Marketing', TRUE),
+('Charlie Brown', 40, 75000.00, '2019-03-10', 'Engineering', FALSE),
+('David Lee', 35, 65000.00, '2022-07-01', 'Sales', TRUE),
+('Eve Wilson', 28, 55000.00, '2023-02-28', 'Marketing', FALSE);
+
+CREATE TABLE department (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(50)
+);
+
+INSERT INTO department (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+-- Basic SELECT queries
+SELECT * FROM employee;
+SELECT name, salary FROM employee WHERE age > 27;
+SELECT * FROM employee WHERE department = 'Sales' AND is_active = TRUE;
+SELECT * FROM employee ORDER BY salary DESC;
+
+-- Using aggregate functions
+SELECT AVG(salary) FROM employee;
+SELECT MAX(salary) FROM employee;
+SELECT COUNT(*) FROM employee;
+SELECT department, SUM(salary) FROM employee GROUP BY department;
+
+-- Using JOIN
+SELECT employee.name, department.dept_name
+FROM employee
+INNER JOIN department ON employee.department = department.dept_name;
+
+-- Using LIKE operator
+SELECT * FROM employee WHERE name LIKE 'A%';
+SELECT * FROM employee WHERE department LIKE '%ing';
+
+-- Using BETWEEN operator
+SELECT * FROM employee WHERE age BETWEEN 25 AND 35;
+
+-- Using IN operator
+SELECT * FROM employee WHERE department IN ('Sales', 'Marketing');
+
+-- Using NULLIF and COALESCE
+SELECT NULLIF(10, 10);
+SELECT COALESCE(NULL, 'default value');
+
+-- Using CASE statement
+SELECT name,
+       CASE
+           WHEN age < 30 THEN 'Young'
+           WHEN age < 40 THEN 'Mid-aged'
+           ELSE 'Senior'
+       END AS age_group
+FROM employee;
+
+-- PostgreSQL specific features
+SELECT version();
+SELECT pg_typeof(123);
+SELECT generate_series(1, 5);
+
+-- Window Functions
+SELECT name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employee;
+
+-- Common Table Expression (CTE)
+WITH HighSalaryEmployees AS (
+    SELECT * FROM employee WHERE salary > 60000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Data Type examples
+CREATE TABLE data_types_test (
+    smallint_col SMALLINT,
+    integer_col INTEGER,
+    bigint_col BIGINT,
+    numeric_col NUMERIC(10,2),
+    real_col REAL,
+    double_precision_col DOUBLE PRECISION,
+    boolean_col BOOLEAN,
+    text_col TEXT,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    timestamptz_col TIMESTAMPTZ,
+    jsonb_col JSONB
+);
+
+INSERT INTO data_types_test (smallint_col, integer_col, bigint_col, numeric_col, real_col, double_precision_col, boolean_col, text_col, date_col, timestamp_col, timestamptz_col, jsonb_col) VALUES
+(10, 100, 1000, 123.45, 1.23, 1234.56, TRUE, 'test string', '2024-01-01', '2024-01-01 10:00:00', '2024-01-01 10:00:00+00', '{"key": "value"}');
+
+SELECT * FROM data_types_test;
+
+-- Cleanup (optional for initial seed, but good practice)
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS data_types_test;

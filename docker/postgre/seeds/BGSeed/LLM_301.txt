@@ -1,0 +1,115 @@
+CREATE TABLE accounts (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    balance DECIMAL(15, 2)
+);
+
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    account_id INTEGER REFERENCES accounts(id),
+    amount DECIMAL(15, 2),
+    transaction_date TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE INDEX idx_account_id ON transactions (account_id);
+
+CREATE OR REPLACE FUNCTION update_balance()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
+    ELSIF (TG_OP = 'UPDATE') THEN
+    	IF NEW.account_id <> OLD.account_id THEN
+    		UPDATE accounts SET balance = balance - OLD.amount WHERE id = OLD.account_id;
+        	UPDATE accounts SET balance = balance + NEW.amount WHERE id = NEW.account_id;
+    	ELSE
+        	UPDATE accounts SET balance = balance + (NEW.amount - OLD.amount) WHERE id = NEW.account_id;
+        END IF;
+
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER transaction_insert
+AFTER INSERT OR UPDATE
+ON transactions
+FOR EACH ROW
+EXECUTE FUNCTION update_balance();
+
+INSERT INTO accounts (name, balance) VALUES ('Alice', 1000.00);
+INSERT INTO accounts (name, balance) VALUES ('Bob', 500.00);
+
+INSERT INTO transactions (account_id, amount) VALUES (1, 100.00);
+INSERT INTO transactions (account_id, amount) VALUES (2, -50.00);
+
+SELECT * FROM accounts;
+SELECT * FROM transactions;
+
+-- Test case for updating transaction and changing account_id.
+UPDATE transactions SET account_id = 2, amount = 150 WHERE id = 1;
+
+SELECT * FROM accounts;
+SELECT * FROM transactions;
+
+-- Test case for updating account.
+UPDATE accounts SET balance = 1200 WHERE id = 1;
+
+SELECT * FROM accounts;
+
+-- Add some more accounts and transactions to increase coverage
+INSERT INTO accounts (name, balance) VALUES ('Charlie', 250.75);
+INSERT INTO accounts (name, balance) VALUES ('David', 10000.00);
+INSERT INTO transactions (account_id, amount) VALUES (3, 75.25);
+INSERT INTO transactions (account_id, amount) VALUES (4, -1000.00);
+
+-- Using window function to calculate running balance
+SELECT
+    account_id,
+    transaction_date,
+    amount,
+    SUM(amount) OVER (PARTITION BY account_id ORDER BY transaction_date) as running_balance
+FROM
+    transactions;
+
+-- Using Common Table Expression (CTE)
+WITH AccountSummary AS (
+    SELECT
+        account_id,
+        SUM(amount) AS total_deposit
+    FROM
+        transactions
+    GROUP BY
+        account_id
+)
+SELECT
+    a.name,
+    COALESCE(s.total_deposit, 0) AS total_deposit
+FROM
+    accounts a
+LEFT JOIN
+    AccountSummary s ON a.id = s.account_id;
+
+-- Using generate_series to create dummy data
+SELECT generate_series(1, 10);
+
+-- Using pg_sleep to simulate delay
+SELECT pg_sleep(0.1);
+
+-- Create a view
+CREATE VIEW account_balances AS
+SELECT name, balance FROM accounts;
+
+SELECT * FROM account_balances;
+
+-- Drop the view
+DROP VIEW account_balances;
+
+-- Using array aggregate
+SELECT account_id, array_agg(amount) FROM transactions GROUP BY account_id;
+
+-- Using string_agg
+SELECT account_id, string_agg(CAST(amount AS TEXT), ', ') FROM transactions GROUP BY account_id;
+
+-- Using JSON functions
+SELECT json_build_object('name', name, 'balance', balance) FROM accounts;

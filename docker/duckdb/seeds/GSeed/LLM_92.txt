@@ -1,0 +1,67 @@
+DROP TABLE IF EXISTS lineitem;
+CREATE TABLE lineitem (
+    orderkey       INTEGER NOT NULL,
+    partkey        INTEGER NOT NULL,
+    suppkey        INTEGER NOT NULL,
+    linenumber     INTEGER NOT NULL,
+    quantity       DECIMAL(15,2) NOT NULL,
+    extendedprice  DECIMAL(15,2) NOT NULL,
+    discount       DECIMAL(15,2) NOT NULL,
+    tax            DECIMAL(15,2) NOT NULL,
+    returnflag     CHAR(1) NOT NULL,
+    linestatus     CHAR(1) NOT NULL,
+    shipdate       DATE NOT NULL,
+    commitdate     DATE NOT NULL,
+    receiptdate    DATE NOT NULL,
+    shipinstruct   CHAR(25) NOT NULL,
+    shipmode       CHAR(10) NOT NULL,
+    comment        VARCHAR(44) NOT NULL
+);
+
+INSERT INTO lineitem VALUES
+(1, 155190, 7706, 1, 17, 18392.58, 0.04, 0.02, 'N', 'O', '1996-03-13', '1996-02-12', '1996-03-22', 'DELIVER IN PERSON', 'TRUCK', 'ly foxes. fluffily even de'),
+(1, 67310, 7311, 2, 36, 46577.04, 0.09, 0.06, 'N', 'O', '1996-04-12', '1996-02-28', '1996-04-20', 'DELIVER IN PERSON', 'MAIL', 'refully slyly express asy idea'),
+(2, 135290, 1580, 1, 20, 27438.60, 0.09, 0.06, 'A', 'F', '1996-01-29', '1996-03-05', '1996-01-31', 'TAKE BACK RETURN', 'REG AIR', 'riously unusual foxes sleep'),
+(3, 105590, 615, 1, 3, 3575.79, 0.04, 0.02, 'N', 'O', '1993-10-28', '1993-11-08', '1993-12-07', 'TAKE BACK RETURN', 'SHIP', 'sly final accounts cajole. depos'),
+(4, 134390, 2946, 1, 28, 36162.88, 0.09, 0.06, 'R', 'F', '1995-07-15', '1995-07-23', '1995-07-25', 'TAKE BACK RETURN', 'AIR', 'hely enticingly express dep'),
+(5, 40560, 8506, 1, 25, 24246.50, 0.10, 0.04, 'R', 'F', '1994-01-18', '1994-03-02', '1994-01-26', 'DELIVER IN PERSON', 'SHIP', 'ething slyly express deposits. bl');
+
+-- Window functions
+SELECT orderkey,
+       SUM(extendedprice * (1 - discount)) OVER (ORDER BY orderkey) AS revenue
+FROM lineitem
+WHERE shipdate < DATE '1998-09-02'
+GROUP BY orderkey
+ORDER BY orderkey;
+
+-- String functions and aggregations
+SELECT shipmode,
+       SUM(CASE
+           WHEN returnflag = 'R' THEN 1
+           ELSE 0
+       END) AS return_count,
+       COUNT(*) AS total_count,
+       GROUP_CONCAT(DISTINCT shipinstruct ORDER BY shipinstruct SEPARATOR '; ') as ship_instructions
+FROM lineitem
+WHERE shipdate BETWEEN DATE '1994-01-01' AND DATE '1995-01-01'
+GROUP BY shipmode
+ORDER BY shipmode;
+
+-- Date manipulation and comparisons
+SELECT shipdate,
+       DATE_DIFF('day', shipdate, receiptdate) AS days_to_receipt,
+       YEAR(shipdate),
+       MONTH(shipdate)
+FROM lineitem
+WHERE shipdate BETWEEN DATE '1996-01-01' AND DATE '1997-01-01'
+ORDER BY shipdate;
+
+-- Using UNNEST to split a string array (demonstrating DuckDB-specific functionality)
+SELECT value FROM UNNEST(['a,b,c', 'd,e']) AS value;
+
+-- JSON functions (DuckDB supports JSON)
+SELECT JSON('{"a": 1, "b": "hello"}'):a;
+
+-- Table-valued functions (DuckDB supports TVFs)
+CREATE FUNCTION my_range(start INTEGER, stop INTEGER) AS (SELECT range FROM range(start, stop));
+SELECT * FROM my_range(1, 5);

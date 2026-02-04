@@ -1,0 +1,81 @@
+-- Create test tables with various data types
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    value FLOAT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    category TEXT,
+    amount DECIMAL(10, 2),
+    status BOOLEAN
+);
+
+-- Insert sample data with NULL values
+INSERT INTO t1 VALUES
+(1, 'Alice', 100.5, '2023-01-01'),
+(2, 'Bob', NULL, '2023-01-02'),
+(3, 'Charlie', 200.75, NULL);
+
+-- Transaction with inserts
+BEGIN;
+INSERT INTO t2 VALUES
+(1, 'Electronics', 999.99, TRUE),
+(2, 'Clothing', NULL, FALSE),
+(3, 'Food', 49.99, TRUE);
+COMMIT;
+
+-- Create indexes for testing query optimization
+CREATE INDEX idx_t1_id ON t1(id ASC);
+CREATE INDEX idx_t1_name ON t1(name DESC);
+
+-- Testing joins and aggregate functions
+SELECT t1.id, t2.category, COUNT(*) 
+FROM t1 
+JOIN t2 ON t1.id = t2.id 
+GROUP BY t1.id, t2.category;
+
+-- Window function and ordering
+SELECT id, name, ROW_NUMBER() OVER (ORDER BY value DESC) AS rank 
+FROM t1 
+WHERE created_at IS NOT NULL 
+ORDER BY rank;
+
+-- Common Table Expressions (CTE)
+WITH cte_sum AS (
+    SELECT category, SUM(amount) as total_amount 
+    FROM t2 
+    GROUP BY category
+)
+SELECT * FROM cte_sum 
+WHERE total_amount > 500;
+
+-- Testing DISTINCT and UNION ALL
+(SELECT id FROM t1 WHERE name LIKE 'A%') 
+UNION ALL 
+(SELECT id FROM t2 WHERE status = TRUE);
+
+-- Recursive CTE for testing hierarchical queries
+WITH RECURSIVE numbers(n) AS (
+    SELECT 1
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 5
+)
+SELECT * FROM numbers;
+
+-- Testing lateral joins (DuckDB specific feature)
+SELECT * 
+FROM t1, LATERAL (
+    SELECT amount FROM t2 WHERE t2.id = t1.id
+) AS lt(amount);
+
+-- Testing JSON functions (if applicable in DuckDB)
+SELECT json_build_object('id', id, 'name', name) 
+FROM t1 
+LIMIT 3;
+
+-- Testing vacuum and analyze commands for testing maintenance operations
+VACUUM;
+ANALYZE t1;

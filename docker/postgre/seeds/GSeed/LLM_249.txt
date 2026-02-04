@@ -1,0 +1,153 @@
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE NOT NULL
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO customers (first_name, last_name, email) VALUES
+('John', 'Doe', 'john.doe@example.com'),
+('Jane', 'Smith', 'jane.smith@example.com'),
+('Robert', 'Jones', 'robert.jones@example.com');
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Keyboard', 75.00),
+('Mouse', 25.00);
+
+INSERT INTO orders (customer_id, order_date) VALUES
+(1, '2024-01-15'),
+(2, '2024-02-20'),
+(1, '2024-03-10');
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+(1, 1, 1),
+(1, 2, 1),
+(2, 3, 2),
+(3, 1, 1),
+(3, 3, 1);
+
+SELECT c.first_name, c.last_name, COUNT(o.order_id) AS order_count
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+ORDER BY order_count DESC;
+
+SELECT p.product_name, SUM(oi.quantity) AS total_quantity
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_name
+ORDER BY total_quantity DESC;
+
+SELECT o.order_id, c.first_name, c.last_name, o.order_date
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE o.order_date BETWEEN '2024-01-01' AND '2024-03-31'
+ORDER BY o.order_date;
+
+SELECT c.first_name, c.last_name, SUM(p.price * oi.quantity) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+JOIN order_items oi ON o.order_id = oi.order_id
+JOIN products p ON oi.product_id = p.product_id
+GROUP BY c.customer_id
+ORDER BY total_spent DESC;
+
+SELECT o.order_id, o.order_date,
+       (SELECT SUM(p.price * oi.quantity)
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.product_id
+        WHERE oi.order_id = o.order_id) AS total_order_value
+FROM orders o
+ORDER BY o.order_date;
+
+-- Test case using window function (PostgreSQL specific)
+SELECT
+    product_name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM
+    products;
+
+-- Test case using generate_series (PostgreSQL specific)
+SELECT generate_series(1, 5);
+
+-- Test case using array_agg (PostgreSQL specific)
+SELECT customer_id, array_agg(order_id) FROM orders GROUP BY customer_id;
+
+-- Using WITH clause
+WITH CustomerOrders AS (
+    SELECT c.customer_id, c.first_name, COUNT(o.order_id) AS order_count
+    FROM customers c
+    LEFT JOIN orders o ON c.customer_id = o.customer_id
+    GROUP BY c.customer_id
+)
+SELECT customer_id, first_name, order_count
+FROM CustomerOrders
+WHERE order_count > 0
+ORDER BY order_count DESC;
+
+-- Test case using json_agg (PostgreSQL specific)
+SELECT customer_id, json_agg(orders)
+FROM (SELECT customer_id, ROW_TO_JSON(orders.*) AS orders FROM orders) sub
+GROUP BY customer_id;
+
+-- Aggregate function filter
+SELECT avg(price) FILTER (WHERE product_name LIKE '%Laptop%') FROM products;
+
+-- Combine aggregate filter with group by
+SELECT customer_id, count(*) FILTER (WHERE order_date > '2024-02-01') FROM orders GROUP BY customer_id;
+
+-- Using distinct clause inside aggregate function
+SELECT count(distinct customer_id) FROM orders;
+
+-- Create a materialized view (PostgreSQL specific)
+CREATE MATERIALIZED VIEW customer_order_summary AS
+SELECT c.first_name, c.last_name, COUNT(o.order_id) AS order_count
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id;
+
+SELECT * FROM customer_order_summary;
+
+REFRESH MATERIALIZED VIEW customer_order_summary;
+
+DROP MATERIALIZED VIEW customer_order_summary;
+
+-- Test NULLIF and COALESCE
+SELECT COALESCE(NULL, 'default value');
+SELECT NULLIF('same', 'same');
+
+-- USING CASE WHEN for conditional aggregation
+SELECT
+    SUM(CASE WHEN product_name = 'Laptop' THEN price ELSE 0 END) AS laptop_sales,
+    SUM(CASE WHEN product_name = 'Keyboard' THEN price ELSE 0 END) AS keyboard_sales
+FROM
+    products;
+
+-- Test case for common string functions
+SELECT upper(first_name), lower(last_name), length(email) FROM customers;
+
+-- Test LIKE with escape character
+SELECT product_name FROM products WHERE product_name LIKE '%\\%%' ESCAPE '\\';

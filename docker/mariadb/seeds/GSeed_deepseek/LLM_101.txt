@@ -1,0 +1,52 @@
+-- Set optimizer switches for testing various optimizations
+SET optimizer_switches = 'index_merge=on,loose_scan=on';
+
+-- Create tables with different data types and indexes
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    value INT
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    t1_id INT,
+    amount DECIMAL(10, 2)
+);
+
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    category VARCHAR(20),
+    date DATE
+);
+
+-- Create indexes for efficient querying
+CREATE INDEX idx_t1_value ON t1(value);
+CREATE INDEX idx_t2_amount ON t2(amount);
+CREATE INDEX idx_t3_category ON t3(category);
+
+-- Insert sample data, including NULL and boundary values
+INSERT INTO t1 VALUES (1, 'Item 1', 100), (2, 'Item 2', NULL), (3, 'Item 3', 200);
+INSERT INTO t2 VALUES (1, 1, 10.50), (2, 1, 20.75), (3, 2, 15.00);
+INSERT INTO t3 VALUES (1, 'Electronics', '2023-01-01'), (2, 'Clothing', '2023-01-02');
+
+-- Test query execution plans
+EXPLAIN SELECT * FROM t1 WHERE value > 100;
+EXPLAIN SELECT t1.name, SUM(t2.amount) FROM t1 JOIN t2 ON t1.id = t2.t1_id GROUP BY t1.name;
+
+-- Use subqueries and joins
+SELECT t1.name, (SELECT SUM(amount) FROM t2 WHERE t1_id = t1.id) AS total_amount
+FROM t1;
+
+-- Union operation combining two SELECT statements
+SELECT name FROM t1 WHERE value > 150
+UNION
+SELECT 'Total' AS name;
+
+-- Test handling of NULL values and boundary conditions
+SELECT * FROM t1 WHERE value IS NULL;
+INSERT INTO t1 VALUES (4, 'Item 4', -2147483648);
+SELECT * FROM t1 WHERE value = -2147483648;
+
+-- Test ordering and limiting results
+SELECT name, value FROM t1 ORDER BY value DESC LIMIT 2;

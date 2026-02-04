@@ -1,0 +1,83 @@
+SET search_path = public;
+
+-- Create a table with various data types
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    notes TEXT,
+    data JSONB,
+    uuid_value UUID DEFAULT gen_random_uuid()
+);
+
+-- Insert some sample data
+INSERT INTO employees (name, age, salary, hire_date, notes, data) VALUES
+('Alice Smith', 30, 60000.00, '2022-01-15', 'Excellent employee', '{"department": "Sales", "performance": "High"}'),
+('Bob Johnson', 25, 50000.00, '2023-05-20', 'Good worker', '{"department": "Marketing", "performance": "Average"}'),
+('Charlie Brown', 40, 75000.00, '2021-03-10', 'Experienced manager', '{"department": "Management", "performance": "Very High"}');
+
+-- Update an employee's salary
+UPDATE employees SET salary = 62000.00 WHERE name = 'Alice Smith';
+
+-- Delete an employee
+DELETE FROM employees WHERE name = 'Bob Johnson';
+
+-- Select all employees
+SELECT * FROM employees;
+
+-- Select employees with salary greater than 60000
+SELECT name, salary FROM employees WHERE salary > 60000;
+
+-- Aggregate functions
+SELECT AVG(salary) AS average_salary, MAX(salary) AS max_salary FROM employees;
+
+-- Add a new column
+ALTER TABLE employees ADD COLUMN email VARCHAR(255) UNIQUE;
+
+-- Update email addresses (avoiding duplicates for this initial seed)
+UPDATE employees SET email = 'alice.smith@example.com' WHERE name = 'Alice Smith';
+UPDATE employees SET email = 'charlie.brown@example.com' WHERE name = 'Charlie Brown';
+
+-- Create another table for departments
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Insert some departments
+INSERT INTO departments (name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+-- Add a foreign key to the employees table
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+-- Update department IDs
+UPDATE employees SET department_id = 1 WHERE name = 'Alice Smith';
+UPDATE employees SET department_id = 3 WHERE name = 'Charlie Brown';
+
+-- Join employees and departments
+SELECT e.name, d.name AS department_name FROM employees e JOIN departments d ON e.department_id = d.id;
+
+-- Create index
+CREATE INDEX idx_employee_name ON employees (name);
+
+-- Using generate_series
+SELECT generate_series(1, 10);
+
+-- Try some JSONB queries
+SELECT name, data ->> 'department' FROM employees;
+
+-- Create a view
+CREATE VIEW employee_view AS SELECT id, name, age FROM employees WHERE is_active = TRUE;
+
+-- Select from view
+SELECT * FROM employee_view;
+
+-- Drop view
+DROP VIEW employee_view;
+
+-- Cleanup
+DROP TABLE employees;
+DROP TABLE departments;

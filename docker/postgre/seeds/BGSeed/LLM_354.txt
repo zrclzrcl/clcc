@@ -1,0 +1,123 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL,
+    department VARCHAR(255),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 50000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2022-09-01'),
+('Eve Wilson', 90000.00, 'Engineering', '2020-12-01');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 70000.00;
+
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 3;
+
+SELECT * FROM employees WHERE name LIKE 'A%';
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2023-01-01';
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Engineering';
+
+SELECT version();
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percent DECIMAL)
+RETURNS DECIMAL AS $$
+DECLARE
+    emp_salary DECIMAL;
+    bonus_amount DECIMAL;
+BEGIN
+    SELECT salary INTO emp_salary FROM employees WHERE id = emp_id;
+    bonus_amount := emp_salary * bonus_percent;
+    RETURN bonus_amount;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1, 0.10);
+
+-- Using window functions
+SELECT name, salary, department,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Using Common Table Expression (CTE)
+WITH DepartmentAvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.salary, d.avg_salary
+FROM employees e
+JOIN DepartmentAvgSalaries d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Demonstrate jsonb functionality. This requires the column to be jsonb, or the casting to be done inline
+ALTER TABLE employees ADD COLUMN details JSONB;
+
+UPDATE employees SET details = '{"performance": "high", "experience": 5}'::jsonb WHERE id = 1;
+UPDATE employees SET details = '{"performance": "average", "experience": 2}'::jsonb WHERE id = 2;
+
+SELECT name, details -> 'performance' AS performance FROM employees;
+
+SELECT name, details FROM employees WHERE details @> '{"experience": 5}'::jsonb;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    amount DECIMAL
+);
+
+INSERT INTO orders (customer_id, order_date, amount) VALUES
+(1, '2024-01-01', 100.00),
+(1, '2024-01-15', 150.00),
+(2, '2024-02-01', 200.00),
+(2, '2024-02-15', 250.00),
+(3, '2024-03-01', 300.00);
+
+-- Using a subquery
+SELECT customer_id, SUM(amount) AS total_amount
+FROM orders
+WHERE order_date >= (SELECT MIN(order_date) FROM orders WHERE customer_id = 1)
+GROUP BY customer_id;
+
+-- Trigger example
+
+CREATE OR REPLACE FUNCTION update_employee_hire_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary > OLD.salary THEN
+        NEW.hire_date = NOW();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_salary_update
+BEFORE UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION update_employee_hire_date();
+
+UPDATE employees SET salary = 65000 WHERE id = 1;
+
+SELECT * FROM employees WHERE id = 1; -- Check the hire_date to see if trigger worked
+
+-- Vacuum and Analyze
+VACUUM VERBOSE employees;
+ANALYZE VERBOSE employees;

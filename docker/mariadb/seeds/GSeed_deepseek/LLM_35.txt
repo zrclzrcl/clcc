@@ -1,0 +1,2 @@
+SET @@optimizer_switch = 'index_merge=on';
+   SET @@default_storage_engine = 'InnoDB';

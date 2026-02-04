@@ -1,0 +1,86 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    mood mood,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    data jsonb
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, mood, salary, hire_date, department_id, data) VALUES
+('Alice Smith', 'happy', 60000.00, '2022-01-15', 1, '{"skills": ["sales", "communication"]}'),
+('Bob Johnson', 'ok', 75000.00, '2021-07-20', 2, '{"skills": ["marketing", "analysis"]}'),
+('Charlie Brown', 'sad', 90000.00, '2020-03-10', 3, '{"skills": ["programming", "database"]}'),
+('David Lee', NULL, 80000.00, '2023-09-01', 3, '{"skills": ["programming", "testing"]}');
+
+CREATE INDEX ON employees (department_id);
+CREATE INDEX CONCURRENTLY ON employees (salary);
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 3;
+
+DELETE FROM employees WHERE mood = 'sad';
+
+SELECT * FROM employees WHERE salary > 70000 ORDER BY name;
+
+SELECT d.name AS department_name, AVG(e.salary) AS average_salary
+FROM departments d
+JOIN employees e ON d.id = e.department_id
+GROUP BY d.name
+ORDER BY average_salary DESC;
+
+EXPLAIN SELECT * FROM employees WHERE name LIKE 'A%';
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE VIEW employee_view AS
+SELECT id, name, salary FROM employees;
+
+SELECT * FROM employee_view WHERE salary > 75000;
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, department_id, 0 AS level
+    FROM employees
+    WHERE department_id IS NULL
+
+    UNION ALL
+
+    SELECT e.id, e.name, e.department_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department_id = eh.id
+)
+SELECT * FROM employee_hierarchy;
+
+ALTER TABLE employees ADD COLUMN email citext;
+UPDATE employees SET email = lower(name) || '@example.com';
+
+SELECT * FROM employees WHERE email = 'alice smith@example.com';
+
+DROP VIEW employee_view;
+DROP FUNCTION increment(INTEGER);
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TYPE mood;
+DROP EXTENSION citext;

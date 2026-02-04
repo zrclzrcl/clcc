@@ -1,0 +1,43 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE TABLE strings AS SELECT * FROM ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+CREATE TABLE mixed (i INTEGER, s VARCHAR);
+INSERT INTO mixed SELECT i, s FROM integers, strings LIMIT 50;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) AS row_num FROM integers LIMIT 5;
+
+-- Test aggregations with grouping and having
+SELECT s, COUNT(*) FROM mixed GROUP BY s HAVING COUNT(*) > 1 ORDER BY s;
+
+-- Test correlated subqueries
+SELECT i FROM integers WHERE i IN (SELECT i FROM mixed WHERE LENGTH(s) = 1);
+
+-- Test common table expressions (CTEs)
+WITH Recursive seq AS (
+  SELECT 1 AS i
+  UNION ALL
+  SELECT i + 1 FROM seq WHERE i < 5
+)
+SELECT * FROM seq;
+
+-- Test string functions specific to DuckDB
+SELECT string_split('hello,world', ',') AS split;
+SELECT regexp_matches('hello world', 'hello');
+SELECT string_to_array('hello,world', ',');
+
+-- Test date functions
+SELECT date('2023-10-26');
+SELECT date_trunc('month', date('2023-10-26'));
+
+-- Test unnest function
+SELECT * FROM UNNEST(['a', 'b', 'c']);
+
+-- Test Pivot table creation
+CREATE TABLE sales (product VARCHAR, quarter INTEGER, sales_value INTEGER);
+INSERT INTO sales VALUES ('A', 1, 100), ('A', 2, 150), ('B', 1, 200), ('B', 2, 250);
+SELECT * FROM sales PIVOT (SUM(sales_value) FOR quarter IN (1, 2));
+
+-- Test json operations
+CREATE TABLE jsontable (j VARCHAR);
+INSERT INTO jsontable VALUES ('{"a":1, "b":2}');
+SELECT json_extract_string(j, '$.a') FROM jsontable;

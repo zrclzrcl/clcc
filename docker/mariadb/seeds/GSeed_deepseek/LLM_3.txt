@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INT,
+    UNIQUE KEY unique_name (name)
+) ENGINE = Aria;
+
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES
+('John Doe', 75000.00, '2023-01-15', 1),
+('Jane Smith', 85000.00, '2022-06-20', 2),
+('Mike Johnson', NULL, '2024-03-01', 3);
+
+SELECT e.name AS employee_name,
+       d.department_name,
+       COUNT(*) OVER() AS total_employees
+FROM employees e
+JOIN departments d ON e.department_id = d.id
+WHERE salary > (SELECT AVG(salary) FROM employees)
+GROUP BY e.name, d.department_name;
+
+ALTER TABLE employees ADD COLUMN phone_number VARCHAR(15);
+
+DELIMITER $$
+CREATE PROCEDURE get_employee_details(IN emp_id INT)
+BEGIN
+    SELECT * FROM employees WHERE id = emp_id;
+END$$
+DELIMITER ;
+
+CREATE TRIGGER update_salary AFTER UPDATE ON employees FOR EACH ROW
+BEGIN
+    IF NEW.salary > OLD.salary THEN
+        INSERT INTO salary_history VALUES (OLD.id, OLD.salary, NEW.salary, NOW());
+    END IF;
+END;
+
+SELECT a.column1, b.column2
+FROM table_a a
+UNION ALL
+SELECT column1, column3 FROM table_b;
+
+SET @max_id = (SELECT MAX(id) FROM employees);
+UPDATE employees SET salary = salary * 1.05 WHERE id = @max_id;
+
+START TRANSACTION;
+DELETE FROM employees WHERE hire_date < '2023-01-01';
+SAVEPOINT my_savepoint;
+ROLLBACK TO my_savepoint;
+COMMIT;

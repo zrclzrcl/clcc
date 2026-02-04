@@ -1,0 +1,42 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value >= 0),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    blob_data BLOB
+);
+
+-- Insert sample data with edge cases
+INSERT INTO test_table (id, name, value, is_active, blob_data)
+VALUES 
+(1, 'Alice', 123.45, TRUE, X'010203'),
+(2, '', NULL, FALSE, NULL),
+(3, 'Bob', -0.0, TRUE, X''),
+
+-- Create a virtual table for testing
+CREATE VIRTUAL TABLE vt USING sequence(1, 10);
+
+-- Common SQL operations and functions
+SELECT id, name, value FROM test_table WHERE is_active = TRUE ORDER BY created_at DESC;
+SELECT MIN(value), MAX(value) FROM test_table GROUP BY is_active HAVING COUNT(*) > 1;
+
+-- Update with edge cases
+UPDATE test_table SET value = -9.999999999999999e308 WHERE id = 2;
+
+-- Create an index to test query optimization
+CREATE INDEX idx_value ON test_table(value);
+
+-- Create a view for testing derived tables
+CREATE VIEW v_test AS SELECT name, value FROM test_table WHERE is_active = TRUE;
+
+-- Test more complex queries with CTEs
+WITH cte AS (
+    SELECT id, name, ROW_NUMBER() OVER (ORDER BY created_at) as rn 
+    FROM test_table
+)
+SELECT * FROM cte WHERE rn % 2 = 0;
+
+-- Insert a row that violates constraints to test error handling
+INSERT INTO test_table (id, name) VALUES (4, 'Charlie');

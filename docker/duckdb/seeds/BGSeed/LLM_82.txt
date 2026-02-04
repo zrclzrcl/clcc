@@ -1,0 +1,56 @@
+CREATE TABLE integers AS SELECT i AS value FROM range(10);
+
+CREATE TABLE strings AS SELECT 'string_' || i AS value FROM range(5);
+
+CREATE TABLE dates AS SELECT date('2023-01-01') + i AS value FROM range(7);
+
+CREATE TABLE timestamps AS SELECT timestamp('2023-01-01 10:00:00') + i * interval '1 hour' AS value FROM range(4);
+
+-- Test with NULL values
+INSERT INTO integers VALUES (NULL);
+INSERT INTO strings VALUES (NULL);
+INSERT INTO dates VALUES (NULL);
+INSERT INTO timestamps VALUES (NULL);
+
+SELECT * FROM integers ORDER BY value;
+SELECT * FROM strings ORDER BY value;
+SELECT * FROM dates ORDER BY value;
+SELECT * FROM timestamps ORDER BY value;
+
+-- Test unnesting arrays (DuckDB Specific)
+CREATE TABLE array_table AS SELECT list([1, 2, 3, i]) AS arr, i FROM range(3);
+SELECT i, value FROM array_table, UNNEST(arr) WITH ORDINALITY AS a(value, i);
+
+-- Test JSON functionality (DuckDB Specific)
+CREATE TABLE json_table (j JSON);
+INSERT INTO json_table VALUES ('{"a": 1, "b": "hello"}');
+INSERT INTO json_table VALUES ('[1, 2, 3]');
+SELECT json_extract_string(j, '$.b') FROM json_table;
+SELECT json_array_length(j) FROM json_table WHERE json_valid(j);
+
+-- Test Window functions
+SELECT value, rank() OVER (ORDER BY value DESC) AS ranking FROM integers WHERE value IS NOT NULL;
+
+-- Test string functions
+SELECT value, length(value), upper(value), lower(value), substr(value, 3, 4) FROM strings WHERE value IS NOT NULL;
+
+-- Test date functions
+SELECT value, year(value), month(value), day(value), dayname(value) FROM dates WHERE value IS NOT NULL;
+
+-- Test timestamp functions
+SELECT value, hour(value), minute(value), second(value) FROM timestamps WHERE value IS NOT NULL;
+
+-- Test aggregations
+SELECT avg(value), sum(value), min(value), max(value), count(*) FROM integers;
+
+-- Test case statements
+SELECT value, CASE WHEN value > 5 THEN 'High' WHEN value < 3 THEN 'Low' ELSE 'Medium' END FROM integers WHERE value IS NOT NULL;
+
+--Test Pivot
+CREATE TABLE sales (product VARCHAR, quarter VARCHAR, sales_value INTEGER);
+INSERT INTO sales VALUES ('A', 'Q1', 100);
+INSERT INTO sales VALUES ('A', 'Q2', 150);
+INSERT INTO sales VALUES ('B', 'Q1', 200);
+INSERT INTO sales VALUES ('B', 'Q2', 250);
+SELECT * FROM sales
+PIVOT sales ON quarter USING SUM(sales_value) GROUP BY product;

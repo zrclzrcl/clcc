@@ -1,0 +1,39 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+INSERT INTO integers (id, value) VALUES (3, NULL);
+
+SELECT * FROM integers WHERE value > 15;
+
+CREATE VIEW large_integers AS SELECT id, value FROM integers WHERE value > 10;
+
+SELECT * FROM large_integers;
+
+-- DuckDB specific features
+SELECT string_split('hello,world', ',');
+
+CREATE TABLE datatypes (
+    a BOOLEAN,
+    b TINYINT,
+    c SMALLINT,
+    d INTEGER,
+    e BIGINT,
+    f UTINYINT,
+    g USMALLINT,
+    h UINTEGER,
+    i UBIGINT,
+    j HUGEINT,
+    k REAL,
+    l DOUBLE,
+    m DATE,
+    n TIMESTAMP,
+    o VARCHAR
+);
+
+INSERT INTO datatypes VALUES (TRUE, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10.0, 11.0, '2023-01-01', '2023-01-01 10:00:00', 'test');
+
+SELECT typeof(a), typeof(b), typeof(c), typeof(d), typeof(e), typeof(f), typeof(g), typeof(h), typeof(i), typeof(j), typeof(k), typeof(l), typeof(m), typeof(n), typeof(o) from datatypes limit 1;

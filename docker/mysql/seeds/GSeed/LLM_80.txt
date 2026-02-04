@@ -1,0 +1,96 @@
+CREATE TABLE accounts (
+    account_number INT PRIMARY KEY,
+    account_type ENUM('checking', 'savings', 'credit') NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL,
+    owner_id INT
+);
+
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE accounts ADD FOREIGN KEY (owner_id) REFERENCES users(user_id);
+
+INSERT INTO users (username, password, email) VALUES
+('john_doe', 'password123', 'john.doe@example.com'),
+('jane_smith', 'securepass', 'jane.smith@example.org');
+
+INSERT INTO accounts (account_number, account_type, balance, owner_id) VALUES
+(12345, 'checking', 1000.00, 1),
+(67890, 'savings', 5000.00, 1),
+(13579, 'credit', -200.00, 2);
+
+-- Test transaction isolation levels
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+START TRANSACTION;
+SELECT * FROM accounts WHERE owner_id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE account_number = 12345;
+SELECT * FROM accounts WHERE owner_id = 1;
+COMMIT;
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE transfer_funds(IN from_account INT, IN to_account INT, IN amount DECIMAL(15, 2))
+BEGIN
+    START TRANSACTION;
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds(12345, 67890, 50.00);
+
+-- Test user-defined function (UDF) - Requires MySQL server-side scripting capabilities.  Example only, might not be directly executable without UDF setup.
+-- CREATE FUNCTION calculate_interest (balance DECIMAL(15,2), rate DECIMAL(5,4)) RETURNS DECIMAL(15,2) DETERMINISTIC RETURN balance * rate;
+-- SELECT calculate_interest(1000, 0.05);
+
+-- Test triggers
+DELIMITER //
+CREATE TRIGGER accounts_before_update
+BEFORE UPDATE ON accounts
+FOR EACH ROW
+BEGIN
+    IF NEW.balance < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Balance cannot be negative';
+    END IF;
+END //
+DELIMITER ;
+
+-- Attempt to violate trigger condition (this should raise an error)
+-- UPDATE accounts SET balance = -100 WHERE account_number = 12345;
+
+-- Test full-text search (requires creating an index)
+ALTER TABLE users ADD FULLTEXT INDEX username_email (username, email);
+SELECT * FROM users WHERE MATCH(username, email) AGAINST('john' IN NATURAL LANGUAGE MODE);
+
+-- Test JSON functionality (MySQL 5.7 and later)
+ALTER TABLE users ADD COLUMN profile JSON;
+UPDATE users SET profile = '{"age": 30, "city": "New York"}' WHERE user_id = 1;
+SELECT user_id, profile->'$.age' AS age FROM users;
+
+-- Test window function (MySQL 8.0 and later)
+SELECT
+    account_number,
+    account_type,
+    balance,
+    ROW_NUMBER() OVER (ORDER BY balance DESC) AS row_num
+FROM accounts;
+
+-- Test Common Table Expression (CTE)
+WITH AccountSummary AS (
+    SELECT account_type, AVG(balance) AS average_balance
+    FROM accounts
+    GROUP BY account_type
+)
+SELECT * FROM AccountSummary;
+
+-- Cleanup (optional for fuzzing environment)
+-- DROP PROCEDURE IF EXISTS transfer_funds;
+-- DROP TRIGGER IF EXISTS accounts_before_update;
+-- DROP TABLE IF EXISTS accounts;
+-- DROP TABLE IF EXISTS users;

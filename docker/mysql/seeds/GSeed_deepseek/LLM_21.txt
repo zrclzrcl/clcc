@@ -1,0 +1,31 @@
+set optimizer_switch='index_merge=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on';
+create table test_table (
+    id int unsigned not null auto_increment,
+    col1 char(255) default 'test',
+    col2 varchar(1024) not null,
+    col3 text,
+    col4 enum('a','b','c') default 'a',
+    col5 tinyint signed not null default 0,
+    primary key (id),
+    index idx_col2 (col2(255)),
+    unique key uk_col3 (col3)
+) engine=InnoDB charset=utf8mb4 collate=utf8mb4_unicode_ci;
+insert into test_table values 
+    (1, 'test1', 'test string 1', 'test text 1', 'a', 0),
+    (2, 'test2', 'test string 2', 'test text 2', 'b', 1),
+    (3, 'test3', 'test string 3', 'test text 3', 'c', -128);
+update test_table set col2=repeat('a', 1024) where id=1;
+select * from test_table where col3='test text 1';
+delete from test_table where id > 2;
+create table test_table2 (
+    a int,
+    b datetime default current_timestamp,
+    c timestamp default current_timestamp on update current_timestamp
+);
+insert into test_table2 values 
+    (1, '2024-01-01 00:00:00', null),
+    (2, null, null),
+    (3, '2024-01-02 12:34:56', '2024-01-03 12:34:56');
+alter table test_table add constraint fk_test foreign key (col5) references test_table2(a);
+analyze table test_table;
+show index from test_table;

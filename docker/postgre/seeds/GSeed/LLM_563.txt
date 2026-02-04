@@ -1,0 +1,105 @@
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    emp_name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering'),
+('Human Resources');
+
+INSERT INTO employees (emp_name, salary, department, hire_date) VALUES
+('John Doe', 60000.00, 'Sales', '2022-01-15'),
+('Jane Smith', 75000.00, 'Engineering', '2021-05-20'),
+('Peter Jones', 55000.00, 'Marketing', '2023-03-10');
+
+-- Using a PostgreSQL-specific feature: generate_series
+SELECT generate_series(1, 10);
+
+-- Example of a join query
+SELECT e.emp_name, d.dept_name
+FROM employees e
+JOIN departments d ON e.department = d.dept_name;
+
+-- Example of an aggregate function
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department;
+
+-- Example of a window function (PostgreSQL specific)
+SELECT
+    emp_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Example using common table expression (CTE)
+WITH SalaryStats AS (
+    SELECT AVG(salary) AS avg_salary, MAX(salary) AS max_salary FROM employees
+)
+SELECT emp_name, salary FROM employees, SalaryStats WHERE salary > avg_salary;
+
+-- Example using a stored procedure (function in PostgreSQL)
+CREATE OR REPLACE FUNCTION get_employee_count(dept_name VARCHAR)
+RETURNS INTEGER AS $$
+DECLARE
+    employee_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO employee_count FROM employees WHERE department = dept_name;
+    RETURN employee_count;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Engineering');
+
+-- Example using JSON functionality (common in modern databases)
+SELECT json_build_object('name', emp_name, 'salary', salary) AS employee_json FROM employees;
+
+-- Example using array functions (PostgreSQL specific)
+CREATE TABLE employee_skills (
+    emp_id INTEGER REFERENCES employees(emp_id),
+    skills TEXT[]
+);
+
+INSERT INTO employee_skills (emp_id, skills) VALUES
+(1, ARRAY['SQL', 'Python']),
+(2, ARRAY['Java', 'PostgreSQL']);
+
+SELECT skills FROM employee_skills WHERE emp_id = 1;
+
+--Example using range types
+CREATE TABLE sensor_data (
+    sensor_id SERIAL PRIMARY KEY,
+    valid_range int4range,
+    reading INTEGER
+);
+
+INSERT INTO sensor_data (valid_range, reading) VALUES ('[10,20]', 15);
+SELECT * FROM sensor_data WHERE valid_range @> 12;
+
+--Example using UUID
+CREATE TABLE products (
+    product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_name VARCHAR(255)
+);
+
+INSERT INTO products (product_name) VALUES ('Laptop');
+SELECT * FROM products;
+
+--cleanup
+DROP FUNCTION get_employee_count(VARCHAR);
+DROP TABLE employee_skills;
+DROP TABLE products;
+DROP TABLE sensor_data;
+DROP TABLE employees;
+DROP TABLE departments;

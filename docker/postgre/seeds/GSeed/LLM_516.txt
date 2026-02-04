@@ -1,0 +1,86 @@
+-- Initial seed for PostgreSQL fuzzing
+
+-- Create a schema for testing
+CREATE SCHEMA fuzz_test;
+SET search_path TO fuzz_test;
+
+-- Create a table with various data types
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    is_active BOOLEAN,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    data JSONB
+);
+
+-- Insert some initial data
+INSERT INTO test_table (name, age, salary, is_active, data) VALUES
+('Alice', 30, 50000.00, TRUE, '{"city": "New York"}'),
+('Bob', 25, 60000.50, FALSE, '{"city": "Los Angeles", "interests": ["music", "sports"]}'),
+('Charlie', 40, 75000.75, TRUE, '{"city": "Chicago", "skills": ["programming", "data analysis"]}');
+
+-- Select data with different conditions
+SELECT * FROM test_table WHERE age > 25;
+SELECT name, salary FROM test_table WHERE is_active = TRUE ORDER BY salary DESC;
+SELECT COUNT(*) FROM test_table;
+SELECT AVG(salary) FROM test_table;
+
+-- Update data
+UPDATE test_table SET salary = salary * 1.1 WHERE is_active = TRUE;
+
+-- Delete data
+DELETE FROM test_table WHERE age > 40;
+
+-- Create an index
+CREATE INDEX idx_name ON test_table (name);
+
+-- Create a view
+CREATE VIEW active_users AS
+SELECT id, name, age FROM test_table WHERE is_active = TRUE;
+
+-- Select from the view
+SELECT * FROM active_users;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION increment_age(user_id INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE test_table SET age = age + 1 WHERE id = user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Call the function
+SELECT increment_age(1);
+
+-- Try some PostgreSQL-specific features: JSONB operations
+SELECT data ->> 'city' FROM test_table;
+SELECT * FROM test_table WHERE data @> '{"interests": ["music"]}';
+
+-- Use generate_series to insert multiple rows
+INSERT INTO test_table (name, age, salary, is_active)
+SELECT 'User' || i, 20 + i, 40000 + (i * 1000), TRUE
+FROM generate_series(1, 5) AS i;
+
+-- Use Common Table Expression (CTE)
+WITH average_salary AS (
+    SELECT AVG(salary) AS avg_salary FROM test_table
+)
+SELECT name, salary FROM test_table, average_salary WHERE salary > average_salary.avg_salary;
+
+-- Create a temporary table
+CREATE TEMP TABLE temp_table AS SELECT * FROM test_table WHERE age < 30;
+SELECT * FROM temp_table;
+
+-- Vacuum the table
+VACUUM test_table;
+
+-- Analyze the table
+ANALYZE test_table;
+
+-- Reset search path
+RESET search_path;
+
+-- Drop the schema
+DROP SCHEMA fuzz_test CASCADE;

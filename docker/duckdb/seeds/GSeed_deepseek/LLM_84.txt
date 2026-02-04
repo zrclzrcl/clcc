@@ -1,0 +1,68 @@
+-- Create a table with various data types to test different SQL operations
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    salary NUMERIC(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Create an index to test query optimization and execution plans
+CREATE INDEX idx_hire_date ON employees(hire_date);
+
+-- Create a table with partitioning to test DuckDB's partitioned tables functionality
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    region TEXT NOT NULL,
+    amount NUMERIC(10, 2),
+    sale_date DATE NOT NULL
+) PARTITIONED BY (region);
+
+-- Create a view to test DuckDB's view handling and query rewriting
+CREATE VIEW high_earners AS
+SELECT name, salary 
+FROM employees 
+WHERE salary > 50000;
+
+-- Insert sample data into the tables
+INSERT INTO employees(name, salary, hire_date, is_active) VALUES
+('Alice Smith', 85000.00, '2023-01-15', TRUE),
+('Bob Johnson', 75000.00, '2022-05-20', FALSE),
+('Charlie Brown', 95000.00, '2021-08-10', TRUE);
+
+INSERT INTO sales(region, amount, sale_date) VALUES
+('North', 15000.00, '2023-01-01'),
+('South', 20000.00, '2023-02-15'),
+('East', 18000.00, '2023-03-10');
+
+-- Test DuckDB's Common Table Expressions (CTE) and recursive queries
+WITH RECURSIVE numbers(n) AS (
+    SELECT 1
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n < 10
+)
+SELECT * FROM numbers;
+
+-- Test various SQL operations including joins, aggregations, and window functions
+SELECT 
+    e.name,
+    e.salary,
+    s.amount,
+    COUNT(*) OVER() AS total_rows,
+    ROW_NUMBER() OVER(ORDER BY e.hire_date) AS row_num,
+    RANK() OVER(ORDER BY e.salary DESC) AS salary_rank
+FROM employees e
+INNER JOIN sales s ON e.region = s.region  -- Test join operation
+WHERE e.is_active = TRUE                   -- Test boolean condition
+GROUP BY e.name, e.salary, s.amount        -- Test grouping
+HAVING COUNT(*) > 1                        -- Test HAVING clause
+ORDER BY e.hire_date DESC;                 -- Test ordering
+
+-- Test DuckDB's specific functions and features
+SELECT 
+    id,
+    name,
+    hire_date,
+    is_active,
+    approx_median(salary) OVER() AS median_salary  -- Test DuckDB-specific function
+FROM employees;

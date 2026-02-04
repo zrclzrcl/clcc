@@ -1,0 +1,84 @@
+SET @original_sql_mode = @@sql_mode;
+SET sql_mode = 'ANSI';
+
+-- Create a test database and use it
+CREATE DATABASE IF NOT EXISTS fuzz_test_db;
+USE fuzz_test_db;
+
+-- Create tables with various data types and constraints
+CREATE TABLE IF NOT EXISTS t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL
+);
+
+-- Create a table with partitions (MariaDB-specific feature)
+CREATE TABLE IF NOT EXISTS t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    transaction_date DATE
+) PARTITION BY RANGE(YEAR(transaction_date)) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2025),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Create a stored procedure (MariaDB-specific feature)
+DELIMITER $$
+CREATE PROCEDURE IF NOT EXISTS sp_test_proc(IN param INT, OUT result INT)
+BEGIN
+    SET result = param * 2;
+END$$
+DELIMITER ;
+
+-- Create a stored function (MariaDB-specific feature)
+DELIMITER $$
+CREATE FUNCTION IF NOT EXISTS fn_total_sales(price DECIMAL(10, 2), quantity INT) 
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    RETURN price * quantity;
+END$$
+DELIMITER ;
+
+-- Create a trigger (MariaDB-specific feature)
+CREATE TABLE IF NOT EXISTS sales_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    sale_amount DECIMAL(10, 2),
+    sale_date DATETIME
+);
+
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS trg_after_insert
+AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO sales_log (product_id, sale_amount, sale_date)
+    VALUES (NEW.id, NEW.price * 100, NOW());
+END$$
+DELIMITER ;
+
+-- Insert sample data into tables
+INSERT INTO t1 (name, description, price, status) 
+VALUES 
+    ('Laptop', 'High-performance laptop', 999.99, 'active'),
+    ('Smartphone', 'Latest model smartphone', 699.99, 'inactive');
+
+-- Test stored procedure and function
+CALL sp_test_proc(5, @result);
+SELECT @result;
+
+SELECT fn_total_sales(100.00, 2);
+
+-- Analyze and optimize tables (MariaDB-specific commands)
+ANALYZE TABLE t1;
+CHECK TABLE t1;
+OPTIMIZE TABLE t1;
+
+-- Reset sql_mode to original value
+SET sql_mode = @original_sql_mode;

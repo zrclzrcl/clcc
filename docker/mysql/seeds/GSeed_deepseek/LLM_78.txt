@@ -1,0 +1,68 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data BLOB,
+    value DECIMAL(10, 2),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
+INSERT INTO test_table (name, description, created_at, status, data, value)
+VALUES 
+('Test Record 1', 'This is a test record with basic information.', NOW(), 'active', NULL, 100.50),
+('Test Record 2', 'Another test record with detailed description.', NOW(), 'inactive', RAND_BYTES(10), 200.75),
+('Test Record 3', 'A record with maximum text length', LPAD('text', 255, 'a'), NOW(), 'active', RAND_BYTES(20), 300.99);
+
+CREATE INDEX idx_name_status ON test_table(name, status);
+CREATE UNIQUE INDEX idx_unique_value ON test_table(value);
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_test_procedure()
+BEGIN
+    DECLARE var1 INT DEFAULT 0;
+    SELECT COUNT(*) INTO var1 FROM test_table WHERE status = 'active';
+    IF var1 > 5 THEN
+        UPDATE test_table SET is_deleted = TRUE WHERE status = 'inactive';
+    END IF;
+END$$
+
+DELIMITER ;
+
+CREATE TRIGGER trg_after_insert_test_table AFTER INSERT ON test_table FOR EACH ROW
+BEGIN
+    INSERT INTO test_audit (action, table_name, timestamp) VALUES ('INSERT', 'test_table', NOW());
+END;
+
+CREATE VIEW vw_active_records AS 
+SELECT id, name, description FROM test_table WHERE status = 'active' AND is_deleted = FALSE;
+
+SET GLOBAL max_connections = 100;
+SHOW STATUS LIKE 'Threads_connected';
+FLUSH TABLES test_table;
+
+LOCK TABLES test_table READ;
+SELECT SLEEP(1);
+UNLOCK TABLES;
+
+ANALYZE TABLE test_table;
+CHECKSUM TABLE test_table;
+
+CREATE EVENT evt_test_event ON SCHEDULE EVERY 1 HOUR
+DO 
+BEGIN
+    UPDATE test_table SET created_at = NOW() WHERE is_deleted = FALSE;
+END$$
+
+DELIMITER ;
+
+SET @old_query_cache_type = @@query_cache_type;
+SET GLOBAL query_cache_type = 'DEMAND';
+SHOW VARIABLES LIKE 'query_cache_type';
+
+SELECT /*+ USE_INDEX(test_table idx_name_status) */ * FROM test_table 
+WHERE name LIKE 'Test%' AND status = 'active' LIMIT 10;
+
+RESET QUERY CACHE;

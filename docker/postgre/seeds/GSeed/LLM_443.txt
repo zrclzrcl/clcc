@@ -1,0 +1,109 @@
+CREATE TABLE range_part (a INT, b INT) PARTITION BY RANGE (a);
+CREATE TABLE range_part_p1 PARTITION OF range_part FOR VALUES FROM (1) TO (10);
+CREATE TABLE range_part_p2 PARTITION OF range_part FOR VALUES FROM (10) TO (20);
+CREATE TABLE range_part_p3 PARTITION OF range_part FOR VALUES FROM (20) TO (30);
+INSERT INTO range_part (a, b) VALUES (5, 100), (15, 200), (25, 300);
+SELECT * FROM range_part WHERE a > 5 AND a < 25;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM range_part WHERE a > 5 AND a < 25;
+
+CREATE TABLE list_part (a TEXT, b INT) PARTITION BY LIST (a);
+CREATE TABLE list_part_p1 PARTITION OF list_part FOR VALUES IN ('apple', 'banana');
+CREATE TABLE list_part_p2 PARTITION OF list_part FOR VALUES IN ('orange', 'grape');
+INSERT INTO list_part (a, b) VALUES ('apple', 1), ('banana', 2), ('orange', 3), ('grape', 4);
+SELECT * FROM list_part WHERE a IN ('apple', 'orange');
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM list_part WHERE a IN ('apple', 'orange');
+
+CREATE TABLE hash_part (a INT, b TEXT) PARTITION BY HASH (a);
+CREATE TABLE hash_part_p1 PARTITION OF hash_part FOR VALUES WITH (MODULUS 4, REMAINDER 0);
+CREATE TABLE hash_part_p2 PARTITION OF hash_part FOR VALUES WITH (MODULUS 4, REMAINDER 1);
+CREATE TABLE hash_part_p3 PARTITION OF hash_part FOR VALUES WITH (MODULUS 4, REMAINDER 2);
+CREATE TABLE hash_part_p4 PARTITION OF hash_part FOR VALUES WITH (MODULUS 4, REMAINDER 3);
+INSERT INTO hash_part (a, b) VALUES (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd');
+SELECT * FROM hash_part WHERE a = 2;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM hash_part WHERE a = 2;
+
+CREATE TABLE multi_part (a INT, b TEXT, c DATE) PARTITION BY RANGE (c);
+CREATE TABLE multi_part_p1 PARTITION OF multi_part FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+CREATE TABLE multi_part_p2 PARTITION OF multi_part FOR VALUES FROM ('2023-02-01') TO ('2023-03-01');
+INSERT INTO multi_part (a, b, c) VALUES (1, 'x', '2023-01-15'), (2, 'y', '2023-02-15');
+SELECT * FROM multi_part WHERE c BETWEEN '2023-01-10' AND '2023-02-20';
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM multi_part WHERE c BETWEEN '2023-01-10' AND '2023-02-20';
+
+CREATE TABLE default_part (a INT, b TEXT) PARTITION BY RANGE (a);
+CREATE TABLE default_part_p1 PARTITION OF default_part FOR VALUES FROM (1) TO (10);
+CREATE TABLE default_part_default PARTITION OF default_part DEFAULT;
+INSERT INTO default_part (a, b) VALUES (5, 'e'), (15, 'f');
+SELECT * FROM default_part WHERE a > 8;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM default_part WHERE a > 8;
+
+CREATE TABLE part_update (a INT, b TEXT) PARTITION BY LIST (a);
+CREATE TABLE part_update_p1 PARTITION OF part_update FOR VALUES IN (1, 2);
+CREATE TABLE part_update_p2 PARTITION OF part_update FOR VALUES IN (3, 4);
+INSERT INTO part_update (a, b) VALUES (1, 'p'), (3, 'q');
+UPDATE part_update SET b = 'r' WHERE a = 1;
+SELECT * FROM part_update;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) UPDATE part_update SET b = 'r' WHERE a = 1;
+
+CREATE TABLE part_delete (a INT, b TEXT) PARTITION BY LIST (a);
+CREATE TABLE part_delete_p1 PARTITION OF part_delete FOR VALUES IN (1, 2);
+CREATE TABLE part_delete_p2 PARTITION OF part_delete FOR VALUES IN (3, 4);
+INSERT INTO part_delete (a, b) VALUES (1, 's'), (3, 't');
+DELETE FROM part_delete WHERE a = 3;
+SELECT * FROM part_delete;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) DELETE FROM part_delete WHERE a = 3;
+
+CREATE TABLE part_index (a INT, b TEXT) PARTITION BY RANGE (a);
+CREATE TABLE part_index_p1 PARTITION OF part_index FOR VALUES FROM (1) TO (10);
+CREATE INDEX part_index_a_idx ON part_index (a);
+INSERT INTO part_index (a, b) VALUES (5, 'u');
+SELECT * FROM part_index WHERE a > 2;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_index WHERE a > 2;
+
+CREATE TABLE part_subpart (a INT, b INT, c INT) PARTITION BY RANGE (a);
+CREATE TABLE part_subpart_p1 PARTITION OF part_subpart FOR VALUES FROM (1) TO (10) PARTITION BY LIST (b);
+CREATE TABLE part_subpart_p1_1 PARTITION OF part_subpart_p1 FOR VALUES IN (1, 2);
+INSERT INTO part_subpart (a, b, c) VALUES (5, 1, 100);
+SELECT * FROM part_subpart WHERE a > 2 AND b = 1;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_subpart WHERE a > 2 AND b = 1;
+
+CREATE TABLE part_inherit (a INT, b TEXT) PARTITION BY LIST (a);
+CREATE TABLE part_inherit_p1 (CHECK (a = 1)) INHERITS (part_inherit);
+CREATE TABLE part_inherit_p2 PARTITION OF part_inherit FOR VALUES IN (2);
+INSERT INTO part_inherit (a, b) VALUES (1, 'v'), (2, 'w');
+SELECT * FROM part_inherit WHERE a = 1;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_inherit WHERE a = 1;
+
+CREATE TABLE part_foreign (a INT, b INT) PARTITION BY LIST (a);
+CREATE TABLE part_foreign_p1 PARTITION OF part_foreign FOR VALUES IN (1);
+CREATE TABLE ref_table (id INT PRIMARY KEY);
+ALTER TABLE part_foreign_p1 ADD CONSTRAINT fk_ref FOREIGN KEY (b) REFERENCES ref_table (id);
+
+CREATE TABLE part_like (LIKE range_part INCLUDING ALL) PARTITION BY RANGE(a);
+CREATE TABLE part_like_p1 PARTITION OF part_like FOR VALUES FROM (1) TO (10);
+INSERT INTO part_like (a,b) VALUES (5,5);
+SELECT * FROM part_like WHERE a = 5;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_like WHERE a = 5;
+
+CREATE TABLE part_generated (a INT GENERATED ALWAYS AS (b * 2), b INT) PARTITION BY LIST(b);
+CREATE TABLE part_generated_1 PARTITION OF part_generated FOR VALUES IN (1);
+INSERT INTO part_generated(b) VALUES (1);
+SELECT * FROM part_generated;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_generated;
+
+CREATE TABLE part_collation (a TEXT COLLATE "en_US") PARTITION BY LIST (a);
+CREATE TABLE part_collation_a PARTITION OF part_collation FOR VALUES IN ('a');
+INSERT INTO part_collation(a) VALUES ('a');
+SELECT * FROM part_collation WHERE a = 'a';
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_collation WHERE a = 'a';
+
+CREATE TABLE part_conversion (a INT) PARTITION BY LIST (a);
+CREATE TABLE part_conversion_1 PARTITION OF part_conversion FOR VALUES IN (1);
+INSERT INTO part_conversion(a) VALUES ('1');
+SELECT * FROM part_conversion WHERE a = 1;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_conversion WHERE a = 1;
+
+CREATE TABLE part_null (a INT) PARTITION BY LIST (a);
+CREATE TABLE part_null_null PARTITION OF part_null FOR VALUES IN (NULL);
+INSERT INTO part_null(a) VALUES (NULL);
+SELECT * FROM part_null WHERE a IS NULL;
+EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF) SELECT * FROM part_null WHERE a IS NULL;

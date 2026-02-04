@@ -1,0 +1,37 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), (NULL), ('');
+
+-- Demonstrate DuckDB specific features: UNNEST and LIST
+SELECT i, UNNEST([1,2,3]) FROM integers;
+
+SELECT LIST(i) FROM integers;
+
+-- Test date functions and casting
+SELECT DATE('2023-10-26') + INTERVAL '1 day';
+SELECT CAST('2023-10-26' AS DATE);
+
+-- Test aggregation functions
+SELECT SUM(i), AVG(i), COUNT(i), MIN(i), MAX(i) FROM integers;
+
+-- Test string functions
+SELECT LENGTH(s), UPPER(s), LOWER(s) FROM strings;
+
+-- Test NULL handling
+SELECT i FROM integers WHERE i IS NULL;
+SELECT i FROM integers WHERE i IS NOT NULL;
+
+-- Test boolean logic and different comparison operators
+SELECT * FROM integers WHERE i > 1 AND i < 3;
+SELECT * FROM integers WHERE i <= 1 OR i >=3;
+SELECT * FROM strings WHERE s LIKE '%l%';
+
+-- Test EXCEPT and INTERSECT
+CREATE TABLE integers2 AS SELECT * FROM integers WHERE i < 3;
+SELECT * FROM integers EXCEPT SELECT * FROM integers2;
+SELECT * FROM integers INTERSECT SELECT * FROM integers2;
+
+-- Test CASE WHEN
+SELECT i, CASE WHEN i > 2 THEN 'big' WHEN i IS NULL THEN 'null' ELSE 'small' END FROM integers;

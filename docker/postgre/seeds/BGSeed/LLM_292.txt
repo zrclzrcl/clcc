@@ -1,0 +1,125 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE product_category (
+    product_id INTEGER REFERENCES products(id),
+    category_id INTEGER REFERENCES categories(id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO categories (name, description) VALUES
+('Electronics', 'Gadgets and electronic devices'),
+('Clothing', 'Apparel and fashion items'),
+('Books', 'A wide variety of books');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00),
+('The Lord of the Rings', 'Classic fantasy novel', 15.00);
+
+INSERT INTO product_category (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+CREATE INDEX idx_products_name ON products (name);
+CREATE INDEX idx_categories_name ON categories (name);
+
+SELECT p.name AS product_name, c.name AS category_name
+FROM products p
+JOIN product_category pc ON p.id = pc.product_id
+JOIN categories c ON pc.category_id = c.id;
+
+UPDATE products SET price = price * 1.1 WHERE category_id IN (SELECT id from categories WHERE name = 'Electronics');
+
+DELETE FROM products WHERE price < 10;
+
+ALTER TABLE products ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+CREATE VIEW product_details AS
+SELECT p.id, p.name, p.price, c.name AS category
+FROM products p
+JOIN product_category pc ON p.id = pc.product_id
+JOIN categories c ON pc.id = pc.category_id;
+
+SELECT * FROM product_details WHERE price > 50;
+
+CREATE OR REPLACE FUNCTION discount_price(price DECIMAL, discount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, discount_price(price, 0.1) AS discounted_price FROM products;
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER
+);
+
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2);
+
+SELECT o.id, SUM(oi.quantity * p.price) AS total_amount
+FROM orders o
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+GROUP BY o.id;
+
+-- Example using generate_series
+SELECT generate_series(1, 10);
+
+-- Example using window functions
+SELECT name, price, AVG(price) OVER () AS avg_price FROM products;
+
+-- Example using jsonb
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"color": "red", "size": "M"}'::JSONB WHERE id = 2;
+SELECT name, details ->> 'color' AS color FROM products WHERE details IS NOT NULL;
+
+-- Example using array
+ALTER TABLE products ADD COLUMN tags TEXT[];
+UPDATE products SET tags = ARRAY['new', 'featured'] WHERE id = 1;
+SELECT name, tags FROM products WHERE tags IS NOT NULL;
+
+-- Example using ltree
+CREATE EXTENSION IF NOT EXISTS ltree;
+ALTER TABLE categories ADD COLUMN path ltree;
+UPDATE categories SET path = '1' WHERE id = 1;
+UPDATE categories SET path = '1.1' WHERE id = 2;
+SELECT name, path FROM categories;
+
+-- Example using uuid
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+ALTER TABLE orders ADD COLUMN uuid UUID DEFAULT uuid_generate_v4();
+SELECT id, uuid FROM orders;
+
+-- Example using citext
+CREATE EXTENSION IF NOT EXISTS citext;
+ALTER TABLE products ALTER COLUMN name TYPE citext;
+INSERT INTO products (name, price) VALUES ('laptop', 1000); -- demonstrates case-insensitive comparison
+
+ANALYZE products;
+ANALYZE categories;
+ANALYZE product_category;
+ANALYZE orders;
+ANALYZE order_items;

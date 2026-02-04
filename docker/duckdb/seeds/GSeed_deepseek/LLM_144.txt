@@ -1,0 +1,30 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE,
+    status ENUM('active', 'inactive', 'pending') DEFAULT 'active'
+);
+
+INSERT INTO test_table VALUES
+    (1, 'Test Name 1', 100.50, '2023-10-01 12:00:00+00', 'active'),
+    (2, '', -50.75, '2024-01-15 00:00:00+00', 'inactive'),
+    (3, NULL, 0.00, CURRENT_TIMESTAMP, 'pending');
+
+CREATE INDEX idx_value_status ON test_table(value, status);
+
+WITH cte AS (
+    SELECT id, name, ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+    FROM test_table
+)
+SELECT * FROM cte WHERE row_num <= 5;
+
+PRAGMA enable_vacuum;
+
+ANALYZE test_table;
+
+UPDATE test_table SET value = value + (
+    SELECT AVG(value) FROM test_table WHERE status = 'active'
+) WHERE id IN (1, 2);
+
+VACUUM;

@@ -1,0 +1,44 @@
+SET @OLD_SQL_MODE = @@SQL_MODE;
+SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data JSON,
+    geom GEOMETRY SRID 0
+) ENGINE=InnoDB;
+
+INSERT INTO t1 (name, description, status, data, geom)
+VALUES ('Test Record 1', 'This is a test record.', 'active', '{"key": "value"}', ST_GeomFromText('POINT(1 1)', 0));
+
+SHOW CREATE TABLE t1;
+ANALYZE TABLE t1;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    content TEXT,
+    binary_data BLOB,
+    full_text_column TEXT,
+    UNIQUE INDEX idx_fulltext (full_text_column)
+) ENGINE=Aria ROW_FORMAT=COMPRESSED;
+
+INSERT INTO t2 (content, binary_data, full_text_column)
+VALUES ('Sample text for full-text search.', RANDOM_BYTES(1024), 'searchable content');
+
+SHOW TABLE STATUS LIKE 't2';
+
+DELIMITER $$
+
+CREATE TRIGGER trg_t2_update
+AFTER UPDATE ON t2
+FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log (table_name, operation, timestamp)
+    VALUES ('t2', 'UPDATE', NOW());
+END$$
+
+DELIMITER ;

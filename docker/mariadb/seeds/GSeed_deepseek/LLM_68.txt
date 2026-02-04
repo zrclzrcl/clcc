@@ -1,0 +1,78 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    amount DECIMAL(10, 2),
+    status BOOLEAN DEFAULT FALSE,
+    description TEXT,
+    data BLOB,
+    type ENUM('A', 'B', 'C') NOT NULL,
+    tags SET('tag1', 'tag2', 'tag3'),
+    UNIQUE KEY name_unique (name),
+    CHECK (amount >= 0)
+);
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    action VARCHAR(50),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES t1(id)
+);
+
+CREATE INDEX idx_t1_status_amount ON t1(status, amount);
+CREATE FULLTEXT INDEX idx_t1_description ON t1(description);
+
+DELIMITER $$
+CREATE PROCEDURE insert_data(
+    IN p_name VARCHAR(50),
+    IN p_amount DECIMAL(10, 2),
+    IN p_status BOOLEAN,
+    IN p_description TEXT
+)
+BEGIN
+    INSERT INTO t1 (name, amount, status, description) 
+    VALUES (p_name, p_amount, p_status, p_description);
+END$$
+DELIMITER ;
+
+CREATE TRIGGER after_t1_update
+AFTER UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (user_id, action, timestamp)
+    VALUES (OLD.id, 'updated', NOW());
+END;
+
+INSERT INTO t1 (name, amount, status, description) VALUES 
+('Test1', 100.50, TRUE, 'Sample Description'),
+('Test2', 200.75, FALSE, NULL),
+('Test3', 0, TRUE, '');
+
+SET GLOBAL event_scheduler = ON;
+CREATE EVENT e_cleanup
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t2 WHERE timestamp < NOW() - INTERVAL 1 DAY;
+
+ANALYZE TABLE t1, t2;
+
+ALTER TABLE t1 ADD COLUMN metadata JSON;
+ALTER TABLE t1 ADD CONSTRAINT chk_metadata CHECK (JSON_VALID(metadata));
+
+INSERT INTO t1 (name, amount, status, description, metadata) 
+VALUES ('Test4', NULL, FALSE, 'New entry', '{"source": "test"}');
+
+CALL insert_data('ProcedureTest', 50.25, TRUE, 'Inserted via procedure');
+
+DELIMITER $$
+CREATE FUNCTION get_total_amount() RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    SELECT SUM(amount) INTO total FROM t1;
+    RETURN total;
+END$$
+DELIMITER ;
+
+SELECT get_total_amount();

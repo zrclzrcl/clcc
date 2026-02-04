@@ -1,0 +1,68 @@
+-- Sample Initial Seed for SQLite Fuzz Testing
+CREATE TABLE employees (
+    emp_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    salary REAL CHECK (salary > 0),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    department_id INTEGER REFERENCES departments(dept_id) ON UPDATE CASCADE
+);
+
+CREATE VIRTUAL TABLE employee_search USING fts5(name, description);
+CREATE INDEX idx_name ON employees(name);
+CREATE UNIQUE INDEX idx_unique_salary ON employees(salary);
+
+CREATE TRIGGER trg_log_deletions AFTER DELETE ON employees BEGIN
+    INSERT INTO audit_log (action, timestamp)
+    VALUES ('DELETE', datetime('now'));
+END;
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name TEXT NOT NULL,
+    location TEXT CHECK (location IN ('HQ', 'Remote'))
+);
+
+INSERT INTO departments VALUES
+    (1, 'Engineering', 'HQ'),
+    (2, 'Marketing', 'Remote'),
+    (3, 'Sales', 'HQ');
+
+CREATE VIEW emp_projects AS
+SELECT e.name, p.project_name, e.salary
+FROM employees e
+JOIN projects p ON e.emp_id = p.manager_id;
+
+ALTER TABLE employees ADD COLUMN email TEXT UNIQUE;
+ALTER TABLE employees RENAME COLUMN dept_id TO department_ref;
+
+INSERT INTO employees VALUES
+    (1, 'John Doe', 85000.00, '2023-01-15', 1, 'john.doe@example.com'),
+    (2, 'Jane Smith', 92000.00, '2023-03-20', 2, 'jane.smith@example.com');
+
+CREATE TABLE projects (
+    project_id INTEGER PRIMARY KEY,
+    project_name TEXT NOT NULL,
+    manager_id INTEGER REFERENCES employees(emp_id),
+    start_date DATE,
+    end_date DATE CHECK (end_date > start_date)
+);
+
+INSERT INTO projects VALUES
+    (1, 'Project Alpha', 1, '2023-04-01', '2024-03-31'),
+    (2, 'Project Beta', 2, '2023-05-01', NULL);
+
+CREATE INDEX idx_manager ON projects(manager_id);
+CREATE UNIQUE INDEX idx_project_name ON projects(project_name);
+
+UPDATE employees SET salary = salary * 1.05 WHERE department_ref = 1;
+DELETE FROM projects WHERE end_date < '2023-04-01';
+
+WITH salary_stats AS (
+    SELECT 
+        department_ref,
+        COUNT(*) as total_employees,
+        AVG(salary) as avg_salary
+    FROM employees
+    GROUP BY department_ref
+)
+SELECT * FROM salary_stats;

@@ -1,0 +1,151 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    department VARCHAR(50),
+    hire_date DATE DEFAULT CURRENT_DATE
+);
+
+INSERT INTO employees (name, salary, department) VALUES
+('Alice Smith', 60000.00, 'Sales'),
+('Bob Johnson', 75000.00, 'Marketing'),
+('Charlie Brown', 50000.00, 'Sales'),
+('David Lee', 90000.00, 'Engineering');
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 3;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100) UNIQUE;
+
+CREATE INDEX idx_department ON employees (department);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+ALTER TABLE employees ADD COLUMN dept_id INT REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'Engineering';
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    record_id INT NOT NULL,
+    operation VARCHAR(10) NOT NULL,
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log(table_name, record_id, operation) VALUES ('employees', OLD.id, 'DELETE');
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log(table_name, record_id, operation) VALUES ('employees', NEW.id, 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log(table_name, record_id, operation) VALUES ('employees', NEW.id, 'INSERT');
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+UPDATE employees SET salary = salary * 1.05 WHERE dept_id = 1;
+DELETE FROM employees WHERE id = 4;
+INSERT INTO employees (name, salary, department, dept_id) VALUES ('Eve Green', 80000.00, 'Engineering', 3);
+
+CREATE TABLE products (
+    product_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(50)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Desk', 300.00, 'Furniture');
+
+SELECT * FROM products WHERE category = 'Electronics' ORDER BY price DESC;
+
+CREATE MATERIALIZED VIEW expensive_products AS
+SELECT product_name, price FROM products WHERE price > 500 WITH DATA;
+
+REFRESH MATERIALIZED VIEW expensive_products;
+
+SELECT * FROM expensive_products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 250.00),
+(2, 1200.00),
+(1, 75.00),
+(3, 300.00);
+
+SELECT * FROM orders WHERE customer_id = 1;
+
+-- Example of partitioning
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    sale_date DATE NOT NULL,
+    region VARCHAR(50) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_202301 PARTITION OF sales FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+CREATE TABLE sales_202302 PARTITION OF sales FOR VALUES FROM ('2023-02-01') TO ('2023-03-01');
+
+INSERT INTO sales (sale_date, region, amount) VALUES
+('2023-01-15', 'North', 100.00),
+('2023-02-20', 'South', 200.00);
+
+SELECT * FROM sales WHERE sale_date BETWEEN '2023-01-01' AND '2023-02-28';
+
+CREATE TABLE json_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_data (data) VALUES
+('{"name": "John Doe", "age": 30, "city": "New York"}'),
+('{"name": "Jane Smith", "age": 25, "city": "London"}');
+
+SELECT data ->> 'name' AS name FROM json_data;
+
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS employees CASCADE;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS json_data;
+DROP TABLE IF EXISTS orders;
+DROP MATERIALIZED VIEW IF EXISTS expensive_products;

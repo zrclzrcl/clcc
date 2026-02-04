@@ -1,0 +1,64 @@
+SET optimizer_switch='block_nested_loop=on';
+SET names utf8mb4;
+
+-- Create a database specifically for testing purposes
+CREATE DATABASE IF NOT EXISTS fuzz_test_db;
+USE fuzz_test_db;
+
+-- Create a table with various data types and constraints
+CREATE TABLE IF NOT EXISTS users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    profile_picture LONGBLOB NULL,
+    last_login DATETIME NULL,
+    age TINYINT UNSIGNED NULL,
+    credit_score SMALLINT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    json_data JSON NULL,
+    enum_status ENUM('active', 'inactive', 'pending') DEFAULT 'pending'
+);
+
+-- Insert some initial data, including edge cases (null, empty string, long string)
+INSERT INTO users (username, email, password, last_login, age, credit_score, latitude, longitude, json_data) VALUES
+('testuser1', 'test1@example.com', 'password123', NOW(), 25, 700, 34.0522, -118.2437, '{"city": "Los Angeles", "country": "USA"}'),
+('testuser2', NULL, 'securepass', DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 650, 40.7128, -74.0060, '{"city": "New York", "country": "USA"}'),
+('testuser3', '', 'shortpass', DATE_SUB(NOW(), INTERVAL 7 DAY), 60, 800, 51.5074, 0.1278, '{"city": "London", "country": "UK"}'),
+('verylongusernameverylongusernameverylongusernameverylongusernameverylongusername', 'longemailaddress@verylongdomainname.com', REPEAT('a', 255), NULL, 1, 999, -90.0000, 180.0000, NULL);
+
+-- Add an index
+CREATE INDEX idx_username ON users (username);
+
+-- Perform some queries to exercise different functionalities
+SELECT * FROM users WHERE age > 20 AND credit_score BETWEEN 600 AND 800;
+UPDATE users SET is_active = FALSE WHERE username = 'testuser2';
+DELETE FROM users WHERE age < 10;
+SELECT COUNT(*) FROM users;
+SELECT AVG(age) FROM users WHERE is_active = TRUE;
+SELECT username, JSON_EXTRACT(json_data, '$.city') AS city FROM users;
+
+-- Test spatial data types (MySQL 8.0+)
+-- If MySQL version is lower than 8.0, comment out these lines.
+CREATE TABLE IF NOT EXISTS places (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 4326
+);
+INSERT INTO places (name, location) VALUES ('Eiffel Tower', ST_GeomFromText('POINT(48.8584 2.2945)', 4326));
+SELECT name, ST_AsText(location) FROM places;
+
+-- Add a FULLTEXT index
+ALTER TABLE users ADD FULLTEXT INDEX fulltext_index (username, email);
+SELECT * FROM users WHERE MATCH (username, email) AGAINST ('test');
+
+-- Test some built-in functions that might expose vulnerabilities
+SELECT SLEEP(0.1); -- short sleep to avoid long delays but still test functionality
+SELECT BENCHMARK(100000, MD5('test')); -- small benchmark
+
+-- Reset optimizer switch
+SET optimizer_switch='block_nested_loop=off';

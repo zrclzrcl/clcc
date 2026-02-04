@@ -1,0 +1,102 @@
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- Create a table with various data types
+CREATE TABLE IF NOT EXISTS employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE DEFAULT CURRENT_DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    data JSONB
+);
+
+-- Create a department table
+CREATE TABLE IF NOT EXISTS departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    location VARCHAR(100)
+);
+
+-- Add a foreign key constraint
+ALTER TABLE employees ADD CONSTRAINT fk_department
+FOREIGN KEY (department_id) REFERENCES departments(id);
+
+-- Insert some sample data into departments
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+-- Insert some sample data into employees
+INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', 90000.00, 3);
+
+-- Select data from employees table
+SELECT id, first_name, last_name, salary FROM employees WHERE salary > 65000;
+
+-- Update employee salary
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+-- Delete an employee
+DELETE FROM employees WHERE id = 3;
+
+-- Select data using JOIN
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+-- Use window function
+SELECT first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Use common table expression (CTE)
+WITH high_earners AS (
+    SELECT first_name, last_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM high_earners;
+
+-- Create an index
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+-- Explain query
+EXPLAIN SELECT * FROM employees WHERE last_name = 'Doe';
+
+-- Use aggregate function
+SELECT department_id, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department_id;
+
+-- Try a full outer join
+SELECT * FROM employees FULL OUTER JOIN departments ON employees.department_id = departments.id;
+
+-- Use a CASE statement
+SELECT first_name,
+       CASE
+           WHEN salary > 80000 THEN 'High'
+           WHEN salary > 60000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+-- Truncate the table
+TRUNCATE TABLE employees;
+
+-- Check the pg_stat_statements
+SELECT query, calls, total_time FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;
+
+-- Reset pg_stat_statements statistics
+SELECT pg_stat_statements_reset();
+
+-- Clean up table employees
+DROP TABLE employees;
+
+-- Clean up table departments
+DROP TABLE departments;

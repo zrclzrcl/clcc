@@ -1,0 +1,85 @@
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    email VARCHAR(255),
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(255),
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+
+INSERT INTO customers (customer_id, first_name, last_name, email, phone_number) VALUES
+(1, 'Alice', 'Smith', 'alice.smith@example.com', '555-123-4567'),
+(2, 'Bob', 'Johnson', 'bob.johnson@example.com', '555-987-6543'),
+(3, 'Charlie', 'Brown', 'charlie.brown@example.com', '555-111-2222');
+
+INSERT INTO products (product_id, product_name, description, price) VALUES
+(101, 'Laptop', 'High-performance laptop', 1200.00),
+(102, 'Mouse', 'Wireless mouse', 25.00),
+(103, 'Keyboard', 'Ergonomic keyboard', 75.00);
+
+INSERT INTO orders (order_id, customer_id, order_date, total_amount) VALUES
+(1, 1, '2023-01-15', 1225.00),
+(2, 2, '2023-02-20', 150.00),
+(3, 1, '2023-03-10', 75.00);
+
+INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 101, 1, 1200.00),
+(2, 1, 102, 1, 25.00),
+(3, 2, 102, 2, 25.00),
+(4, 2, 103, 1, 75.00),
+(5, 3, 103, 1, 75.00);
+
+-- DuckDB Specific: Using UNNEST and SEQUENCE to generate series
+SELECT * FROM UNNEST(SEQUENCE(1, 5));
+
+-- Complex Query with Window Function and JOINs
+SELECT
+    c.first_name,
+    c.last_name,
+    SUM(oi.quantity * oi.unit_price) OVER (PARTITION BY c.customer_id ORDER BY o.order_date) AS cumulative_spending
+FROM
+    customers c
+JOIN
+    orders o ON c.customer_id = o.customer_id
+JOIN
+    order_items oi ON o.order_id = oi.order_id
+WHERE o.order_date BETWEEN '2023-01-01' AND '2023-12-31'
+ORDER BY c.customer_id, o.order_date;
+
+-- Test for NULL values and COALESCE
+SELECT COALESCE(NULL, 'default value');
+
+-- Demonstrate LIST and UNNEST for array manipulation
+SELECT LIST(product_name) FROM products;
+SELECT UNNEST([1, 2, 3]);
+
+-- Test string functions like regexp_matches
+SELECT product_name FROM products WHERE regexp_matches(product_name, '.*mouse.*');
+
+-- Demonstrate date functions
+
+SELECT DATE_TRUNC('month', order_date) FROM orders;

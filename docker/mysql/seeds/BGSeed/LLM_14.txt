@@ -1,0 +1,63 @@
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    preferences JSON
+);
+
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    description TEXT,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10, 2),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO users (username, email, preferences) VALUES
+('testuser1', 'test1@example.com', '{"theme": "dark", "notifications": true}'),
+('testuser2', 'test2@example.com', '{"theme": "light", "notifications": false}'),
+('testuser3', 'test3@example.com', NULL);
+
+INSERT INTO products (product_name, price, description, category) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 'Electronics'),
+('T-Shirt', 25.00, 'Cotton T-Shirt', 'Clothing'),
+('Book', 15.00, 'A Great Novel', 'Books');
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1200.00),
+(2, 50.00),
+(3, 15.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(2, 2, 1, 25.00),
+(2, 2, 1, 25.00),
+(3, 3, 1, 15.00);
+
+-- Test some specific MySQL features
+SELECT JSON_EXTRACT(preferences, '$.theme') FROM users WHERE id = 1;
+SELECT * FROM products WHERE category = 'Electronics' OR category = 'Books';
+SHOW CREATE TABLE users;
+SELECT SLEEP(0.1);

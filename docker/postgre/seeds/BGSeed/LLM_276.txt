@@ -1,0 +1,74 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE UNLOGGED TABLE IF NOT EXISTS users (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO users (username, email) VALUES ('testuser1', 'test1@example.com');
+INSERT INTO users (username, email) VALUES ('testuser2', 'test2@example.com');
+
+INSERT INTO products (product_name, price) VALUES ('Widget A', 19.99);
+INSERT INTO products (product_name, price) VALUES ('Widget B', 29.99);
+
+SELECT id, username FROM users WHERE username = 'testuser1';
+SELECT product_name, price FROM products ORDER BY price DESC;
+
+UPDATE users SET email = 'updated@example.com' WHERE username = 'testuser1';
+
+DELETE FROM products WHERE price > 25.00;
+
+SELECT COUNT(*) FROM users;
+SELECT AVG(price) FROM products;
+
+SELECT
+    CASE
+        WHEN price > 20 THEN 'Expensive'
+        ELSE 'Affordable'
+    END AS price_category,
+    product_name
+FROM products;
+
+SELECT COALESCE(email, 'No email provided') FROM users;
+
+SELECT username FROM users WHERE id IN (SELECT id FROM users WHERE username LIKE '%test%');
+
+WITH UserCounts AS (
+    SELECT COUNT(*) AS total_users FROM users
+)
+SELECT total_users FROM UserCounts;
+
+CREATE TABLE IF NOT EXISTS json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES ('{"name": "Example", "value": 123}');
+
+SELECT data ->> 'name' FROM json_test;
+
+CREATE TABLE IF NOT EXISTS array_test (
+  id SERIAL PRIMARY KEY,
+  tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES (ARRAY['tag1', 'tag2', 'tag3']);
+
+SELECT tags[1] FROM array_test;
+
+WITH RECURSIVE NumberSeries AS (
+  SELECT 1 AS n
+  UNION ALL
+  SELECT n + 1 FROM NumberSeries WHERE n < 5
+)
+SELECT n FROM NumberSeries;
+
+SELECT gen_random_uuid();

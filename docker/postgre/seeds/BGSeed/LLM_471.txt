@@ -1,0 +1,54 @@
+CREATE TABLESPACE test_space LOCATION '/tmp/test_space';
+CREATE SCHEMA test_schema AUTHORIZATION CURRENT_USER;
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE DOMAIN us_postal_code AS TEXT CHECK (VALUE ~ '^\d{5}(-\d{4})?$');
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    mood mood,
+    postal_code us_postal_code,
+    salary DECIMAL(10, 2)
+);
+ALTER TABLE employees SET TABLESPACE test_space;
+ALTER TABLE employees SET SCHEMA test_schema;
+INSERT INTO employees (name, mood, postal_code, salary) VALUES
+    ('Alice', 'happy', '12345', 50000.00),
+    ('Bob', 'ok', '67890-1234', 60000.50),
+    ('Charlie', 'sad', '90210', 45000.75);
+SELECT * FROM employees;
+UPDATE employees SET mood = 'happy' WHERE name = 'Charlie' RETURNING *;
+DELETE FROM employees WHERE mood = 'sad' RETURNING *;
+CREATE INDEX name_idx ON employees (name);
+CREATE VIEW happy_employees AS SELECT * FROM employees WHERE mood = 'happy';
+SELECT * FROM happy_employees;
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+UPDATE employees SET hire_date = CURRENT_DATE;
+SELECT * FROM employees;
+CREATE OR REPLACE FUNCTION get_employee_count() RETURNS INTEGER AS $$
+    SELECT COUNT(*) FROM employees;
+$$ LANGUAGE SQL;
+SELECT get_employee_count();
+CREATE TEMP TABLE temp_employees AS SELECT * FROM employees;
+SELECT * FROM temp_employees;
+DROP TABLE temp_employees;
+CREATE SEQUENCE employee_id_seq START WITH 100;
+ALTER TABLE employees ALTER COLUMN id SET DEFAULT nextval('employee_id_seq');
+INSERT INTO employees (name, mood, postal_code, salary, hire_date) VALUES ('David', 'ok', '54321', 55000.00, CURRENT_DATE);
+SELECT * FROM employees;
+CREATE UNIQUE INDEX postal_code_idx ON employees (postal_code);
+EXPLAIN SELECT * FROM employees WHERE postal_code = '12345';
+CREATE MATERIALIZED VIEW materialized_happy_employees AS SELECT * FROM employees WHERE mood = 'happy';
+SELECT * FROM materialized_happy_employees;
+REFRESH MATERIALIZED VIEW materialized_happy_employees;
+DROP MATERIALIZED VIEW materialized_happy_employees;
+ALTER TABLE employees DROP COLUMN hire_date;
+SELECT * FROM employees;
+DROP INDEX postal_code_idx;
+DROP INDEX name_idx;
+DROP VIEW happy_employees;
+DROP FUNCTION get_employee_count();
+DROP TABLE employees;
+DROP TYPE mood;
+DROP DOMAIN us_postal_code;
+DROP SCHEMA test_schema;
+DROP TABLESPACE test_space;

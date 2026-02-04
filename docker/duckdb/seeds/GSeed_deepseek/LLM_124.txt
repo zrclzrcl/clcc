@@ -1,0 +1,79 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary NUMERIC(10, 2),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    department_id INT CHECK (department_id > 0)
+);
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments VALUES
+    (1, 'Engineering', 'Building A'),
+    (2, 'HR', 'Building B'),
+    (3, 'Finance', 'Building C');
+
+INSERT INTO employees VALUES
+    (1, 'John Doe', 75000.00, '2020-01-15', 1),
+    (2, 'Jane Smith', 85000.00, '2019-03-22', 2),
+    (3, 'Bob Johnson', 65000.00, DEFAULT, 1);
+
+CREATE VIEW emp_summary AS
+SELECT 
+    e.name AS employee_name,
+    d.dept_name AS department,
+    e.salary,
+    e.hire_date
+FROM employees e
+JOIN departments d ON e.department_id = d.dept_id;
+
+CREATE INDEX emp_salary_idx ON employees(salary);
+
+ALTER TABLE employees RENAME COLUMN hire_date TO start_date;
+
+ALTER TABLE departments ADD COLUMN budget NUMERIC(12, 2);
+
+WITH dept_stats AS (
+    SELECT 
+        dept_name,
+        COUNT(*) as total_employees,
+        AVG(salary) as avg_salary
+    FROM employees e
+    JOIN departments d ON e.department_id = d.dept_id
+    GROUP BY dept_name
+)
+SELECT * FROM dept_stats;
+
+CREATE TABLE log_table (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    log_message TEXT,
+    log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO log_table (log_message) VALUES ('Initial setup completed');
+
+BEGIN;
+    UPDATE employees SET salary = salary * 1.05 WHERE department_id = 1;
+    INSERT INTO log_table (log_message) VALUES ('Salary update applied');
+COMMIT;
+
+SELECT 
+    e.name,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees e;
+
+CREATE TABLE stats (
+    id INT PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO stats VALUES
+    (1, '{"key": "value", "numbers": [1, 2, 3]}');
+
+SELECT 
+    generate_series(1, 5),
+    'Test value'::VARCHAR;

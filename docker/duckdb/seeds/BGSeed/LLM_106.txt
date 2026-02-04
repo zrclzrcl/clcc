@@ -1,0 +1,51 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), ('jkl'), (NULL);
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+SELECT s, RANK() OVER (ORDER BY s) FROM strings;
+
+-- Test aggregate functions with GROUP BY and HAVING
+SELECT AVG(i), COUNT(*), s FROM integers, strings GROUP BY s HAVING AVG(i) > 2;
+
+-- Test string functions
+SELECT UPPER(s), LOWER(s), SUBSTRING(s, 2, 2) FROM strings;
+SELECT LENGTH(s), REPLACE(s, 'a', 'b'), s FROM strings;
+
+-- Test date/time functions (DuckDB specific format requirements)
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-02-15'), (NULL);
+SELECT d, DATE_PART('year', d), DATE_TRUNC('month', d) FROM dates;
+
+CREATE TABLE timestamps (ts TIMESTAMP);
+INSERT INTO timestamps VALUES ('2023-01-01 10:00:00'), ('2023-02-15 12:30:45'), (NULL);
+SELECT ts, DATE_PART('hour', ts), DATE_TRUNC('day', ts) FROM timestamps;
+
+-- Test list/array functions (DuckDB extension)
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES (LIST(1,2,3)), (LIST(4,5,NULL)), (NULL);
+SELECT l, list_length(l), list_sum(l) FROM lists;
+
+-- Test JSON functions (DuckDB extension)
+CREATE TABLE jsons (j VARCHAR);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}'), ('[1, 2, 3]'), (NULL);
+SELECT j, json_extract_string(j, '$.b') FROM jsons WHERE j IS NOT NULL;
+
+-- Test UNNEST (DuckDB extension)
+SELECT i FROM lists, UNNEST(l) AS i;
+
+-- Test DuckDB-specific string similarity functions (Requires extension install - but let's add it and hope it's available)
+-- INSTALL fuzzywuzzy;
+-- LOAD fuzzywuzzy;
+-- SELECT editdist3('hello', 'hella');
+
+-- Test complex query with multiple joins and conditions.
+CREATE TABLE t1 (id INTEGER, val VARCHAR);
+CREATE TABLE t2 (id INTEGER, num INTEGER);
+INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c');
+INSERT INTO t2 VALUES (1, 10), (2, 20), (4, 40);
+
+SELECT t1.val, t2.num FROM t1 INNER JOIN t2 ON t1.id = t2.id WHERE t2.num > 15 ORDER BY t1.val;

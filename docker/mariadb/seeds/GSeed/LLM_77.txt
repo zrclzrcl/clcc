@@ -1,0 +1,105 @@
+CREATE TABLE `employees` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `first_name` VARCHAR(50) DEFAULT NULL,
+  `last_name` VARCHAR(50) DEFAULT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `phone_number` VARCHAR(20) DEFAULT NULL,
+  `hire_date` DATE DEFAULT NULL,
+  `job_id` VARCHAR(10) DEFAULT NULL,
+  `salary` DECIMAL(10,2) DEFAULT NULL,
+  `manager_id` INT(11) DEFAULT NULL,
+  `department_id` INT(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  FULLTEXT KEY `name` (`first_name`,`last_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `employees` (`first_name`, `last_name`, `email`, `phone_number`, `hire_date`, `job_id`, `salary`, `manager_id`, `department_id`) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567', '2022-01-15', 'IT_PROG', 6000.00, NULL, 5);
+
+CREATE TABLE `departments` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(50) DEFAULT NULL,
+  `location_id` INT(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `departments` (`name`, `location_id`) VALUES
+('IT', 1700);
+
+CREATE TABLE `locations` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `address` VARCHAR(50) DEFAULT NULL,
+  `postal_code` VARCHAR(10) DEFAULT NULL,
+  `city` VARCHAR(50) DEFAULT NULL,
+  `state_province` VARCHAR(50) DEFAULT NULL,
+  `country_id` VARCHAR(2) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `locations` (`address`, `postal_code`, `city`, `state_province`, `country_id`) VALUES
+('2017 S Street', '20009-9999', 'Washington', 'District of Columbia', 'US');
+
+CREATE OR REPLACE VIEW employee_details_view AS
+SELECT
+    e.id AS employee_id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.phone_number,
+    e.hire_date,
+    e.job_id,
+    e.salary,
+    e.manager_id,
+    d.name AS department_name,
+    l.city AS location_city
+FROM
+    employees e
+LEFT JOIN
+    departments d ON e.department_id = d.id
+LEFT JOIN
+    locations l ON d.location_id = l.id;
+
+SELECT * FROM employee_details_view WHERE salary > 5000;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.10 WHERE department_id = (SELECT id FROM departments WHERE name = 'IT');
+
+CREATE PROCEDURE `GetEmployeeSalary`(IN emp_id INT, OUT emp_salary DECIMAL(10,2))
+BEGIN
+    SELECT salary INTO emp_salary FROM employees WHERE id = emp_id;
+END;
+
+CALL GetEmployeeSalary(1, @salary);
+SELECT @salary;
+
+CREATE FUNCTION `CalculateTotalSalary`(salary DECIMAL(10,2), bonus DECIMAL(10,2)) RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+  DECLARE total_salary DECIMAL(10,2);
+  SET total_salary = salary + bonus;
+  RETURN total_salary;
+END;
+
+SELECT CalculateTotalSalary(salary, bonus) FROM employees;
+
+CREATE TRIGGER `employees_before_insert` BEFORE INSERT ON `employees` FOR EACH ROW
+BEGIN
+    IF NEW.salary < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Salary cannot be negative';
+    END IF;
+END;
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Test', 'User', 'test@example.com', '2024-01-01', 'SA_REP', -100, 5);
+
+SHOW CREATE TABLE employees;
+
+SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE();
+
+SET @max_allowed_packet=@@max_allowed_packet;
+SELECT @max_allowed_packet;
+
+SELECT HEX(RANDOM_BYTES(10));
+
+FLUSH TABLES;

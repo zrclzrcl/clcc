@@ -1,0 +1,70 @@
+CREATE TABLESPACE testspace LOCATION '/tmp/testspace';
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, age INT);
+INSERT INTO test_table (name, age) VALUES ('Alice', 30);
+INSERT INTO test_table (name, age) VALUES ('Bob', 25);
+INSERT INTO test_table (name, age) VALUES ('Charlie', 35);
+SELECT * FROM test_table WHERE age > 28;
+UPDATE test_table SET age = 32 WHERE name = 'Alice';
+DELETE FROM test_table WHERE name = 'Bob';
+CREATE INDEX idx_name ON test_table (name);
+SELECT * FROM test_table WHERE name LIKE 'A%';
+ALTER TABLE test_table ADD COLUMN city VARCHAR(50);
+UPDATE test_table SET city = 'New York' WHERE id = 1;
+SELECT name, age, city FROM test_table;
+DROP INDEX idx_name;
+DROP TABLE test_table;
+DROP TABLESPACE testspace;
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (name text, current_mood mood);
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+SELECT * FROM person WHERE current_mood = 'happy';
+DROP TABLE person;
+DROP TYPE mood;
+CREATE DOMAIN posint AS INTEGER CHECK (VALUE > 0);
+CREATE TABLE quantity (qty posint);
+INSERT INTO quantity (qty) VALUES (42);
+DROP TABLE quantity;
+DROP DOMAIN posint;
+CREATE SEQUENCE serial_number START 101;
+SELECT nextval('serial_number');
+DROP SEQUENCE serial_number;
+CREATE VIEW young_people AS SELECT name, age FROM test_table WHERE age < 30;
+SELECT * FROM young_people;
+DROP VIEW young_people;
+CREATE MATERIALIZED VIEW mv_test_table AS SELECT * FROM test_table;
+REFRESH MATERIALIZED VIEW mv_test_table;
+DROP MATERIALIZED VIEW mv_test_table;
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+SELECT increment(5);
+DROP FUNCTION increment(INTEGER);
+CREATE AGGREGATE array_accum (anyelement)  (
+    SFUNC = array_append,
+    STYPE = anyarray,
+    INITCOND = '{}'
+);
+SELECT array_accum(age) FROM test_table;
+DROP AGGREGATE array_accum(anyelement);
+CREATE ROLE test_user WITH LOGIN PASSWORD 'password';
+GRANT SELECT ON test_table TO test_user;
+REVOKE SELECT ON test_table FROM test_user;
+DROP ROLE test_user;
+PREPARE my_query (INT) AS SELECT * FROM test_table WHERE age > $1;
+EXECUTE my_query(25);
+DEALLOCATE PREPARE my_query;
+BEGIN;
+SAVEPOINT my_savepoint;
+INSERT INTO test_table (name, age) VALUES ('David', 40);
+ROLLBACK TO SAVEPOINT my_savepoint;
+COMMIT;
+CREATE TABLESPACE fastspace LOCATION '/tmp/fastspace' WITH (seq_page_cost=0.1, random_page_cost=0.5);
+DROP TABLESPACE fastspace;
+CREATE EXTENSION ltree;
+CREATE TABLE treetest (path ltree);
+INSERT INTO treetest VALUES ('Top.Science.Astronomy');
+SELECT * FROM treetest WHERE path <@ 'Top.Science';
+DROP TABLE treetest;
+DROP EXTENSION ltree;

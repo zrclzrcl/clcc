@@ -1,0 +1,112 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test different data types and constraints
+CREATE TABLE test_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    big_int BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10, 2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    text_col TEXT,
+    blob_col BLOB,
+    enum_col ENUM('value1', 'value2', 'value3')
+);
+
+-- Test inserting data into different data types
+INSERT INTO test_types (tiny_int, small_int, medium_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, char_col, varchar_col, text_col, blob_col, enum_col) VALUES
+(127, 32767, 8388607, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-27', '2023-10-27 10:30:00', 'test', 'test varchar', 'test text', 'test blob', 'value1'),
+(-128, -32768, -8388608, -9223372036854775808, -3.14, -2.71828, -12345.67, '2024-01-01', '2024-01-01 00:00:00', 'test2', 'another varchar', 'another text', 'another blob', 'value2');
+
+-- Test unique index
+CREATE TABLE test_unique (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    unique_col VARCHAR(255) UNIQUE
+);
+
+INSERT INTO test_unique (unique_col) VALUES ('unique1');
+-- The next insert should trigger an error if unique constraint is enforced
+-- INSERT INTO test_unique (unique_col) VALUES ('unique1');
+
+-- Test foreign key constraint
+CREATE TABLE parent_table (
+    id INT PRIMARY KEY AUTO_INCREMENT
+);
+
+CREATE TABLE child_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES parent_table(id) ON DELETE CASCADE
+);
+
+INSERT INTO parent_table () VALUES ();
+INSERT INTO child_table (parent_id) VALUES (1);
+
+-- Test fulltext index (MariaDB specific)
+CREATE TABLE test_fulltext (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    text_col TEXT,
+    FULLTEXT INDEX text_index (text_col)
+);
+
+INSERT INTO test_fulltext (text_col) VALUES ('This is a test sentence for fulltext search.');
+INSERT INTO test_fulltext (text_col) VALUES ('Another sentence with different words.');
+
+SELECT * FROM test_fulltext WHERE MATCH (text_col) AGAINST ('test' IN NATURAL LANGUAGE MODE);
+
+-- Test stored procedure (MariaDB specific)
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN input_value INT, OUT output_value INT)
+BEGIN
+    SET output_value = input_value * 2;
+END //
+DELIMITER ;
+
+CALL test_procedure(5, @result);
+SELECT @result;
+
+-- Test triggers (MariaDB specific)
+CREATE TABLE trigger_test (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  value INT
+);
+
+CREATE TABLE trigger_log (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  operation VARCHAR(10),
+  value INT,
+  timestamp DATETIME
+);
+
+DELIMITER //
+CREATE TRIGGER trigger_test_insert
+AFTER INSERT ON trigger_test
+FOR EACH ROW
+BEGIN
+  INSERT INTO trigger_log (operation, value, timestamp) VALUES ('insert', NEW.value, NOW());
+END //
+DELIMITER ;
+
+INSERT INTO trigger_test (value) VALUES (10);
+SELECT * FROM trigger_log;
+
+-- Clean up
+DROP PROCEDURE IF EXISTS test_procedure;
+DROP TRIGGER IF EXISTS trigger_test_insert;
+DROP TABLE IF EXISTS trigger_log;
+DROP TABLE IF EXISTS trigger_test;
+DROP TABLE IF EXISTS test_fulltext;
+DROP TABLE IF EXISTS child_table;
+DROP TABLE IF EXISTS parent_table;
+DROP TABLE IF EXISTS test_unique;
+DROP TABLE IF EXISTS test_types;
+
+SET sql_mode=@old_sql_mode;

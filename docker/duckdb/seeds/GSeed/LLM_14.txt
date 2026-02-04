@@ -1,0 +1,66 @@
+CREATE TABLE accounts (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    balance DECIMAL(10, 2)
+);
+
+INSERT INTO accounts (name, balance) VALUES ('Alice', 100.00);
+INSERT INTO accounts (name, balance) VALUES ('Bob', 50.00);
+INSERT INTO accounts (name, balance) VALUES ('Charlie', 25.00);
+
+CREATE VIEW rich_accounts AS
+SELECT name FROM accounts WHERE balance > 75.00;
+
+CREATE MACRO increment_balance(account_name, amount) AS (
+    UPDATE accounts SET balance = balance + amount WHERE name = account_name
+);
+
+CALL increment_balance('Alice', 10.00);
+
+-- Using window functions
+SELECT name, balance, RANK() OVER (ORDER BY balance DESC) as rank FROM accounts;
+
+-- Try a complex join
+CREATE TABLE transactions (
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER,
+    amount DECIMAL(10, 2),
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO transactions (account_id, amount) VALUES (1, 20.00);
+INSERT INTO transactions (account_id, amount) VALUES (2, 10.00);
+
+SELECT accounts.name, SUM(transactions.amount) FROM accounts JOIN transactions ON accounts.id = transactions.account_id GROUP BY accounts.name;
+
+-- Using DuckDB specific feature: Install and load extension
+INSTALL spatial;
+LOAD spatial;
+SELECT ST_Point(1,2);
+
+-- Using DuckDB's date/time functionality extensively
+CREATE TABLE event_log (
+  event_time TIMESTAMP,
+  message VARCHAR
+);
+
+INSERT INTO event_log VALUES (CURRENT_TIMESTAMP, 'Event occurred');
+SELECT event_time, DATE(event_time), TIME(event_time) FROM event_log;
+
+-- Test UNNEST with an array
+CREATE TABLE array_test (
+    id INTEGER,
+    my_array INTEGER[]
+);
+
+INSERT INTO array_test VALUES (1, [1, 2, 3]);
+SELECT id, UNNEST(my_array) FROM array_test;
+
+-- Test the use of STRUCTs
+CREATE TABLE struct_test (
+  id INTEGER,
+  data STRUCT(a INTEGER, b VARCHAR)
+);
+
+INSERT INTO struct_test VALUES (1, {a: 10, b: 'test'});
+SELECT id, data.a, data.b FROM struct_test;

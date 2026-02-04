@@ -1,0 +1,88 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE,
+    uuid UUID DEFAULT uuid_generate_v4()
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, department_id, hire_date) VALUES
+('Alice Smith', 60000.00, 1, '2022-01-15'),
+('Bob Johnson', 75000.00, 2, '2021-05-20'),
+('Charlie Brown', 90000.00, 3, '2020-11-01');
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE TYPE address AS (
+    street VARCHAR(100),
+    city VARCHAR(50),
+    zip_code VARCHAR(10)
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    billing_address address
+);
+
+INSERT INTO customers (name, billing_address) VALUES
+('David Lee', ROW('123 Main St', 'Anytown', '12345')::address);
+
+SELECT (billing_address).city FROM customers WHERE name = 'David Lee';
+
+CREATE FUNCTION get_employee_count(dept_name VARCHAR) RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees e JOIN departments d ON e.department_id = d.id WHERE d.name = dept_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Engineering');
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "model": "XPS 15", "price": 1200}');
+
+SELECT details ->> 'price' FROM products WHERE name = 'Laptop';
+
+WITH high_earners AS (
+    SELECT name, salary FROM employees WHERE salary > 80000
+)
+SELECT name FROM high_earners;
+
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(200) GENERATED ALWAYS AS (name || ' ' || COALESCE(department, '')) STORED;
+
+SELECT full_name FROM employees;
+
+DROP TABLE customers;
+DROP TYPE address;
+DROP FUNCTION get_employee_count(VARCHAR);
+DROP TABLE products;
+DROP TABLE employees;
+DROP TABLE departments;

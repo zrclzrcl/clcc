@@ -1,0 +1,153 @@
+-- Initial seed for PostgreSQL 18 RC1
+
+-- System catalog queries (similar to the sample)
+SELECT count(*) >= 0 AS ok FROM pg_available_extension_versions;
+SELECT count(*) >= 0 AS ok FROM pg_available_extensions;
+SELECT count(*) > 20 AS ok FROM pg_config;
+SELECT count(*) = 0 AS ok FROM pg_cursors;
+SELECT count(*) >= 0 AS ok FROM pg_file_settings;
+SELECT count(*) > 0 AS ok FROM pg_hba_file_rules;
+SELECT count(*) > 0 AS ok FROM pg_locks;
+SELECT count(*) = 0 AS ok FROM pg_prepared_statements;
+SELECT count(*) >= 0 AS ok FROM pg_prepared_xacts;
+SELECT count(*) = 0 AS ok FROM pg_stat_wal_receiver;
+SELECT name, setting FROM pg_settings WHERE name LIKE 'enable%';
+SELECT count(DISTINCT utc_offset) >= 24 AS ok FROM pg_timezone_names;
+SELECT count(DISTINCT utc_offset) >= 24 AS ok FROM pg_timezone_abbrevs;
+SET timezone_abbreviations = 'Australia';
+SELECT count(DISTINCT utc_offset) >= 24 AS ok FROM pg_timezone_abbrevs;
+SET timezone_abbreviations = 'India';
+SELECT count(DISTINCT utc_offset) >= 24 AS ok FROM pg_timezone_abbrevs;
+
+-- Basic table creation and manipulation
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, hire_date) VALUES
+('Alice', 60000.00, '2022-01-15'),
+('Bob', 75000.50, '2021-05-20'),
+('Charlie', 55000.75, '2023-03-10');
+
+UPDATE employees SET salary = salary * 1.10 WHERE id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT * FROM employees ORDER BY salary DESC;
+
+-- Table with different data types
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    price NUMERIC(8, 2),
+    in_stock BOOLEAN,
+    description JSONB
+);
+
+INSERT INTO products (name, price, in_stock, description) VALUES
+('Laptop', 1200.00, TRUE, '{"brand": "XYZ", "specs": {"ram": 16, "storage": 512}}'),
+('Mouse', 25.50, TRUE, '{"brand": "ABC", "wireless": true}');
+
+SELECT name, price FROM products WHERE price > 100;
+
+SELECT description -> 'brand' FROM products WHERE name = 'Laptop';
+
+-- Aggregation and grouping
+SELECT AVG(salary) AS average_salary FROM employees;
+
+SELECT hire_date, COUNT(*) FROM employees GROUP BY hire_date;
+
+-- Joins
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+INSERT INTO departments (name) VALUES ('Sales'), ('Marketing');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+UPDATE employees SET department_id = 1 WHERE id IN (1, 2);
+UPDATE employees SET department_id = 2 WHERE id = 3;
+
+SELECT e.name, d.name AS department FROM employees e JOIN departments d ON e.department_id = d.id;
+
+-- Window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Subqueries
+SELECT name FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Create extension (if not already present)
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username CITEXT UNIQUE NOT NULL
+);
+
+INSERT INTO users (username) VALUES ('TestUser');
+SELECT * FROM users;
+
+-- Partitioned Table
+CREATE TABLE measurement (
+    logdate date NOT NULL,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2024m01 PARTITION OF measurement
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+INSERT INTO measurement(logdate, peaktemp, unitsales) VALUES ('2024-01-15', 40, 100);
+SELECT * FROM measurement;
+
+-- Table with generated column
+CREATE TABLE people (
+    id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    full_name VARCHAR(100) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED
+);
+
+INSERT INTO people (id, first_name, last_name) VALUES (1, 'John', 'Doe');
+
+SELECT * FROM people;
+
+-- Using WITH ORDINALITY
+SELECT row_number, value
+FROM unnest(ARRAY['a', 'b', 'c']) WITH ORDINALITY AS t(value, row_number);
+
+-- Triggers (basic example)
+CREATE OR REPLACE FUNCTION log_employee_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Employee % changed salary from % to %', NEW.name, OLD.salary, NEW.salary;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_salary_change
+BEFORE UPDATE ON employees
+FOR EACH ROW
+WHEN (OLD.salary IS DISTINCT FROM NEW.salary)
+EXECUTE FUNCTION log_employee_change();
+
+UPDATE employees SET salary = 66000.00 WHERE id = 1;
+
+--Drop Table (cleanup)
+DROP TABLE IF EXISTS measurement;
+DROP TABLE IF EXISTS measurement_y2024m01;
+DROP TABLE IF EXISTS people;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS products;

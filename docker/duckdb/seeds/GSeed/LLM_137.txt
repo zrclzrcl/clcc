@@ -1,0 +1,50 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    department VARCHAR(255),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Alice Smith', 60000.00, 'Sales', '2022-01-15');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Charlie Brown', 90000.00, 'Engineering', '2020-11-01');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('David Lee', 65000.00, 'Sales', '2023-03-10');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Eve Wilson', 80000.00, 'Marketing', '2022-09-05');
+
+-- Test window functions
+SELECT name, salary, department, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num FROM employees;
+
+-- Test aggregation and grouping
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+-- Test joins
+SELECT e.name, e.salary, d.name AS department_name FROM employees e JOIN departments d ON e.department = d.name;
+
+-- Test string functions and LIKE
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+-- Test date functions
+SELECT hire_date, DATE_TRUNC('month', hire_date) FROM employees;
+
+-- Test DuckDB-specific features (e.g., auto-increment, JSON functions)
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (data) VALUES ('{"name": "John Doe", "age": 30}');
+SELECT data -> 'name' FROM json_data;
+
+-- Test exceptions
+SELECT 1/0;  -- This should cause a division by zero error

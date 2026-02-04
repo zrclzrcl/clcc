@@ -1,0 +1,141 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT
+);
+
+INSERT INTO products (product_name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00);
+
+INSERT INTO customers (customer_name, email) VALUES
+    ('Alice Smith', 'alice@example.com'),
+    ('Bob Johnson', 'bob@example.com');
+
+INSERT INTO orders (customer_id) VALUES
+    (1),
+    (2);
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+    (1, 1, 1),
+    (1, 2, 1),
+    (2, 3, 2);
+
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+SELECT c.customer_name, o.order_date
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+CREATE VIEW customer_orders AS
+SELECT c.customer_name, COUNT(o.order_id) AS total_orders
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name;
+
+SELECT * FROM customer_orders;
+
+CREATE INDEX idx_customer_name ON customers(customer_name);
+
+-- Demonstrating PostgreSQL specific features
+CREATE OR REPLACE FUNCTION get_product_price(product_name VARCHAR)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN (SELECT price FROM products WHERE product_name = get_product_price.product_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_product_price('Laptop');
+
+CREATE TYPE inventory_status AS ENUM ('in_stock', 'out_of_stock', 'low_stock');
+
+ALTER TABLE products ADD COLUMN status inventory_status;
+
+UPDATE products SET status = 'in_stock';
+
+SELECT * FROM products WHERE status = 'in_stock';
+
+-- Test for prepared transactions
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+UPDATE products SET price = 1400.00 WHERE product_name = 'Laptop';
+PREPARE TRANSACTION 'update_laptop_price';
+
+-- Test for advisory locks
+SELECT pg_advisory_lock(12345);
+SELECT pg_advisory_unlock(12345);
+
+-- More complex query
+SELECT
+    c.customer_name,
+    SUM(oi.quantity * p.price) AS total_spent
+FROM
+    customers c
+JOIN
+    orders o ON c.customer_id = o.customer_id
+JOIN
+    order_items oi ON o.order_id = oi.order_id
+JOIN
+    products p ON oi.product_id = p.product_id
+GROUP BY
+    c.customer_name
+ORDER BY
+    total_spent DESC;
+
+-- Test for window functions
+SELECT
+    product_name,
+    price,
+    AVG(price) OVER () AS average_price
+FROM
+    products;
+
+-- Test for common table expressions (CTEs)
+WITH ProductAverages AS (
+    SELECT
+        AVG(price) AS average_price
+    FROM
+        products
+)
+SELECT
+    product_name,
+    price,
+    average_price
+FROM
+    products, ProductAverages
+WHERE
+    price > average_price;
+
+DROP VIEW customer_orders;
+DROP FUNCTION get_product_price(VARCHAR);
+DROP TYPE inventory_status;
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE customers;
+DROP TABLE products;

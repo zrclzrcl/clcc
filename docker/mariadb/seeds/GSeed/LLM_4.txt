@@ -1,0 +1,50 @@
+CREATE TABLE test_types (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  tiny_int TINYINT,
+  small_int SMALLINT,
+  medium_int MEDIUMINT,
+  normal_int INT,
+  big_int BIGINT,
+  float_col FLOAT,
+  double_col DOUBLE,
+  decimal_col DECIMAL(10,2),
+  date_col DATE,
+  datetime_col DATETIME,
+  timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  time_col TIME,
+  year_col YEAR,
+  char_col CHAR(10),
+  varchar_col VARCHAR(20),
+  binary_col BINARY(10),
+  varbinary_col VARBINARY(20),
+  tinyblob_col TINYBLOB,
+  tinytext_col TINYTEXT,
+  blob_col BLOB,
+  text_col TEXT,
+  mediumblob_col MEDIUMBLOB,
+  mediumtext_col MEDIUMTEXT,
+  longblob_col LONGBLOB,
+  longtext_col LONGTEXT,
+  enum_col ENUM('a', 'b', 'c'),
+  set_col SET('x', 'y', 'z')
+);
+
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, binary_col, varbinary_col, tinyblob_col, tinytext_col, blob_col, text_col, mediumblob_col, mediumtext_col, longblob_col, longtext_col, enum_col, set_col) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 123.45, 678.90, 9876.54, '2024-01-01', '2024-01-01 12:34:56', '12:34:56', 2024, 'test', 'test varchar', 'binary data', 'varbinary data', 'tinyblob data', 'tinytext data', 'blob data', 'text data', 'mediumblob data', 'mediumtext data', 'longblob data', 'longtext data', 'a', 'x,y');
+
+SELECT CHARACTER_LENGTH(varchar_col) FROM test_types;
+
+SELECT COUNT(*) FROM test_types WHERE tiny_int > 0;
+
+SELECT BIT_COUNT(big_int) from test_types;
+
+ALTER TABLE test_types ADD COLUMN json_col JSON;
+UPDATE test_types SET json_col = '{"name": "test", "value": 123}';
+SELECT json_col->'$.name' FROM test_types;
+
+CREATE FUNCTION simple_add (a INT, b INT)
+RETURNS INT
+DETERMINISTIC
+RETURN a + b;
+
+SELECT simple_add(5, 3);

@@ -1,0 +1,90 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'London'),
+    ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, email, salary, hire_date, department_id) VALUES
+    ('Alice Smith', 'alice.smith@example.com', 60000.00, '2022-01-15', 1),
+    ('Bob Johnson', 'bob.johnson@example.com', 75000.00, '2021-05-20', 2),
+    ('Charlie Brown', 'charlie.brown@example.com', 90000.00, '2020-11-01', 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+CREATE VIEW employee_salaries AS
+SELECT name, salary FROM employees;
+
+SELECT * FROM employee_salaries;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Moe', 'happy');
+SELECT * FROM person WHERE current_mood = 'happy';
+
+SELECT jsonb_build_object('name', name, 'salary', salary) AS employee_json
+FROM employees;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+SELECT uuid_generate_v4();
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, department_id, 0 AS level
+    FROM employees
+    WHERE department_id = 3 -- Engineering Department
+
+    UNION ALL
+
+    SELECT e.id, e.name, e.department_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department_id = eh.id
+)
+SELECT * FROM employee_hierarchy;
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+SELECT COUNT(*) FROM employees;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+ALTER TABLE employees ADD COLUMN age INTEGER;
+
+UPDATE employees SET age = 30 WHERE id = 2;
+
+SELECT name, hire_date + INTERVAL '1 year' AS anniversary FROM employees;

@@ -1,0 +1,163 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"age": 30, "city": "New York"}'),
+('Bob', 20, '{"age": 25, "city": "Los Angeles"}'),
+('Charlie', 30, '{"age": 35, "city": "Chicago"}');
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = value + 5 WHERE name LIKE 'A%';
+
+DELETE FROM test_table WHERE id = 3;
+
+SELECT jsonb_extract_path_text(data, 'city') FROM test_table;
+
+SELECT jsonb_pretty(data) FROM test_table;
+
+SELECT name, value FROM test_table ORDER BY value DESC;
+
+CREATE INDEX idx_name ON test_table (name);
+
+DROP INDEX idx_name;
+
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 10;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+SELECT COUNT(*) FROM test_table;
+
+SELECT AVG(value) FROM test_table;
+
+SELECT MAX(value) FROM test_table;
+
+SELECT MIN(value) FROM test_table;
+
+SELECT SUM(value) FROM test_table;
+
+SELECT DISTINCT city FROM (SELECT jsonb_extract_path_text(data, 'city') as city from test_table) AS cities;
+
+SELECT generate_series(1, 5);
+
+SELECT pg_sleep(0.1);
+
+SELECT pg_backend_pid();
+
+SELECT version();
+
+SELECT current_database();
+
+SELECT inet_client_addr();
+
+SELECT inet_server_addr();
+
+SELECT current_user;
+
+SELECT session_user;
+
+SELECT user;
+
+SELECT current_date;
+
+SELECT current_time;
+
+SELECT current_timestamp;
+
+SELECT localtimestamp;
+
+SELECT now();
+
+SELECT to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS');
+
+SELECT md5('test');
+
+SELECT uuid_generate_v4();
+
+SELECT encode('test', 'base64');
+
+SELECT decode('dGVzdA==', 'base64');
+
+SELECT lo_create(0);
+
+SELECT lo_unlink(16384);
+
+-- Test some more complex queries with JSONB and aggregate functions
+
+SELECT
+    name,
+    AVG((data ->> 'age')::numeric) AS average_age
+FROM
+    test_table
+GROUP BY
+    name
+HAVING
+    AVG((data ->> 'age')::numeric) > 25;
+
+-- Test window functions
+
+SELECT
+    name,
+    value,
+    RANK() OVER (ORDER BY value DESC) AS rank
+FROM
+    test_table;
+
+-- Test common table expressions (CTEs)
+
+WITH RankedTable AS (
+    SELECT
+        name,
+        value,
+        RANK() OVER (ORDER BY value DESC) AS rank
+    FROM
+        test_table
+)
+SELECT
+    name,
+    value
+FROM
+    RankedTable
+WHERE
+    rank <= 2;
+
+-- Test foreign key constraints
+
+CREATE TABLE parent_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+CREATE TABLE child_table (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent_table(id),
+    value INTEGER
+);
+
+INSERT INTO parent_table (name) VALUES ('Parent1'), ('Parent2');
+
+INSERT INTO child_table (parent_id, value) VALUES (1, 100), (2, 200);
+
+SELECT * FROM child_table;
+
+DROP TABLE child_table;
+
+DROP TABLE parent_table;
+
+-- More JSONB operators and functions
+INSERT INTO test_table (name, value, data) VALUES ('Eve', 40, '{"age": 40, "city": "London", "hobbies": ["reading", "hiking"]}');
+
+SELECT data -> 'hobbies' FROM test_table WHERE name = 'Eve';
+SELECT data ->> 'hobbies' FROM test_table WHERE name = 'Eve';
+
+SELECT data #> '{hobbies,1}' FROM test_table WHERE name = 'Eve'; --access array element
+
+SELECT data #>> '{hobbies,1}' FROM test_table WHERE name = 'Eve';
+
+SELECT jsonb_array_elements(data -> 'hobbies') FROM test_table WHERE name = 'Eve';

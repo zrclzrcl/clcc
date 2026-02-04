@@ -1,0 +1,119 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2023-01-15', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-05-20', 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 90000.00, 3);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+CREATE VIEW employee_summary AS
+SELECT first_name, last_name, salary, departments.name AS department
+FROM employees
+JOIN departments ON employees.department_id = departments.id;
+
+SELECT * FROM employee_summary WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00);
+
+CREATE TABLE data (
+    id SERIAL PRIMARY KEY,
+    json_data JSONB
+);
+
+INSERT INTO data (json_data) VALUES
+('{"name": "Example", "value": 123}');
+
+SELECT json_data ->> 'name' FROM data;
+
+CREATE UNLOGGED TABLE temp_data (
+    value INTEGER
+);
+
+INSERT INTO temp_data VALUES (1), (2), (3);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    product_id UUID REFERENCES products(id),
+    quantity INTEGER,
+    order_date DATE
+);
+
+INSERT INTO orders (product_id, quantity, order_date)
+SELECT id, 2, CURRENT_DATE FROM products WHERE name = 'Laptop';
+
+ALTER TABLE products ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+
+UPDATE products SET price = price * 0.9 WHERE name = 'Laptop';
+
+SELECT e.first_name, d.name AS department_name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id;
+
+CREATE TABLE generated_columns_test (
+    a INT,
+    b INT,
+    c INT GENERATED ALWAYS AS (a + b) STORED
+);
+
+INSERT INTO generated_columns_test (a, b) VALUES (10, 20);
+
+SELECT * FROM generated_columns_test;
+
+-- Casting example
+SELECT '123'::INTEGER;
+
+-- More data
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('Alice', 'Brown', 'alice.brown@example.com', '2024-02-01', 80000.00, 1),
+('Bob', 'White', 'bob.white@example.com', '2023-11-15', 65000.00, 2);
+
+CREATE INDEX CONCURRENTLY idx_email ON employees (email);
+
+-- Using ILIKE (case-insensitive LIKE)
+SELECT * FROM employees WHERE first_name ILIKE 'j%';
+
+-- Example with EXCEPT
+SELECT id FROM departments EXCEPT SELECT department_id FROM employees;
+
+-- Example with INTERSECT
+SELECT id FROM departments INTERSECT SELECT department_id FROM employees;
+
+-- Example with UNION
+SELECT id FROM departments UNION SELECT department_id FROM employees;

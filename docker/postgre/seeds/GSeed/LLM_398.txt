@@ -1,0 +1,213 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    category VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100),
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20),
+    address TEXT
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('T-shirt', 20.00, 'Clothing'),
+('Jeans', 60.00, 'Clothing');
+
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1225.00),
+(2, 80.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 4, 4, 20.00);
+
+SELECT * FROM products WHERE price > 50.00 ORDER BY price DESC;
+
+SELECT category, AVG(price) AS average_price FROM products GROUP BY category;
+
+SELECT c.first_name, o.order_id, o.order_date, o.total_amount
+FROM customers c JOIN orders o ON c.customer_id = o.customer_id;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+CREATE VIEW high_value_customers AS
+SELECT customer_id, first_name, last_name
+FROM customers
+WHERE customer_id IN (SELECT customer_id FROM orders GROUP BY customer_id HAVING SUM(total_amount) > 1000);
+
+SELECT * FROM high_value_customers;
+
+-- PostgreSQL specific features
+SELECT version();
+SELECT current_database();
+
+-- Window function example
+SELECT product_name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Common Table Expression (CTE) example
+WITH ExpensiveProducts AS (
+  SELECT product_name, price
+  FROM products
+  WHERE price > 50
+)
+SELECT product_name, price
+FROM ExpensiveProducts
+ORDER BY price DESC;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+-- Using string_agg function
+SELECT category, string_agg(product_name, ', ') AS product_list
+FROM products
+GROUP BY category;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION get_product_count(category_name VARCHAR)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM products WHERE category = category_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_product_count('Electronics');
+
+-- Create trigger
+CREATE OR REPLACE FUNCTION update_order_total()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE orders
+    SET total_amount = (SELECT SUM(quantity * unit_price) FROM order_items WHERE order_id = NEW.order_id)
+    WHERE order_id = NEW.order_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_items_after_insert
+AFTER INSERT ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION update_order_total();
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (2, 5, 1, 60.00);
+
+-- Using jsonb
+ALTER TABLE products ADD COLUMN details jsonb;
+UPDATE products SET details = '{"color": "black", "size": "large"}'::jsonb WHERE product_name = 'T-shirt';
+SELECT product_name, details ->> 'color' AS color FROM products WHERE product_name = 'T-shirt';
+
+-- Try to insert invalid data to test constraints
+INSERT INTO products (product_name, price, category) VALUES ('Invalid', -10, 'Test'); -- Price should be positive
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES ('Test', 'User', 'invalid_email', '123', 'Address'); -- Invalid email
+
+-- Test NULL values
+INSERT INTO products (product_name, price, category) VALUES ('NullTest', NULL, NULL);
+SELECT * FROM products WHERE price IS NULL;
+
+-- Test different data types
+CREATE TABLE test_types (
+  id SERIAL PRIMARY KEY,
+  smallint_col SMALLINT,
+  integer_col INTEGER,
+  bigint_col BIGINT,
+  decimal_col DECIMAL(15, 5),
+  real_col REAL,
+  double_col DOUBLE PRECISION,
+  char_col CHAR(10),
+  varchar_col VARCHAR(50),
+  text_col TEXT,
+  date_col DATE,
+  timestamp_col TIMESTAMP,
+  boolean_col BOOLEAN,
+  uuid_col UUID DEFAULT gen_random_uuid(),
+  jsonb_col JSONB
+);
+
+INSERT INTO test_types (smallint_col, integer_col, bigint_col, decimal_col, real_col, double_col, char_col, varchar_col, text_col, date_col, timestamp_col, boolean_col, jsonb_col) VALUES
+(10, 1000, 1000000, 12345.67890, 123.45, 12345.67890123, 'test    ', 'test varchar', 'test text', '2024-01-01', '2024-01-01 12:00:00', TRUE, '{"key": "value"}');
+
+SELECT * FROM test_types;
+
+-- Enum Type test
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Larry', 'sad');
+INSERT INTO person (name, current_mood) VALUES ('Curly', 'ok');
+
+SELECT * FROM person;
+
+-- Recursive CTE
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT
+        employee_id,
+        employee_name,
+        manager_id,
+        1 AS level
+    FROM
+        employees
+    WHERE
+        manager_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        e.employee_id,
+        e.employee_name,
+        e.manager_id,
+        eh.level + 1
+    FROM
+        employees e
+    JOIN
+        employee_hierarchy eh ON e.manager_id = eh.employee_id
+)
+SELECT employee_id, employee_name, manager_id, level
+FROM employee_hierarchy;
+
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS test_types CASCADE;
+DROP TABLE IF EXISTS person CASCADE;
+DROP TYPE IF EXISTS mood CASCADE;
+DROP TABLE IF EXISTS employees CASCADE;

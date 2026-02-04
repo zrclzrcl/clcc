@@ -1,0 +1,19 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+INSERT INTO test_table VALUES (1, 'Alice');
+INSERT INTO test_table VALUES (2, 'Bob');
+INSERT INTO test_table VALUES (3, 'Charlie');
+INSERT INTO test_table VALUES (4, NULL); -- Testing with a NULL value
+
+BEGIN;
+    UPDATE test_table SET name = 'David' WHERE id = 2;
+    DELETE FROM test_table WHERE id = 3;
+COMMIT;
+
+SELECT * FROM test_table WHERE id > 0;
+
+CREATE VIRTUAL TABLE vt1 USING fts4(content);
+INSERT INTO vt1 VALUES('test content');

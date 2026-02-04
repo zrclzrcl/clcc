@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age > 0));
+INSERT INTO users(name, age) VALUES('Alice', 30), ('Bob', 25);
+UPDATE users SET age = age + 1 WHERE name = 'Alice';
+DELETE FROM users WHERE age < 20;
+
+CREATE VIEW adult_users AS SELECT * FROM users WHERE age >= 18;
+SELECT * FROM adult_users;
+
+CREATE TABLE transactions(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO transactions(user_id, amount) VALUES(1, 100.50), (2, 200.75);
+SELECT user_id, SUM(amount) as total_spent FROM transactions GROUP BY user_id HAVING total_spent > 100;
+
+CREATE INDEX idx_user_age ON users(age);

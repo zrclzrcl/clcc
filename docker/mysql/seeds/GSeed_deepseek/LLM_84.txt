@@ -1,0 +1,63 @@
+SET @@global.sql_mode = 'ANSI_QUOTES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    version INT CHECK (version > 0),
+    data BLOB
+);
+ALTER TABLE test_table ADD COLUMN category_id INT AFTER name;
+ALTER TABLE test_table ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES categories(id);
+CREATE INDEX idx_name_status ON test_table(name(100), status);
+INSERT INTO test_table (name, description, price, version, category_id) VALUES
+    ('Test Item 1', 'This is a test item with minimum values.', 0.01, 1, 1),
+    ('Test Item 2', 'Another test item with maximum values.', 99999999.99, 999999, 2),
+    ('Test Item 3', '', 12345678.90, 123456, NULL);
+SELECT t1.id, t1.name, t2.description 
+FROM test_table AS t1
+JOIN (
+    SELECT id, name FROM test_table WHERE status = 'active' AND price > 100
+) AS t2 ON t1.id = t2.id;
+ALTER TABLE test_table ADD COLUMN full_text_search TEXT;
+INSERT INTO test_table (name, description, full_text_search, price, version) VALUES
+    ('Search Test 1', 'This is a search test with special characters: !@#$%^&*()', 'search terms here', 100.00, 1);
+ALTER TABLE test_table ADD FULLTEXT INDEX idx_full_text (full_text_search);
+SELECT * FROM test_table WHERE MATCH(full_text_search) AGAINST('search terms');
+SELECT name AS product_name, description AS product_description 
+FROM test_table 
+WHERE price BETWEEN 1 AND 1000 
+ORDER BY name DESC 
+LIMIT 10 OFFSET 5;
+UPDATE test_table SET price = price * 1.1 WHERE status = 'active' AND created_at > DATE_SUB(NOW(), INTERVAL 1 MONTH);
+DELETE FROM test_table WHERE status = 'inactive' AND updated_at < DATE_SUB(NOW(), INTERVAL 6 MONTH);
+CREATE TABLE temp_table (
+    id INT PRIMARY KEY,
+    value VARCHAR(255)
+) ENGINE=MEMORY;
+INSERT INTO temp_table VALUES (1, 'Memory Table Test');
+SELECT t.id, t.name, tt.value 
+FROM test_table AS t
+JOIN temp_table AS tt ON t.id = tt.id;
+DROP TABLE temp_table;
+ANALYZE TABLE test_table;
+CHECK TABLE test_table;
+REPAIR TABLE test_table;
+OPTIMIZE TABLE test_table;
+FLUSH TABLES test_table;
+SELECT COUNT(*) AS total_records FROM test_table;
+SELECT MAX(price) AS max_price, MIN(price) AS min_price, AVG(price) AS avg_price 
+FROM test_table 
+WHERE status = 'active';
+SELECT name, price, CASE WHEN price > 100 THEN 'High' ELSE 'Low' END AS price_range 
+FROM test_table 
+ORDER BY price DESC;
+SELECT DISTINCT status FROM test_table ORDER BY status ASC;
+SELECT id, name, created_at 
+FROM test_table 
+WHERE created_at >= '2000-01-01 00:00:00' AND created_at <= '2099-12-31 23:59:59';
+SELECT * FROM test_table WHERE name REGEXP '^Test.*$';
+SELECT CAST(price AS CHAR) AS price_string FROM test_table LIMIT 1;

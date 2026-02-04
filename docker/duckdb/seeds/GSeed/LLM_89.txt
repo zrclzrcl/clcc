@@ -1,0 +1,67 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10);
+INSERT INTO integers (id, value) VALUES (2, 20);
+INSERT INTO integers (id, value) VALUES (3, NULL);
+INSERT INTO integers (id, value) VALUES (4, 10);
+
+SELECT value, COUNT(*) FROM integers GROUP BY value ORDER BY value;
+
+-- Test for window functions (DuckDB specific/optimized)
+SELECT id, value, AVG(value) OVER (ORDER BY id) AS avg_value FROM integers;
+
+-- Test for string functions
+CREATE TABLE strings (
+    text VARCHAR
+);
+
+INSERT INTO strings (text) VALUES ('hello world');
+INSERT INTO strings (text) VALUES ('DuckDB');
+INSERT INTO strings (text) VALUES ('');
+INSERT INTO strings (text) VALUES (NULL);
+
+SELECT text, UPPER(text), LENGTH(text) FROM strings;
+
+-- Test for date/time functions
+CREATE TABLE dates (
+    ts TIMESTAMP
+);
+
+INSERT INTO dates (ts) VALUES ('2023-10-26 10:00:00');
+INSERT INTO dates (ts) VALUES ('2023-10-27 12:00:00');
+INSERT INTO dates (ts) VALUES (NULL);
+
+SELECT ts, DATE(ts), HOUR(ts) FROM dates;
+
+-- Test for LIST type (DuckDB specific)
+CREATE TABLE list_table (
+    id INTEGER,
+    my_list INTEGER[]
+);
+
+INSERT INTO list_table VALUES (1, [1, 2, 3]);
+INSERT INTO list_table VALUES (2, [4, 5, NULL]);
+INSERT INTO list_table VALUES (3, NULL);
+
+SELECT id, list_extract(my_list, 1) FROM list_table;
+
+-- Test for STRUCT type (DuckDB specific)
+CREATE TABLE struct_table (
+    id INTEGER,
+    my_struct STRUCT(a INTEGER, b VARCHAR)
+);
+
+INSERT INTO struct_table VALUES (1, {a: 10, b: 'test'});
+INSERT INTO struct_table VALUES (2, NULL);
+
+SELECT id, my_struct.a FROM struct_table;
+
+-- Test for EXCEPT ALL
+CREATE TABLE t1 (x INTEGER);
+CREATE TABLE t2 (x INTEGER);
+INSERT INTO t1 VALUES (1), (1), (2), (3);
+INSERT INTO t2 VALUES (1), (2);
+SELECT x FROM t1 EXCEPT ALL SELECT x FROM t2;

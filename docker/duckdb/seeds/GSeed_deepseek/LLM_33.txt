@@ -1,0 +1,3 @@
+CREATE TABLE t1 (id INT, name TEXT, value DECIMAL(10,2), timestamp TIMESTAMP);
+   CREATE TABLE t2 (id INT, category_id INT, amount DECIMAL(10,2), transaction_date DATE);
+   CREATE TABLE t3 (id INT, data INTEGER[]);

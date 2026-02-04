@@ -1,0 +1,47 @@
+CREATE TABLE `fuzz_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `data` varchar(255) DEFAULT NULL,
+  `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `data_index` (`data`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `fuzz_test` (`data`) VALUES ('initial data 1'), ('initial data 2'), ('initial data 3');
+
+CREATE OR REPLACE VIEW `fuzz_view` AS SELECT `id`, `data` FROM `fuzz_test` WHERE `id` > 1;
+
+SELECT * FROM `fuzz_view`;
+
+ALTER TABLE `fuzz_test` ADD COLUMN `extra_data` JSON NULL AFTER `data`;
+
+UPDATE `fuzz_test` SET `extra_data` = '{"key1": "value1", "key2": 123}' WHERE `id` = 1;
+
+SELECT `extra_data`->>'$.key1' FROM `fuzz_test` WHERE `id` = 1;
+
+CREATE PROCEDURE `fuzz_proc`(IN input_id INT)
+BEGIN
+    SELECT * FROM `fuzz_test` WHERE `id` = input_id;
+END;
+
+CALL `fuzz_proc`(1);
+
+CREATE TABLE `fuzz_partitions` (
+  `id` INT NOT NULL,
+  `name` VARCHAR(50)
+)
+PARTITION BY RANGE (`id`) (
+  PARTITION p0 VALUES LESS THAN (10),
+  PARTITION p1 VALUES LESS THAN (20),
+  PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO `fuzz_partitions` (`id`, `name`) VALUES (5, 'part0'), (15, 'part1'), (25, 'part2');
+
+SELECT * FROM `fuzz_partitions` PARTITION (p0);
+
+SET @my_var = 10;
+SELECT * FROM `fuzz_test` WHERE id > @my_var;
+
+FLUSH TABLES `fuzz_test`;
+
+SHOW CREATE TABLE `fuzz_test`;

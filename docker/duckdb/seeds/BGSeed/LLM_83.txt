@@ -1,0 +1,86 @@
+BEGIN;
+
+-- Create a table with various data types and constraints
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    email VARCHAR(100) UNIQUE,
+    CHECK (salary > 0)
+);
+
+-- Create a department table
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+-- Insert some sample data
+INSERT INTO departments (id, name) VALUES
+(1, 'Sales'),
+(2, 'Marketing'),
+(3, 'Engineering');
+
+INSERT INTO employees (id, first_name, last_name, hire_date, salary, department_id, email) VALUES
+(1, 'John', 'Doe', '2022-01-15', 60000.00, 1, 'john.doe@example.com'),
+(2, 'Jane', 'Smith', '2023-03-20', 75000.00, 2, 'jane.smith@example.com'),
+(3, 'Peter', 'Jones', '2022-08-01', 90000.00, 3, 'peter.jones@example.com'),
+(4, 'Alice', 'Brown', '2023-11-10', 65000.00, 1, 'alice.brown@example.com');
+
+-- Create a view to combine data from both tables
+CREATE VIEW employee_details AS
+SELECT e.id, e.first_name, e.last_name, e.salary, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+-- Example queries to test different functionalities
+SELECT * FROM employee_details WHERE salary > 70000;
+SELECT department_name, AVG(salary) FROM employee_details GROUP BY department_name;
+SELECT first_name, last_name FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2023-06-30';
+SELECT * FROM employees WHERE last_name IS NULL;
+
+-- Window Function Example (DuckDB Specific - Row Number)
+SELECT
+    *,
+    ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC) as row_num
+FROM
+    employees;
+
+-- Test JSON functionality
+CREATE TABLE json_test (id INTEGER, data JSON);
+INSERT INTO json_test VALUES (1, '{"name": "test", "value": 123}');
+SELECT id, data['name'] FROM json_test;
+
+-- Using DuckDB-specific functions
+SELECT CURRENT_TIMESTAMP;
+SELECT STRING_SPLIT('hello,world', ',');
+
+-- Test some DuckDB extensions
+INSTALL httpfs;
+LOAD httpfs;
+
+-- Aggregate filter support
+SELECT sum(salary) FILTER (WHERE department_id=1) AS sales_salary FROM employees;
+
+
+COMMIT;
+
+-- More complex queries
+SELECT d.name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.id = e.department_id
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+-- Using DuckDB UNNEST
+CREATE TABLE unnest_test (list INTEGER[]);
+INSERT INTO unnest_test VALUES (LIST(1, 2, 3)), (LIST(4, 5, 6));
+SELECT UNNEST(list) FROM unnest_test;
+
+-- Testing Date/Time arithmetic
+SELECT hire_date, hire_date + INTERVAL '1 year' AS next_year FROM employees;

@@ -1,0 +1,48 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (first_name, last_name, salary, hire_date) VALUES
+('John', 'Doe', 60000.00, '2022-01-15'),
+('Jane', 'Smith', 75000.00, '2021-05-20'),
+('Peter', 'Jones', 50000.00, '2023-03-10');
+
+-- Test for specific MariaDB feature: JSON support
+CREATE TABLE config (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    settings JSON
+);
+
+INSERT INTO config (settings) VALUES
+('{"timeout": 30, "retries": 3, "logging": {"level": "INFO", "destination": "/var/log/app.log"}}');
+
+-- Test using dynamic columns feature of MariaDB.
+CREATE TABLE dynamic_table (id INT PRIMARY KEY, attributes COLUMN_CREATE( 'name', 'value' ));
+
+INSERT INTO dynamic_table (id, attributes) VALUES (1, COLUMN_CREATE('color', 'red', 'size', 'large'));
+
+SELECT id, COLUMN_GET(attributes, 'color' AS CHAR) as color FROM dynamic_table;
+
+-- Test for spatial data types (MariaDB specific)
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY,
+    location POINT SRID 0
+);
+
+INSERT INTO spatial_data (id, location) VALUES (1, ST_GeomFromText('POINT(10 20)'));
+
+-- Test DELETE with LIMIT
+DELETE FROM employees WHERE salary < 55000 LIMIT 1;
+
+-- Test REPLACE statement.
+REPLACE INTO employees (id, first_name, last_name, salary, hire_date) VALUES (1, 'Jonathan', 'Doe', 62000.00, '2022-01-15');
+
+-- Test ANALYZE TABLE for performance.
+ANALYZE TABLE employees;
+
+-- Test OPTIMIZE TABLE
+OPTIMIZE TABLE employees;

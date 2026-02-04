@@ -1,0 +1,67 @@
+PRAGMA fk_check=ON;
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INTEGER,
+    salary NUMERIC,
+    hire_date DATE,
+    is_manager BOOLEAN
+);
+CREATE INDEX idx_department_id ON employees(department_id);
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR(100),
+    location VARCHAR(200)
+);
+CREATE TABLE projects (
+    project_id INTEGER PRIMARY KEY,
+    project_name VARCHAR(100),
+    start_date DATE,
+    end_date DATE
+);
+CREATE TABLE employee_projects (
+    emp_id INTEGER,
+    proj_id INTEGER,
+    role VARCHAR(50),
+    FOREIGN KEY(emp_id) REFERENCES employees(id),
+    FOREIGN KEY(proj_id) REFERENCES projects(project_id)
+);
+INSERT INTO departments VALUES (1, 'Sales', 'New York');
+INSERT INTO departments VALUES (2, 'Engineering', 'San Francisco');
+INSERT INTO departments VALUES (3, 'Marketing', 'Boston');
+INSERT INTO employees VALUES (1, 'John Doe', 1, 85000.00, '2020-01-15', FALSE);
+INSERT INTO employees VALUES (2, 'Jane Smith', 2, 95000.00, '2019-03-20', TRUE);
+INSERT INTO employees VALUES (3, 'Mike Johnson', 3, 87000.00, '2021-07-10', FALSE);
+INSERT INTO projects VALUES (1, 'Project Alpha', '2023-01-01', '2023-12-31');
+INSERT INTO projects VALUES (2, 'Project Beta', '2023-02-01', '2024-01-31');
+INSERT INTO employee_projects VALUES (1, 1, 'Developer');
+INSERT INTO employee_projects VALUES (2, 1, 'Manager');
+INSERT INTO employee_projects VALUES (3, 2, 'Analyst');
+WITH dept_stats AS (
+    SELECT d.dept_name,
+           COUNT(e.id) as total_employees,
+           AVG(e.salary) as avg_salary
+    FROM departments d
+    LEFT JOIN employees e ON d.dept_id = e.department_id
+    GROUP BY d.dept_name
+)
+SELECT * FROM dept_stats;
+SELECT e.name, p.project_name, ep.role
+FROM employees e
+JOIN employee_projects ep ON e.id = ep.emp_id
+JOIN projects p ON ep.proj_id = p.project_id
+WHERE e.is_manager = TRUE
+ORDER BY e.name DESC;
+UPDATE employees SET salary = salary * 1.05 WHERE department_id = 2;
+DELETE FROM projects WHERE end_date < CURRENT_DATE;
+SELECT emp_name,
+       proj_name,
+       DENSE_RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM (
+    SELECT e.name as emp_name,
+           p.project_name as proj_name,
+           e.salary
+    FROM employees e
+    JOIN employee_projects ep ON e.id = ep.emp_id
+    JOIN projects p ON ep.proj_id = p.project_id
+);

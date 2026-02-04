@@ -1,0 +1,74 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_ALL_TABLES';
+SET @old_wait_timeout=@@wait_timeout;
+SET wait_timeout=2147483;
+SET @old_net_write_timeout=@@net_write_timeout;
+SET net_write_timeout=600;
+SET @old_lock_wait_timeout=@@lock_wait_timeout;
+SET lock_wait_timeout=31536000;
+SET autocommit = 0;
+CREATE TABLE `employees` (
+  `emp_no` int NOT NULL,
+  `birth_date` date NOT NULL,
+  `first_name` varchar(14) NOT NULL,
+  `last_name` varchar(16) NOT NULL,
+  `gender` enum('M','F') NOT NULL,
+  `hire_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `employees` VALUES (10001,'1953-09-02','Georgi','Facello','M','1986-06-26'),(10002,'1964-06-02','Bezalel','Simmel','F','1985-11-21'),(10003,'1959-12-03','Parto','Bamford','M','1986-08-28'),(10004,'1954-05-01','Chirstian','Koblick','M','1986-12-01'),(10005,'1955-01-21','Kyoichi','Maliniak','M','1989-09-12'),(10006,'1953-04-20','Anneke','Preusig','F','1989-06-02'),(10007,'1957-05-23','Tzvetan','Zielinski','F','1989-02-10'),(10008,'1958-02-19','Saniya','Kalloufi','M','1994-09-15'),(10009,'1952-04-19','Sumant','Peac','F','1985-02-18'),(10010,'1963-06-01','Duangkaew','Piveteau','F','1989-08-24');
+CREATE TABLE `salaries` (
+  `emp_no` int NOT NULL,
+  `salary` int NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date NOT NULL,
+  PRIMARY KEY (`emp_no`,`from_date`),
+  CONSTRAINT `salaries_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `salaries` VALUES (10001,60117,'1986-06-26','1987-06-26'),(10001,62102,'1987-06-26','1988-06-25'),(10001,66074,'1988-06-25','1989-06-25'),(10001,66596,'1989-06-25','1990-06-25'),(10001,66961,'1990-06-25','1991-06-25'),(10001,71327,'1991-06-25','1992-06-24'),(10001,74340,'1992-06-24','1993-06-24'),(10001,75286,'1993-06-24','1994-06-24'),(10001,75994,'1994-06-24','1995-06-24'),(10001,76805,'1995-06-24','1996-06-24');
+CREATE TABLE `titles` (
+  `emp_no` int NOT NULL,
+  `title` varchar(50) NOT NULL,
+  `from_date` date NOT NULL,
+  `to_date` date DEFAULT NULL,
+  PRIMARY KEY (`emp_no`,`title`,`from_date`),
+  CONSTRAINT `titles_ibfk_1` FOREIGN KEY (`emp_no`) REFERENCES `employees` (`emp_no`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `titles` VALUES (10001,'Senior Engineer','1986-06-26','9999-01-01'),(10002,'Staff','1996-08-03','9999-01-01'),(10003,'Senior Engineer','1995-12-03','9999-01-01'),(10004,'Engineer','1986-12-01','1995-12-01'),(10004,'Senior Engineer','1995-12-01','9999-01-01'),(10005,'Senior Staff','1996-09-12','9999-01-01'),(10006,'Senior Engineer','1990-08-05','9999-01-01'),(10007,'Senior Staff','1996-02-11','9999-01-01'),(10008,'Assistant Engineer','1998-03-11','2000-07-31'),(10009,'Assistant Engineer','1985-02-18','1990-09-03');
+ALTER TABLE employees ADD COLUMN profile JSON;
+UPDATE employees SET profile = JSON_OBJECT('education', JSON_ARRAY('BS','MS'), 'skills', JSON_ARRAY('SQL', 'Python', 'Java')) WHERE emp_no = 10001;
+SELECT emp_no, JSON_EXTRACT(profile, '$.skills[0]') AS first_skill FROM employees WHERE emp_no = 10001;
+CREATE PROCEDURE `update_salary` (IN emp_id INT, IN new_salary INT)
+BEGIN
+    UPDATE salaries SET salary = new_salary WHERE emp_no = emp_id AND to_date = '9999-01-01';
+END;
+CALL update_salary(10001, 80000);
+CREATE FUNCTION `calculate_bonus` (salary INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE bonus INT;
+    SET bonus = salary * 0.10;
+    RETURN bonus;
+END;
+SELECT calculate_bonus(70000);
+CREATE EVENT `daily_salary_increase`
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_TIMESTAMP
+DO
+  UPDATE salaries SET salary = salary * 1.01 WHERE to_date = '9999-01-01';
+ANALYZE TABLE employees;
+OPTIMIZE TABLE salaries;
+SELECT * FROM employees WHERE first_name LIKE 'G%';
+SELECT emp_no, first_name, last_name FROM employees ORDER BY last_name DESC LIMIT 5;
+SELECT gender, COUNT(*) FROM employees GROUP BY gender;
+SELECT e.first_name, s.salary FROM employees e JOIN salaries s ON e.emp_no = s.emp_no WHERE s.salary > 70000;
+SELECT title, AVG(salary) AS avg_salary FROM titles t JOIN salaries s ON t.emp_no = s.emp_no GROUP BY title;
+CREATE VIEW high_earners AS SELECT e.emp_no, e.first_name, e.last_name FROM employees e JOIN salaries s ON e.emp_no = s.emp_no WHERE s.salary > 75000;
+SELECT * FROM high_earners;
+CREATE INDEX idx_lastname ON employees(last_name);
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(50) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) VIRTUAL;
+SELECT * FROM employees WHERE full_name LIKE '%Simmel%';
+SET @old_sql_mode=@@sql_mode;
+SET @old_wait_timeout=@@wait_timeout;
+SET @old_net_write_timeout=@@net_write_timeout;
+SET @old_lock_wait_timeout=@@lock_wait_timeout;
+SET autocommit = 1;

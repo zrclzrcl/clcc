@@ -1,0 +1,115 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+
+CREATE SCHEMA test_schema;
+
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER
+);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Larry', 'sad');
+INSERT INTO person (name, current_mood) VALUES ('Curly', 'ok');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+CREATE FUNCTION add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2;'
+LANGUAGE SQL
+IMMUTABLE
+RETURNS NULL ON NULL INPUT;
+
+SELECT add(1, 2);
+
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK(VALUE ~ '^\d{5}(-\d{4})?$');
+
+CREATE TABLE us_address (
+    city VARCHAR(30),
+    zip us_postal_code
+);
+
+INSERT INTO us_address (city, zip) VALUES ('Anytown', '12345');
+INSERT INTO us_address (city, zip) VALUES ('Anytown', '12345-6789');
+
+CREATE VIEW happy_people AS
+SELECT name FROM person WHERE current_mood = 'happy';
+
+SELECT * FROM happy_people;
+
+CREATE INDEX idx_person_name ON person (name);
+
+ALTER TABLE test_schema.test_table ADD COLUMN description TEXT;
+
+UPDATE test_schema.test_table SET description = 'Initial value' WHERE id = 1;
+
+DELETE FROM test_schema.test_table WHERE id = 1;
+
+DROP INDEX idx_person_name;
+
+DROP VIEW happy_people;
+
+DROP FUNCTION add(integer, integer);
+
+DROP TABLE us_address;
+
+DROP DOMAIN us_postal_code;
+
+DROP TABLE person;
+
+DROP TYPE mood;
+
+DROP TABLE test_schema.test_table;
+
+DROP SCHEMA test_schema;
+
+DROP TABLESPACE test_tablespace;
+
+CREATE UNLOGGED TABLE unlogged_table (id SERIAL PRIMARY KEY, data TEXT);
+INSERT INTO unlogged_table (data) VALUES ('test data');
+SELECT * FROM unlogged_table;
+DROP TABLE unlogged_table;
+
+CREATE TABLE parent_table (id SERIAL PRIMARY KEY, name TEXT);
+CREATE TABLE child_table (id SERIAL PRIMARY KEY, parent_id INTEGER REFERENCES parent_table(id), value INTEGER);
+INSERT INTO parent_table (name) VALUES ('parent1');
+INSERT INTO child_table (parent_id, value) VALUES (1, 10);
+SELECT * FROM parent_table;
+SELECT * FROM child_table;
+DROP TABLE child_table;
+DROP TABLE parent_table;
+
+CREATE MATERIALIZED VIEW materialized_view AS SELECT name, current_mood FROM person;
+REFRESH MATERIALIZED VIEW materialized_view;
+SELECT * FROM materialized_view;
+DROP MATERIALIZED VIEW materialized_view;
+
+CREATE TEXT SEARCH CONFIGURATION test_config ( COPY = english );
+ALTER TEXT SEARCH CONFIGURATION test_config ALTER MAPPING FOR asciiword, asciihword, hword_asciipart, hword, hword_part WITH simple;
+SELECT * FROM ts_debug('test_config', 'Test Text');
+DROP TEXT SEARCH CONFIGURATION test_config;
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+SELECT increment(5);
+DROP FUNCTION increment(INTEGER);
+
+CREATE AGGREGATE myavg (numeric)
+(
+    sfunc = numeric_add,
+    stype = numeric,
+    finalfunc = numeric_avg
+);
+SELECT myavg(id) FROM test_schema.test_table;
+DROP AGGREGATE myavg (numeric);

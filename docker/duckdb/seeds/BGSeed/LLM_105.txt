@@ -1,0 +1,87 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    category VARCHAR(255),
+    discount REAL
+);
+
+INSERT INTO products (name, price, category, discount) VALUES
+('Laptop', 1200.00, 'Electronics', 0.1),
+('Mouse', 25.00, 'Electronics', 0.05),
+('Keyboard', 75.00, 'Electronics', 0.0),
+('Book', 15.50, 'Books', 0.0),
+('T-Shirt', 20.00, 'Clothing', 0.2);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    product_id INTEGER,
+    quantity INTEGER,
+    order_date DATE,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO orders (product_id, quantity, order_date) VALUES
+(1, 1, '2023-01-15'),
+(2, 5, '2023-02-20'),
+(3, 2, '2023-03-10'),
+(4, 3, '2023-04-05'),
+(5, 10, '2023-05-12');
+
+-- Demonstrate window functions
+SELECT
+    name,
+    price,
+    AVG(price) OVER (PARTITION BY category) AS avg_category_price
+FROM
+    products;
+
+-- Demonstrate string functions and LIKE
+SELECT name FROM products WHERE name LIKE '%o%';
+
+-- Demonstrate date functions
+SELECT order_date, DATE_TRUNC('month', order_date) AS month FROM orders;
+
+-- Demonstrate CASE WHEN expressions
+SELECT
+    name,
+    price,
+    CASE
+        WHEN price > 100 THEN 'Expensive'
+        ELSE 'Affordable'
+    END AS price_category
+FROM
+    products;
+
+-- Demonstrate aggregate functions and GROUP BY
+SELECT category, COUNT(*) AS num_products, AVG(price) AS avg_price FROM products GROUP BY category;
+
+-- Demonstrate joins
+SELECT o.order_id, p.name, o.quantity
+FROM orders o
+JOIN products p ON o.product_id = p.id;
+
+-- Demonstrate EXCEPT clause
+CREATE TABLE temp1 AS SELECT category FROM products;
+CREATE TABLE temp2 AS SELECT 'Electronics' AS category UNION ALL SELECT 'Books';
+SELECT category FROM temp2 EXCEPT SELECT category FROM temp1;
+DROP TABLE temp1;
+DROP TABLE temp2;
+
+-- Demonstrate DuckDB specific functions - UUID
+SELECT uuid();
+
+-- Demonstrate LIST and UNNEST (DuckDB array features)
+CREATE TABLE array_test (id INTEGER, arr INTEGER[]);
+INSERT INTO array_test VALUES (1, LIST(1, 2, 3)), (2, LIST(4, 5, 6));
+SELECT id, UNNEST(arr) FROM array_test;
+DROP TABLE array_test;
+
+-- Demonstrate JSON functions
+CREATE TABLE json_test (id INTEGER, data JSON);
+INSERT INTO json_test VALUES (1, JSON('{"name": "John", "age": 30}'));
+SELECT id, JSON_EXTRACT_SCALAR(data, '$.name') FROM json_test;
+DROP TABLE json_test;
+
+-- Demonstrate try_cast function
+SELECT TRY_CAST('abc' AS INTEGER);

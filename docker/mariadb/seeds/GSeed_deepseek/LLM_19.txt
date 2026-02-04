@@ -1,0 +1,83 @@
+-- Set optimizer_switch for testing specific execution plans
+SET optimizer_switch = 'index_merge=off';
+
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    data JSON,
+    binary_data BLOB
+);
+
+-- Create an index for testing query performance
+CREATE INDEX idx_name_status ON test_table(name, status);
+
+-- Create a stored procedure to handle conditional inserts
+DELIMITER //
+CREATE PROCEDURE insert_test_data(IN p_name VARCHAR(100), IN p_status ENUM('active', 'inactive'))
+BEGIN
+    INSERT INTO test_table (name, status) VALUES (p_name, p_status);
+END//
+DELIMITER ;
+
+-- Create a trigger that updates related data after an insert
+DELIMITER //
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+BEGIN
+    UPDATE some_other_table SET count = count + 1 WHERE id = NEW.id;
+END//
+DELIMITER ;
+
+-- Schedule an event to delete old records weekly
+DELIMITER //
+CREATE EVENT clean_old_records
+ON SCHEDULE EVERY 1 WEEK
+DO
+BEGIN
+    DELETE FROM test_table WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 MONTH);
+END//
+DELIMITER ;
+
+-- Insert sample data including edge cases
+INSERT INTO test_table (name, description, status, data)
+VALUES ('Test1', 'Sample Description', 'active', '{"key": "value"}'),
+       ('Test2', NULL, 'inactive', NULL),
+       ('Test3', '', 'active', '{"array": [1, 2, 3]}');
+
+-- Perform an update with a subquery
+UPDATE test_table SET description = 'Updated Description' WHERE id IN (SELECT id FROM test_table WHERE status = 'active');
+
+-- Delete records using a transaction to test rollback
+START TRANSACTION;
+DELETE FROM test_table WHERE name = 'Test1';
+SAVEPOINT my_savepoint;
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+-- Select with complex query structure
+SELECT t1.id, t1.name, t2.count 
+FROM test_table t1
+JOIN some_other_table t2 ON t1.id = t2.id
+WHERE t1.status = 'active' AND t2.count > 10
+GROUP BY t1.id
+HAVING COUNT(*) > 5
+ORDER BY t1.created_at DESC
+LIMIT 10;
+
+-- Show status variables to monitor database state
+SHOW STATUS LIKE 'Threads_%';
+SHOW GLOBAL VARIABLES LIKE 'innodb_buffer_pool_size';
+
+-- Clean up stored procedure, trigger, and event
+DROP PROCEDURE IF EXISTS insert_test_data;
+DROP TRIGGER IF EXISTS after_insert_test;
+DROP EVENT IF EXISTS clean_old_records;
+
+-- Drop tables to reset the environment
+DROP TABLE IF EXISTS test_table, some_other_table;

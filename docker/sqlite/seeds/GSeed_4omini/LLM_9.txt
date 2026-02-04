@@ -1,0 +1,8 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, password TEXT NOT NULL, email TEXT);
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, price REAL CHECK(price >= 0), stock INTEGER DEFAULT 0);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, product_id INTEGER, quantity INTEGER CHECK(quantity > 0), FOREIGN KEY(user_id) REFERENCES users(id), FOREIGN KEY(product_id) REFERENCES products(id));
+CREATE TRIGGER log_insert_users AFTER INSERT ON users BEGIN INSERT INTO audit_log(action, username, created_at) VALUES('INSERT', new.username, CURRENT_TIMESTAMP); END;
+CREATE TRIGGER log_update_products AFTER UPDATE ON products WHEN old.stock != new.stock BEGIN INSERT INTO audit_log(action, product_name, old_stock, new_stock, created_at) VALUES('UPDATE', old.name, old.stock, new.stock, CURRENT_TIMESTAMP); END;
+CREATE TABLE audit_log(id INTEGER PRIMARY KEY, action TEXT, username TEXT, product_name TEXT, old_stock INTEGER, new_stock INTEGER, created_at DATETIME);
+ALTER TABLE products RENAME COLUMN name TO product_name;
+ALTER TABLE orders ADD COLUMN order_date DATETIME DEFAULT CURRENT_TIMESTAMP;

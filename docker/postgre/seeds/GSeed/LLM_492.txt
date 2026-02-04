@@ -1,0 +1,136 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00),
+    ('Monitor', 300.00);
+
+CREATE INDEX idx_product_name ON products (name);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES
+    ('Alice', 'happy'),
+    ('Bob', 'ok'),
+    ('Charlie', 'sad');
+
+SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+SELECT name, price FROM products ORDER BY price DESC LIMIT 2;
+
+UPDATE products SET price = price * 1.1 WHERE product_id IN (SELECT product_id FROM products WHERE name LIKE '%or%');
+
+DELETE FROM products WHERE price < (SELECT MIN(price) FROM products);
+
+SELECT COUNT(*) AS total_products FROM products;
+
+SELECT MAX(price) AS highest_price FROM products;
+
+SELECT name, current_mood FROM person WHERE current_mood = 'happy';
+
+SELECT p.name AS product_name, pr.name AS person_name
+FROM products p
+CROSS JOIN person pr
+WHERE p.price > 100;
+
+SELECT p.name,
+       CASE
+           WHEN p.price > 500 THEN 'Expensive'
+           WHEN p.price > 100 THEN 'Moderate'
+           ELSE 'Cheap'
+       END AS price_category
+FROM products p;
+
+CREATE OR REPLACE FUNCTION discount_price(original_price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN original_price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, discount_price(price, 10) AS discounted_price FROM products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+INSERT INTO orders (product_id, quantity) VALUES
+    (1, 2),
+    (2, 10),
+    (3, 5);
+
+SELECT p.name, SUM(o.quantity) AS total_ordered
+FROM products p
+JOIN orders o ON p.product_id = o.product_id
+GROUP BY p.name
+ORDER BY total_ordered DESC;
+
+CREATE VIEW product_order_summary AS
+SELECT p.name, SUM(o.quantity) AS total_ordered
+FROM products p
+JOIN orders o ON p.product_id = o.product_id
+GROUP BY p.name;
+
+SELECT * FROM product_order_summary;
+
+ALTER TABLE products ADD COLUMN description TEXT;
+
+UPDATE products SET description = 'High-performance laptop' WHERE product_id = 1;
+
+CREATE MATERIALIZED VIEW high_price_products AS
+SELECT * FROM products WHERE price > 500;
+
+SELECT * FROM high_price_products;
+
+REFRESH MATERIALIZED VIEW high_price_products;
+
+CREATE TEMP TABLE temp_products AS SELECT * FROM products;
+
+SELECT * FROM temp_products;
+
+DROP TABLE temp_products;
+
+SELECT version();
+
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    json_data JSONB
+);
+
+INSERT INTO test_table (json_data) VALUES
+('{"name": "Test", "value": 123}');
+
+SELECT json_data -> 'name' FROM test_table;
+
+SELECT json_data ->> 'name' FROM test_table;
+
+SELECT * FROM products WHERE to_tsvector('english', name || ' ' || coalesce(description, '')) @@ to_tsquery('english', 'laptop & high');
+
+CREATE TABLE range_table (
+    id SERIAL PRIMARY KEY,
+    int4_range int4range,
+    numrange numrange
+);
+
+INSERT INTO range_table (int4_range, numrange) VALUES
+    (int4range(10, 20), numrange(10.5, 20.5));
+
+SELECT * FROM range_table WHERE int4_range && int4range(15, 25);
+
+SELECT generate_series(1, 10);
+
+SELECT current_database();

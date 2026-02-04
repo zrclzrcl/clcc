@@ -1,0 +1,53 @@
+-- Create tables with various data types and constraints
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK(value > 0),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data into the table
+INSERT INTO t1 (id, name, value) VALUES 
+(1, 'Alice', 100.5),
+(2, 'Bob', 200.3),
+(3, 'Charlie', 300.7);
+
+-- Create a table with specific storage settings for testing
+CREATE TABLE t2(
+    id INTEGER,
+    data TEXT,
+    count INTEGER DEFAULT 0
+) WITH (rowid = false);
+
+-- Insert sample data into the second table
+INSERT INTO t2 (id, data) VALUES 
+(1, 'data1'),
+(2, 'data2');
+
+-- Create a unique index to enforce uniqueness and test index handling
+CREATE UNIQUE INDEX idx_unique ON t1(name);
+
+-- Create a view to test query rewriting and dependency tracking
+CREATE VIEW v1 AS SELECT id, name, value FROM t1 WHERE value > 50;
+
+-- Create a trigger for testing procedural SQL execution
+CREATE TRIGGER trig_insert AFTER INSERT ON t2 
+BEGIN
+    UPDATE t1 SET count = count + 1 WHERE id = NEW.id;
+END;
+
+-- Use a CTE to test complex query structures
+WITH cte AS (
+    SELECT id, name, value,
+    RANK() OVER (ORDER BY value DESC) as rank
+    FROM t1
+)
+SELECT * FROM cte WHERE rank <= 3;
+
+-- Test window functions and aggregation
+SELECT 
+    id,
+    name,
+    value,
+    SUM(value) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS running_total
+FROM t1;

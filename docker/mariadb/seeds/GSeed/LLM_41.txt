@@ -1,0 +1,75 @@
+CREATE TABLE accounts (
+    account_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_name VARCHAR(255) NOT NULL,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO accounts (account_name, balance) VALUES ('Alice', 100.00);
+INSERT INTO accounts (account_name, balance) VALUES ('Bob', 50.00);
+
+CREATE TABLE audit_log (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT,
+    old_balance DECIMAL(10, 2),
+    new_balance DECIMAL(10, 2),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Example using MariaDB's SEQUENCE engine for generating unique IDs
+CREATE SEQUENCE transaction_seq START WITH 1 INCREMENT BY 1;
+
+-- Example using stored procedure with error handling. Demonstrates specific MariaDB syntax for exception handling.
+DELIMITER //
+CREATE PROCEDURE transfer_funds(IN from_account_name VARCHAR(255), IN to_account_name VARCHAR(255), IN amount DECIMAL(10, 2))
+BEGIN
+    DECLARE from_account_id INT;
+    DECLARE to_account_id INT;
+
+    START TRANSACTION;
+
+    SELECT account_id INTO from_account_id FROM accounts WHERE account_name = from_account_name FOR UPDATE; -- Lock row
+    SELECT account_id INTO to_account_id FROM accounts WHERE account_name = to_account_name FOR UPDATE; -- Lock row
+
+    IF from_account_id IS NULL OR to_account_id IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'One or both accounts not found';
+    END IF;
+
+    IF (SELECT balance FROM accounts WHERE account_id = from_account_id) < amount THEN
+         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient funds';
+    END IF;
+
+    UPDATE accounts SET balance = balance - amount WHERE account_id = from_account_id;
+    UPDATE accounts SET balance = balance + amount WHERE account_id = to_account_id;
+
+
+    INSERT INTO audit_log (account_id, old_balance, new_balance)
+    SELECT from_account_id, (SELECT balance + amount FROM accounts WHERE account_id = from_account_id), (SELECT balance FROM accounts WHERE account_id = from_account_id);
+
+    INSERT INTO audit_log (account_id, old_balance, new_balance)
+    SELECT to_account_id, (SELECT balance - amount FROM accounts WHERE account_id = to_account_id), (SELECT balance FROM accounts WHERE account_id = to_account_id);
+
+
+    COMMIT;
+
+    SELECT 'Transaction successful';
+
+    -- Exception handling
+    -- DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    -- BEGIN
+    --     ROLLBACK;
+    --     RESIGNAL; -- Re-raise the exception
+    -- END;
+
+
+END //
+DELIMITER ;
+
+-- Execute the procedure.
+CALL transfer_funds('Alice', 'Bob', 20.00);
+
+-- Example of a fulltext search
+CREATE FULLTEXT INDEX account_name_fulltext ON accounts (account_name);
+
+SELECT * FROM accounts WHERE MATCH (account_name) AGAINST ('Alice' IN BOOLEAN MODE);

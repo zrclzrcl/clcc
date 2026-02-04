@@ -1,0 +1,92 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL UNIQUE
+);
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    job_id VARCHAR(20) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id)
+);
+INSERT INTO departments (dept_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering'),
+('Finance'),
+('Human Resources');
+INSERT INTO employees (first_name, last_name, email, job_id, salary, dept_id) VALUES
+('John', 'Doe', 'john.doe@example.com', 'SALES_REP', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', 'MKT_MGR', 80000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', 'ENG_LEAD', 100000.00, 3),
+('Mary', 'Brown', 'mary.brown@example.com', 'FIN_ANALYST', 75000.00, 4),
+('David', 'Wilson', 'david.wilson@example.com', 'HR_MGR', 90000.00, 5);
+INSERT INTO employees (first_name, last_name, email, job_id, salary, dept_id, commission_pct) VALUES
+('Alice', 'Johnson', 'alice.johnson@example.com', 'SALES_REP', 65000.00, 1, 0.15),
+('Bob', 'Williams', 'bob.williams@example.com', 'SALES_REP', 70000.00, 1, 0.20);
+BEGIN TRANSACTION;
+UPDATE employees SET salary = salary * 1.10 WHERE dept_id = 3;
+SELECT * FROM employees WHERE dept_id = 3;
+DELETE FROM employees WHERE emp_id = 5;
+SELECT * FROM employees;
+INSERT INTO departments (dept_name) VALUES ('Research');
+ROLLBACK;
+SELECT * FROM departments;
+SELECT * FROM employees;
+CREATE VIEW emp_details_view AS
+SELECT e.emp_id, e.first_name, e.last_name, d.dept_name
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+SELECT * FROM emp_details_view;
+SELECT dept_name, COUNT(*) FROM emp_details_view GROUP BY dept_name;
+CREATE MATERIALIZED VIEW sales_emps AS
+SELECT emp_id, first_name, last_name, salary FROM employees WHERE dept_id = 1;
+SELECT * FROM sales_emps;
+REFRESH MATERIALIZED VIEW sales_emps;
+SELECT * FROM sales_emps;
+CREATE FUNCTION get_dept_name(dept_id_in INTEGER)
+RETURNS VARCHAR(50) AS $$
+BEGIN
+    RETURN (SELECT dept_name FROM departments WHERE dept_id = dept_id_in);
+END;
+$$ LANGUAGE plpgsql;
+SELECT get_dept_name(1);
+SELECT get_dept_name(2);
+CREATE OR REPLACE FUNCTION calculate_bonus(salary DECIMAL, commission DECIMAL DEFAULT 0)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN salary * commission;
+END;
+$$ LANGUAGE plpgsql;
+SELECT calculate_bonus(70000, 0.20);
+SELECT calculate_bonus(60000);
+CREATE TABLE logs (
+    log_id SERIAL PRIMARY KEY,
+    log_message TEXT,
+    log_time TIMESTAMP DEFAULT NOW()
+);
+CREATE TRIGGER log_employee_changes
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE pg_notify('employee_changes', TG_OP || ', ' || TG_TABLE_NAME);
+INSERT INTO employees (first_name, last_name, email, job_id, salary, dept_id) VALUES
+('New', 'Employee', 'new.employee@example.com', 'SALES_REP', 50000.00, 1);
+UPDATE employees SET salary = 75000.00 WHERE email = 'john.doe@example.com';
+EXPLAIN ANALYZE SELECT * FROM employees WHERE salary > 60000;
+CREATE INDEX salary_idx ON employees (salary);
+EXPLAIN ANALYZE SELECT * FROM employees WHERE salary > 60000;
+SELECT version();
+SELECT inet_server_addr();
+SELECT inet_server_port();
+SHOW server_version;
+SHOW data_directory;
+SELECT current_database();
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+SELECT * FROM pg_stat_statements;

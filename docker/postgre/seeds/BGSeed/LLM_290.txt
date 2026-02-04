@@ -1,0 +1,151 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_products_name ON products (name);
+
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INT REFERENCES products(product_id),
+    category_id INT REFERENCES categories(category_id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Clothing'), ('Home Goods');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.00),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00),
+('Coffee Maker', 'Automatic coffee maker with timer', 75.00);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+
+SELECT p.name, c.name
+FROM products p
+JOIN product_categories pc ON p.product_id = pc.product_id
+JOIN categories c ON pc.category_id = c.category_id;
+
+CREATE VIEW product_details AS
+SELECT
+    p.product_id,
+    p.name AS product_name,
+    p.price,
+    c.name AS category_name
+FROM
+    products p
+JOIN
+    product_categories pc ON p.product_id = pc.product_id
+JOIN
+    categories c ON pc.category_id = c.category_id;
+
+SELECT * FROM product_details;
+
+ALTER TABLE products ADD COLUMN discount DECIMAL(5,2) DEFAULT 0.00;
+
+UPDATE products SET discount = 0.10 WHERE product_id = 1;
+
+SELECT * FROM products WHERE price > 50 ORDER BY name;
+
+DELETE FROM products WHERE product_id = 2;
+
+CREATE OR REPLACE FUNCTION calculate_tax(price DECIMAL, tax_rate DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * tax_rate;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_tax(100.00, 0.07);
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    hire_date DATE,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id)
+VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 60000.00, 10);
+
+SELECT * FROM employees WHERE salary BETWEEN 50000 AND 70000;
+
+CREATE TEMPORARY TABLE temp_products AS SELECT * FROM products;
+
+SELECT * FROM temp_products;
+
+DROP TABLE temp_products;
+
+CREATE SEQUENCE seq_product_id START 4;
+
+ALTER TABLE products ALTER COLUMN product_id SET DEFAULT nextval('seq_product_id');
+
+INSERT INTO products (name, description, price) VALUES ('New Product', 'A brand new product', 150.00);
+
+SELECT * FROM products;
+
+TRUNCATE TABLE products RESTART IDENTITY;
+
+INSERT INTO products (name, description, price) VALUES ('Product 1', 'Description 1', 50.00);
+
+SELECT * FROM products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, total_amount) VALUES (1, 250.00), (2, 100.00);
+
+SELECT * FROM orders ORDER BY order_date DESC;
+
+CREATE TYPE address AS (
+    street VARCHAR(255),
+    city VARCHAR(255),
+    state VARCHAR(255),
+    zip_code VARCHAR(10)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    billing_address address,
+    shipping_address address
+);
+
+INSERT INTO customers (name, billing_address, shipping_address) VALUES (
+    'Alice Smith',
+    ROW('123 Main St', 'Anytown', 'CA', '91234')::address,
+    ROW('456 Oak Ave', 'Anytown', 'CA', '91234')::address
+);
+
+SELECT (billing_address).city FROM customers;
+
+CREATE TABLE inventory (
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    PRIMARY KEY (product_id)
+);
+
+INSERT INTO inventory (product_id, quantity) VALUES (1, 100), (3, 50);
+
+SELECT p.name, i.quantity FROM products p JOIN inventory i ON p.product_id = i.product_id;
+
+GRANT SELECT ON products TO PUBLIC;
+REVOKE ALL PRIVILEGES ON products FROM PUBLIC;

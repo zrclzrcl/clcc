@@ -1,0 +1,48 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL CHECK (value > 0),
+    data BLOB,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert some sample data
+INSERT INTO test_table VALUES 
+(1, 'Test', 123.45, x'ABCD', '2023-01-01'),
+(2, 'Edge', NULL, x'', '2023-01-02');
+
+-- Create a virtual table for full-text search
+CREATE VIRTUAL TABLE ft_search USING fts5(name);
+INSERT INTO ft_search VALUES ('test edge case');
+INSERT INTO ft_search VALUES ('another test');
+
+-- Create indexes to test query optimization
+CREATE INDEX idx_name ON test_table(name);
+CREATE UNIQUE INDEX idx_unique_value ON test_table(value);
+
+-- Create a trigger for testing
+CREATE TRIGGER after_insert_trigger 
+AFTER INSERT ON test_table
+FOR EACH ROW 
+WHEN NEW.value > 100
+BEGIN
+    INSERT INTO log_table VALUES (NEW.id, 'Inserted high value', datetime('now'));
+END;
+
+-- Create a view with window functions and CTEs
+WITH cte AS (
+    SELECT id, name, RANK() OVER (ORDER BY value DESC) as rank 
+    FROM test_table
+)
+SELECT * FROM cte WHERE rank <= 10;
+
+-- Create a function for JSON handling
+CREATE FUNCTION extract_json_field(json TEXT, field TEXT) RETURNS TEXT
+AS $$ 
+    json_extract(json, field);
+$$ LANGUAGE SQL;
+
+-- Test the function in a view
+CREATE VIEW json_view AS
+SELECT extract_json_field('{"name":"test", "value":123}', 'name') as extracted_name;

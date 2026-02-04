@@ -1,0 +1,130 @@
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50) NOT NULL,
+    manager_id INTEGER,
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id SERIAL PRIMARY KEY,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+CREATE TABLE locations (
+    location_id SERIAL PRIMARY KEY,
+    address VARCHAR(100),
+    postal_code VARCHAR(20),
+    city VARCHAR(50),
+    state_province VARCHAR(50),
+    country_id CHAR(2)
+);
+
+CREATE TABLE countries (
+    country_id CHAR(2) PRIMARY KEY,
+    country_name VARCHAR(50),
+    region_id INTEGER
+);
+
+CREATE TABLE regions (
+    region_id SERIAL PRIMARY KEY,
+    region_name VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments(department_id);
+ALTER TABLE departments ADD CONSTRAINT fk_location FOREIGN KEY (location_id) REFERENCES locations(location_id);
+ALTER TABLE locations ADD CONSTRAINT fk_country FOREIGN KEY (country_id) REFERENCES countries(country_id);
+ALTER TABLE countries ADD CONSTRAINT fk_region FOREIGN KEY (region_id) REFERENCES regions(region_id);
+ALTER TABLE employees ADD CONSTRAINT fk_job FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+
+INSERT INTO regions (region_name) VALUES ('Europe');
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('IT', 'Italy', 1);
+INSERT INTO locations (address, postal_code, city, state_province, country_id) VALUES ('1297 Via Cola di Rie', '00989', 'Rome', NULL, 'IT');
+INSERT INTO departments (department_name, location_id) VALUES ('Sales', 1);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Sales Representative', 4000, 8000);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 6000.00, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-20', 1, 6500.00, 1);
+
+SELECT * FROM employees WHERE salary > 6200.00;
+SELECT department_name FROM departments WHERE location_id = 1;
+UPDATE employees SET salary = 7000.00 WHERE employee_id = 1;
+DELETE FROM employees WHERE employee_id = 2;
+SELECT COUNT(*) FROM employees;
+SELECT AVG(salary) FROM employees;
+SELECT MAX(salary) FROM employees;
+SELECT MIN(salary) FROM employees;
+SELECT SUM(salary) FROM employees;
+SELECT * FROM employees ORDER BY salary DESC;
+SELECT * FROM employees LIMIT 1;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+EXPLAIN SELECT * FROM employees WHERE last_name = 'Doe';
+
+CREATE VIEW employee_view AS SELECT employee_id, first_name, last_name FROM employees;
+SELECT * FROM employee_view;
+
+SELECT first_name || ' ' || last_name AS full_name FROM employees;
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2023-01-01' AND '2023-03-01';
+
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+SELECT * FROM employees WHERE email IS NOT NULL;
+
+SELECT * FROM employees WHERE commission_pct IS NULL;
+
+SELECT first_name, last_name, salary,
+       CASE
+           WHEN salary > 7000 THEN 'High'
+           WHEN salary > 5000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+SELECT d.department_name, COUNT(e.employee_id) AS employee_count
+FROM departments d
+LEFT JOIN employees e ON d.department_id = e.department_id
+GROUP BY d.department_name
+ORDER BY employee_count DESC;
+
+SELECT e.first_name, e.last_name, j.job_title
+FROM employees e
+JOIN jobs j ON e.job_id = j.job_id;
+
+SELECT e.first_name, e.last_name, d.department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id
+WHERE d.location_id = 1;
+
+SELECT e1.first_name AS employee_name, e2.first_name AS manager_name
+FROM employees e1
+LEFT JOIN employees e2 ON e1.manager_id = e2.employee_id;
+
+SELECT department_id, MAX(salary) AS max_salary
+FROM employees
+GROUP BY department_id
+HAVING COUNT(*) > 1;
+
+DROP VIEW employee_view;
+DROP INDEX idx_employee_last_name;
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TABLE jobs;
+DROP TABLE locations;
+DROP TABLE countries;
+DROP TABLE regions;

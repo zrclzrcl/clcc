@@ -1,0 +1,96 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.50, '2021-05-20', 'Marketing'),
+('Charlie Brown', 55000.75, '2023-03-10', 'Sales'),
+('David Lee', 80000.25, '2020-11-01', 'Engineering'),
+('Eve Wilson', 90000.00, '2019-08-05', 'Engineering');
+
+SELECT * FROM employees WHERE salary > 70000 ORDER BY hire_date;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+SELECT name, salary FROM employees WHERE salary = (SELECT MAX(salary) FROM employees);
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Engineering';
+
+-- Demonstrating array functionality
+CREATE TABLE employee_skills (
+    employee_id INTEGER REFERENCES employees(id),
+    skills TEXT[]
+);
+
+INSERT INTO employee_skills (employee_id, skills) VALUES
+(1, '{"Sales", "Communication"}'),
+(2, '{"Marketing", "SEO", "Advertising"}'),
+(4, '{"Java", "PostgreSQL", "Python"}'),
+(5, '{"C++", "Data Structures", "Algorithms"}');
+
+SELECT * FROM employee_skills WHERE skills @> ARRAY['PostgreSQL'];
+
+-- Demonstrating JSON functionality
+CREATE TABLE employee_details (
+    employee_id INTEGER REFERENCES employees(id),
+    details JSONB
+);
+
+INSERT INTO employee_details (employee_id, details) VALUES
+(1, '{"age": 30, "city": "New York"}'),
+(2, '{"age": 35, "city": "Los Angeles"}'),
+(4, '{"age": 40, "city": "San Francisco"}'),
+(5, '{"age": 45, "city": "Seattle"}');
+
+SELECT employee_id, details ->> 'city' AS city FROM employee_details WHERE details ->> 'age' > '35';
+
+-- Demonstrating window functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Demonstrating common table expressions (CTEs)
+WITH high_earners AS (
+    SELECT id, name, salary
+    FROM employees
+    WHERE salary > 75000
+)
+SELECT name, salary
+FROM high_earners
+ORDER BY salary DESC;
+
+-- Demonstrating full text search
+ALTER TABLE employees ADD COLUMN search_vector tsvector;
+UPDATE employees SET search_vector = to_tsvector('english', name || ' ' || department);
+CREATE INDEX idx_employees_search ON employees USING GIN (search_vector);
+SELECT * FROM employees WHERE search_vector @@ to_tsquery('english', 'Sales');
+
+--Demonstrating generate_series
+SELECT generate_series(1, 10);
+
+--Demonstrating range types
+CREATE TABLE reservation (room int, during tsrange);
+INSERT INTO reservation VALUES
+    (1108, '[2010-12-11 10:00, 2010-12-11 11:00)');
+SELECT * FROM reservation WHERE during @> timestamp '2010-12-11 10:30';
+
+DROP TABLE reservation;
+DROP TABLE employee_details;
+DROP TABLE employee_skills;
+DROP INDEX idx_employees_department;
+DROP TABLE employees;

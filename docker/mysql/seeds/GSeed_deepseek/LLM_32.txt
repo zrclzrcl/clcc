@@ -1,0 +1,72 @@
+-- Create a table with various constraints to test schema validation
+CREATE TABLE t1 (
+  id INT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  age INT CHECK (age >= 0),
+  UNIQUE (name)
+);
+
+-- Insert sample data into the table
+INSERT INTO t1 VALUES (1, 'Alice', 30), (2, 'Bob', 25), (3, 'Charlie', 35);
+
+-- Test complex query with union and limit
+SELECT * FROM (
+  SELECT id, name FROM t1 WHERE age > 25
+  UNION
+  SELECT id, name FROM t1 WHERE age < 30
+) AS combined LIMIT 2;
+
+-- Analyze table to test optimizer statistics
+ANALYZE TABLE t1;
+
+-- Create a partitioned table to test MySQL-specific features
+CREATE TABLE t2 (
+  id INT,
+  transaction_date DATE,
+  amount DECIMAL(10,2)
+) PARTITION BY RANGE (YEAR(transaction_date)) (
+  PARTITION p0 VALUES LESS THAN (2020),
+  PARTITION p1 VALUES LESS THAN (2022),
+  PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+-- Insert data into partitioned table
+INSERT INTO t2 VALUES 
+(1, '2019-01-01', 100.50),
+(2, '2021-03-15', 200.75),
+(3, '2023-06-30', 300.00);
+
+-- Test stored procedure creation
+DELIMITER ;;
+CREATE PROCEDURE sp_test()
+BEGIN
+  DECLARE x INT DEFAULT 0;
+  WHILE x < 5 DO
+    INSERT INTO t1 VALUES (x, CONCAT('User', x), 20 + x);
+    SET x = x + 1;
+  END WHILE;
+END;;
+DELIMITER ;
+
+-- Create an index to test query optimization
+CREATE INDEX idx_name ON t1(name);
+
+-- Test complex subquery with joins and aggregates
+SELECT t1.name, COUNT(t2.id) AS transaction_count 
+FROM t1 
+JOIN t2 ON t1.id = t2.id 
+WHERE t1.age > (SELECT AVG(age) FROM t1)
+GROUP BY t1.name;
+
+-- Create a trigger to test row-level operations
+CREATE TRIGGER trg_after_insert AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+  INSERT INTO t2 VALUES (NEW.id, CURRENT_DATE(), 100.00);
+END;;
+
+-- Test system variable manipulation
+SET GLOBAL max_connections = 500;
+
+-- Test BLOB handling with large data
+SELECT _binary '01010101' AS blob_test;

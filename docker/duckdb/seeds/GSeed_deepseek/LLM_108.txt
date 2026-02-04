@@ -1,0 +1,43 @@
+CREATE TABLE t1 (id INT, name VARCHAR(50), value DECIMAL);
+INSERT INTO t1 VALUES 
+    (1, 'Alice', 100.5),
+    (2, NULL, 200.3),
+    (3, 'Bob', NULL);
+
+CREATE TABLE t2 (id INT, category VARCHAR(20));
+INSERT INTO t2 VALUES 
+    (1, 'Gold'),
+    (2, 'Silver'),
+    (3, 'Bronze');
+
+UPDATE t1 SET value = 200 WHERE id = 1;
+DELETE FROM t1 WHERE name IS NULL;
+
+SELECT 
+    t1.id,
+    t1.name,
+    t2.category,
+    ROW_NUMBER() OVER (ORDER BY t1.value DESC) AS rank
+FROM t1
+JOIN t2 ON t1.id = t2.id
+WHERE t1.value > 150
+GROUP BY t1.id, t1.name, t2.category;
+
+WITH avg_value AS (
+    SELECT 
+        t1.name,
+        AVG(t1.value) as average
+    FROM t1
+    GROUP BY t1.name
+)
+SELECT 
+    name,
+    average,
+    CASE 
+        WHEN average > 150 THEN 'High'
+        ELSE 'Low'
+    END AS category
+FROM avg_value;
+
+CREATE VIRTUAL TABLE v1 USING generate_series(1, 5) AS (num INT);
+SELECT num, num * 2 as doubled FROM v1;

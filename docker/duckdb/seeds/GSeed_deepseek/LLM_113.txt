@@ -1,0 +1,50 @@
+CREATE TABLE t1(
+    id VARCHAR(10) PRIMARY KEY,
+    integer_col INTEGER NOT NULL,
+    real_col REAL,
+    boolean_col BOOLEAN DEFAULT FALSE,
+    text_col TEXT UNIQUE,
+    date_col DATE CHECK (date_col >= '2000-01-01')
+);
+
+INSERT INTO t1(id, integer_col, real_col, boolean_col, text_col, date_col)
+VALUES
+('row1', 1234567890, 123.456, TRUE, 'test_string_1', '2023-10-10'),
+('row2', -2147483648, NULL, FALSE, '', '1999-12-31')
+UNION ALL
+SELECT 
+    'row3' AS id,
+    2147483647 AS integer_col,
+    0.0000001 AS real_col,
+    TRUE AS boolean_col,
+    'test_string_2' AS text_col,
+    '2024-01-01' AS date_col
+UNION ALL
+SELECT 
+    NULL AS id, -- This will fail due to NOT NULL constraint on id
+    0 AS integer_col,
+    NULL AS real_col,
+    FALSE AS boolean_col,
+    NULL AS text_col,
+    '2000-01-01' AS date_col;
+
+CREATE VIRTUAL TABLE vt1 USING fts5(text_col, content='t1');
+
+CREATE INDEX idx_t1a ON t1(a);
+
+ALTER TABLE t1 ADD COLUMN new_col BOOLEAN DEFAULT FALSE;
+ALTER TABLE t1 ALTER COLUMN text_col SET NOT NULL;
+
+WITH cte AS (
+    SELECT id, integer_col, real_col,
+           boolean_col, text_col, date_col
+    FROM t1
+    WHERE integer_col > 0
+)
+SELECT 
+    ROW_NUMBER() OVER () AS row_num,
+    COUNT(*) OVER () AS total_rows,
+    SUM(integer_col) AS sum_integers,
+    MIN(real_col) AS min_real,
+    MAX(date_col) AS max_date
+FROM cte;

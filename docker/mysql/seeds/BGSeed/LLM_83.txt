@@ -1,0 +1,76 @@
+SET optimizer_switch='index_condition_pushdown=on,mrr=on,mrr_cost_based=off';
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books', 'Other') DEFAULT 'Other',
+    discount FLOAT NULL
+);
+
+-- Insert some initial data with different values
+INSERT INTO products (product_name, description, price, quantity, category, discount) VALUES
+('Laptop', 'High-performance laptop for gaming and work', 1200.50, 10, 'Electronics', 0.1),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 50, 'Clothing', NULL),
+('Coffee Maker', 'Automatic coffee maker with programmable timer', 75.00, 20, 'Home Goods', 0.05),
+('Database Design', 'A comprehensive guide to database design principles', 40.00, 30, 'Books', NULL),
+('Desk Lamp', 'Adjustable desk lamp with LED lighting', 35.50, 15, 'Home Goods', 0.0);
+
+-- Create a table to store product reviews
+CREATE TABLE product_reviews (
+    review_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    rating INT CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+
+-- Insert some sample reviews
+INSERT INTO product_reviews (product_id, user_name, rating, comment) VALUES
+(1, 'JohnDoe', 5, 'Excellent laptop! Highly recommended.'),
+(1, 'JaneSmith', 4, 'Good performance, but a bit pricey.'),
+(2, 'PeterJones', 3, 'The t-shirt is okay, but the material could be better.'),
+(3, 'AliceBrown', 5, 'Great coffee maker! Makes delicious coffee every time.');
+
+-- Perform some SELECT queries with different conditions
+SELECT * FROM products WHERE price > 50 AND category = 'Electronics';
+SELECT product_name, price, quantity FROM products ORDER BY price DESC LIMIT 3;
+SELECT AVG(price) AS average_price FROM products WHERE category = 'Home Goods';
+
+-- Perform an UPDATE query
+UPDATE products SET discount = 0.2 WHERE category = 'Clothing';
+
+-- Perform a DELETE query
+DELETE FROM product_reviews WHERE rating < 3;
+
+-- Test FULLTEXT index functionality (requires MySQL 5.6+)
+ALTER TABLE products ADD FULLTEXT(product_name, description);
+SELECT * FROM products WHERE MATCH (product_name, description) AGAINST ('laptop');
+
+-- Test JSON functionality (requires MySQL 5.7+)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "silver", "weight": "2.5kg"}' WHERE product_id = 1;
+SELECT product_name, details->"$.color" AS color FROM products WHERE product_id = 1;
+
+-- Test spatial data types
+CREATE TABLE cities (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255),
+  location POINT
+);
+INSERT INTO cities (name, location) VALUES ('New York', ST_GeomFromText('POINT(-74.0060 40.7128)'));
+SELECT name, ST_AsText(location) FROM cities;
+
+-- ANALYZE TABLE to improve query performance
+ANALYZE TABLE products, product_reviews, cities;
+
+-- Flush logs to disk
+FLUSH LOGS;

@@ -1,0 +1,61 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE ROLE test_role LOGIN PASSWORD 'test_password';
+CREATE SCHEMA test_schema AUTHORIZATION test_role;
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE test_schema.test_table OWNER TO test_role;
+CREATE INDEX test_table_name_idx ON test_schema.test_table (name);
+CREATE VIEW test_schema.test_view AS
+SELECT id, name FROM test_schema.test_table WHERE value > 10;
+GRANT SELECT ON test_schema.test_view TO PUBLIC;
+CREATE FUNCTION test_schema.test_function(input_value INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN input_value * 2;
+END;
+$$ LANGUAGE plpgsql;
+REVOKE EXECUTE ON FUNCTION test_schema.test_function(INTEGER) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION test_schema.test_function(INTEGER) TO test_role;
+INSERT INTO test_schema.test_table (name, value) VALUES ('test1', 20);
+INSERT INTO test_schema.test_table (name, value) VALUES ('test2', 5);
+UPDATE test_schema.test_table SET value = 15 WHERE name = 'test2';
+SELECT * FROM test_schema.test_table WHERE value BETWEEN 10 AND 20;
+DELETE FROM test_schema.test_table WHERE id = 2;
+EXPLAIN SELECT * FROM test_schema.test_table WHERE name LIKE 'test%';
+CREATE TYPE test_schema.mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE test_schema.mood_table (mood test_schema.mood);
+INSERT INTO test_schema.mood_table VALUES ('happy');
+ALTER TABLE test_schema.test_table ADD COLUMN mood test_schema.mood;
+UPDATE test_schema.test_table SET mood = 'ok' WHERE name = 'test1';
+SELECT enumtypid FROM pg_enum WHERE enumlabel = 'happy';
+CREATE AGGREGATE myavg (numeric)  (
+    sfunc = numeric_add,
+    stype = numeric,
+    initcond = '0'
+);
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK( VALUE ~ '^\d{5}(-\d{4})?$' );
+CREATE TABLE employees (
+    name text,
+    address varchar(90),
+    city varchar(80),
+    zip us_postal_code
+);
+INSERT INTO employees (name, address, city, zip) VALUES ('test_employee', 'test_address', 'test_city', '12345');
+CREATE OR REPLACE VIEW view_emps AS SELECT name, city, zip FROM employees;
+SELECT * FROM view_emps;
+DROP VIEW view_emps;
+DROP TABLE employees;
+DROP DOMAIN us_postal_code;
+DROP AGGREGATE myavg (numeric);
+DROP TABLE test_schema.mood_table;
+DROP TYPE test_schema.mood;
+DROP FUNCTION test_schema.test_function(INTEGER);
+DROP VIEW test_schema.test_view;
+DROP TABLE test_schema.test_table;
+DROP SCHEMA test_schema;
+DROP ROLE test_role;
+DROP TABLESPACE test_tablespace;

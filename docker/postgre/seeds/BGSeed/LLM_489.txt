@@ -1,0 +1,110 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    category VARCHAR(50)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2) CHECK (total_amount >= 0)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10, 2) NOT NULL CHECK (unit_price > 0)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Smartphone', 800.00, 'Electronics'),
+('T-shirt', 25.00, 'Apparel'),
+('Jeans', 75.00, 'Apparel'),
+('Coffee Maker', 50.00, 'Home Appliances');
+
+INSERT INTO customers (first_name, last_name, email, phone_number) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567'),
+('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543'),
+('Peter', 'Jones', 'peter.jones@example.com', '555-111-2222');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+(1, 1200.00),
+(2, 825.00),
+(1, 150.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(2, 2, 1, 800.00),
+(2, 3, 1, 25.00),
+(3, 4, 2, 75.00);
+
+SELECT * FROM products WHERE price > 500;
+
+SELECT first_name, last_name FROM customers WHERE email LIKE '%example.com';
+
+SELECT order_id, order_date, total_amount FROM orders ORDER BY order_date DESC;
+
+SELECT p.product_name, oi.quantity, oi.unit_price
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+WHERE p.category = 'Electronics';
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Coffee Maker';
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+CREATE VIEW customer_orders AS
+SELECT c.first_name, c.last_name, o.order_id, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT * FROM customer_orders WHERE first_name = 'John';
+
+ALTER TABLE products ADD COLUMN description TEXT;
+
+UPDATE products SET description = 'High-performance laptop' WHERE product_name = 'Laptop';
+
+SELECT product_name, price, description FROM products WHERE product_id = 1;
+
+DROP INDEX idx_product_name;
+
+DROP VIEW customer_orders;
+
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE products;
+DROP TABLE customers;
+
+-- Using some PostgreSQL specific features
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+SELECT gen_random_uuid();
+
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password VARCHAR(100) NOT NULL
+);
+
+INSERT INTO users (username, password) VALUES ('testuser', crypt('password', gen_salt('bf')));
+
+SELECT username FROM users WHERE username = 'testuser' AND password = crypt('password', password);
+
+DROP TABLE users;
+
+DROP EXTENSION pgcrypto;

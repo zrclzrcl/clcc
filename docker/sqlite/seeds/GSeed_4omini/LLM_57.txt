@@ -1,0 +1,20 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, total DECIMAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(name, age) VALUES('Alice', 30), ('Bob', 25), ('Charlie', 35);
+INSERT INTO orders(user_id, total) VALUES(1, 100.50), (1, 200.75), (2, 150.00);
+
+CREATE VIEW user_totals AS 
+SELECT u.name, SUM(o.total) AS total_spent 
+FROM users u 
+JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id;
+
+CREATE TABLE temp_store AS 
+SELECT name, total_spent 
+FROM user_totals 
+WHERE total_spent > 100;
+
+CREATE INDEX idx_total ON temp_store(total_spent);
+
+SELECT * FROM temp_store ORDER BY total_spent DESC;
+SELECT DISTINCT age FROM users WHERE age IS NOT NULL;

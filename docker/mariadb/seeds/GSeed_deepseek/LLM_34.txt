@@ -1,0 +1,94 @@
+-- Initial seed for MariaDB fuzz testing
+SET optimizer_switch='semijoin=on,materialization=on,firstmatch=on,loosescan=on,subquery_materialization_cost_based=on';
+SET @save_storage_engine = @@default_storage_engine;
+SET default_storage_engine=Aria;
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data TEXT,
+    UNIQUE INDEX idx_name (name),
+    FULLTEXT INDEX idx_data (data)
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    category_id INT,
+    CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES t3(id)
+);
+
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    CHECK (name != '')
+);
+
+ALTER TABLE t2 ADD INDEX idx_status (status);
+ALTER TABLE t3 ADD COLUMN description TEXT AFTER name;
+ALTER TABLE t3 ADD CONSTRAINT chk_description CHECK (description IS NOT NULL OR name != '');
+
+INSERT INTO t1 VALUES 
+    (NULL, 'Test1', 100.50, '2023-01-01 00:00:00', 'Sample data'),
+    (NULL, 'Test2', 200.75, '2023-01-02 00:00:00', NULL),
+    (NULL, 'Test3', NULL, '2023-01-03 00:00:00', 'More data');
+
+INSERT INTO t3 VALUES 
+    (1, 'Category1', 'Description for Category1'),
+    (2, 'Category2', 'Description for Category2');
+
+INSERT INTO t2 VALUES 
+    (1, 'active', 1),
+    (2, 'inactive', NULL);
+
+CREATE TRIGGER trg_t1_insert BEFORE INSERT ON t1
+FOR EACH ROW
+SET NEW.created_at = NOW();
+
+DELIMITER $$
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE var INT DEFAULT 0;
+    SELECT COUNT(*) INTO var FROM t1;
+    IF var > 5 THEN
+        UPDATE t2 SET status = 'inactive';
+    END IF;
+END$$
+DELIMITER ;
+
+ANALYZE TABLE t1, t2, t3;
+
+CREATE VIEW vw_t1 AS 
+SELECT name, value, YEAR(created_at) AS year_created FROM t1;
+
+SET read_rnd_buffer_size=262144;
+
+-- MariaDB specific features
+CREATE TABLE t4 (
+    id INT PRIMARY KEY,
+    data BLOB
+) ENGINE=Aria ROW_FORMAT=COMPRESSED;
+
+INSERT INTO t4 VALUES 
+    (1, 'binary data here');
+
+DELIMITER $$
+CREATE FUNCTION fn_test(a DECIMAL(10, 2)) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+RETURN a * 1.05$$
+DELIMITER ;
+
+-- Testing JSON functionality
+ALTER TABLE t1 ADD COLUMN json_data JSON;
+UPDATE t1 SET json_data = JSON_OBJECT('key', 'value');
+
+SELECT JSON_ARRAY(1, 2, 3) AS array_col FROM dual;
+
+-- Cleanup (commented out for testing purposes)
+-- DROP TABLE t1, t2, t3, t4;
+-- DROP VIEW vw_t1;
+-- DROP TRIGGER trg_t1_insert;
+-- DROP PROCEDURE sp_test;
+-- DROP FUNCTION fn_test;

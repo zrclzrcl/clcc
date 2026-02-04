@@ -1,0 +1,53 @@
+CREATE TABLE test_table (
+    id INTEGER,
+    name TEXT,
+    value FLOAT,
+    date DATE,
+    enabled BOOLEAN
+);
+
+BEGIN;
+INSERT INTO test_table VALUES (1, 'Alice', 100.5, '2023-01-01', TRUE);
+INSERT INTO test_table VALUES (2, 'Bob', NULL, '2023-01-02', FALSE);
+INSERT INTO test_table VALUES (3, 'Charlie', -50.75, '2023-01-03', TRUE);
+COMMIT;
+
+UPDATE test_table SET value = 200.0 WHERE id = 1;
+DELETE FROM test_table WHERE enabled = FALSE;
+
+WITH cte AS (
+    SELECT id, name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+    FROM test_table
+)
+SELECT * FROM cte WHERE rank <= 2;
+
+SELECT 
+    id,
+    name,
+    SUM(value) OVER (ORDER BY date) as running_total
+FROM test_table;
+
+SELECT 
+    enabled,
+    COUNT(*) as count,
+    MIN(date) as first_date,
+    MAX(value) as max_value
+FROM test_table
+GROUP BY enabled;
+
+SELECT * FROM test_table UNION SELECT id, name, value, date, enabled FROM test_table WHERE id > 2;
+
+CREATE VIEW summary_view AS
+SELECT 
+    enabled,
+    AVG(value) as average_value,
+    COUNT(*) as total_records
+FROM test_table
+GROUP BY enabled;
+
+SELECT s.enabled, s.average_value, t.total_records
+FROM summary_view s
+JOIN (
+    SELECT enabled, COUNT(*) as total_records FROM test_table GROUP BY enabled
+) t ON s.enabled = t.enabled;

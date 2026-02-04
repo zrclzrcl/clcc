@@ -1,0 +1,95 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) CHECK (email LIKE '%@%.%'),
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE,
+    metadata JSONB
+);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    mood_level mood
+);
+
+CREATE INDEX idx_posts_user_id ON posts (user_id);
+
+ALTER TABLE users ADD COLUMN full_name VARCHAR(255);
+
+ALTER TABLE users ALTER COLUMN full_name SET DATA TYPE TEXT;
+
+INSERT INTO users (username, email, password_hash, full_name) VALUES
+('john_doe', 'john.doe@example.com', crypt('password', gen_salt('bf')), 'John Doe'),
+('jane_smith', 'jane.smith@example.com', crypt('password123', gen_salt('bf')), 'Jane Smith');
+
+INSERT INTO posts (user_id, title, content, mood_level) VALUES
+((SELECT id FROM users WHERE username = 'john_doe'), 'My First Post', 'This is my first post!', 'happy'),
+((SELECT id FROM users WHERE username = 'jane_smith'), 'Another Post', 'Another post from Jane', 'ok');
+
+UPDATE users SET updated_at = NOW() WHERE username = 'john_doe';
+
+DELETE FROM posts WHERE title = 'My First Post';
+
+SELECT * FROM users WHERE is_active = TRUE ORDER BY username;
+
+SELECT COUNT(*) FROM posts WHERE user_id = (SELECT id FROM users WHERE username = 'jane_smith');
+
+SELECT u.username, p.title FROM users u JOIN posts p ON u.id = p.user_id;
+
+CREATE VIEW active_users AS
+SELECT id, username, email FROM users WHERE is_active = TRUE;
+
+SELECT * FROM active_users;
+
+CREATE MATERIALIZED VIEW recent_posts AS
+SELECT * FROM posts WHERE created_at > NOW() - INTERVAL '7 days';
+
+REFRESH MATERIALIZED VIEW recent_posts;
+
+CREATE DOMAIN positive_integer AS INTEGER CHECK (VALUE > 0);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    price positive_integer
+);
+
+INSERT INTO products (price) VALUES (10);
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE TABLE test_generated (
+  id SERIAL PRIMARY KEY,
+  a INTEGER,
+  b INTEGER GENERATED ALWAYS AS (a * 2) STORED
+);
+
+INSERT INTO test_generated (a) VALUES (5);
+
+SELECT * FROM test_generated;
+
+CREATE TABLE test_jsonb (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO test_jsonb (data) VALUES ('{"name": "test", "value": 123}');
+
+SELECT data -> 'name' FROM test_jsonb;
+
+CREATE INDEX idx_test_jsonb_name ON test_jsonb ((data ->> 'name'));

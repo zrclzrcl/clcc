@@ -1,0 +1,79 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number VARCHAR(20) UNIQUE NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    account_type ENUM('checking', 'savings', 'credit') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO accounts (account_number, balance, account_type) VALUES
+('1234567890', 1000.00, 'checking'),
+('9876543210', 5000.00, 'savings'),
+('5555555555', 100.00, 'credit');
+
+CREATE TABLE transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    transaction_type ENUM('deposit', 'withdrawal', 'transfer') NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(255),
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO transactions (account_id, transaction_type, amount, description) VALUES
+(1, 'deposit', 500.00, 'Initial deposit'),
+(2, 'deposit', 1000.00, 'Initial deposit'),
+(1, 'withdrawal', 200.00, 'ATM withdrawal');
+
+-- Simulate a transfer between accounts.  Requires setting user variables.
+SET @from_account_id = 1;
+SET @to_account_id = 2;
+SET @transfer_amount = 100.00;
+
+UPDATE accounts SET balance = balance - @transfer_amount WHERE id = @from_account_id;
+UPDATE accounts SET balance = balance + @transfer_amount WHERE id = @to_account_id;
+
+INSERT INTO transactions (account_id, transaction_type, amount, description) VALUES
+(@from_account_id, 'transfer', -@transfer_amount, 'Transfer to account ' + CAST(@to_account_id AS CHAR)),
+(@to_account_id, 'transfer', @transfer_amount, 'Transfer from account ' + CAST(@from_account_id AS CHAR));
+
+-- Test functions and operators
+SELECT id, account_number, ROUND(balance, 0) AS rounded_balance FROM accounts WHERE balance > 0;
+SELECT SUBSTRING(account_number, 1, 4) AS masked_account FROM accounts;
+
+-- Test some MySQL specific features, Window functions are a good start
+SELECT
+    account_number,
+    balance,
+    ROW_NUMBER() OVER (ORDER BY balance DESC) AS balance_rank
+FROM
+    accounts;
+
+-- Test GIS Functionality (requires spatial extensions, may need installation)
+CREATE TABLE locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location GEOMETRY NOT NULL
+);
+
+INSERT INTO locations (name, location) VALUES
+('Office', ST_GeomFromText('POINT(10 20)')),
+('Home', ST_GeomFromText('POINT(30 40)'));
+
+SELECT name FROM locations WHERE ST_Distance(location, ST_GeomFromText('POINT(15 25)')) < 10;
+
+-- Test FULLTEXT search functionality
+CREATE TABLE articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255),
+    content TEXT,
+    FULLTEXT (title, content)
+);
+
+INSERT INTO articles (title, content) VALUES
+('MySQL Fuzzing', 'This article discusses techniques for fuzzing MySQL databases.'),
+('Database Security', 'Security considerations for database systems, including fuzzing.');
+
+SELECT title FROM articles WHERE MATCH (title, content) AGAINST ('fuzzing');

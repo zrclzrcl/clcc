@@ -1,0 +1,73 @@
+BEGIN TRANSACTION;
+
+-- Create a table with various data types
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN,
+	data BLOB
+);
+
+-- Insert some sample data
+INSERT INTO employees (id, name, age, salary, hire_date, is_active, data) VALUES
+(1, 'Alice', 30, 50000.00, '2020-01-15', TRUE, 'This is Alice''s data'::BLOB),
+(2, 'Bob', 25, 40000.50, '2021-05-20', FALSE, 'This is Bob''s data'::BLOB),
+(3, 'Charlie', 35, 60000.75, '2019-11-01', TRUE, NULL);
+
+-- Create a table with a foreign key
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO departments (id, name) VALUES
+(1, 'Sales'),
+(2, 'Marketing'),
+(3, 'Engineering');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+UPDATE employees SET department_id = 1 WHERE id = 1;
+UPDATE employees SET department_id = 2 WHERE id = 2;
+UPDATE employees SET department_id = 3 WHERE id = 3;
+
+-- Create an index
+CREATE INDEX idx_employee_name ON employees (name);
+
+-- Example using DuckDB-specific functionality: JSON support
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (id, data) VALUES
+(1, '{"name": "David", "age": 40, "city": "New York"}');
+
+--Example using DuckDB-specific functionality: UUID support
+CREATE TABLE uuid_data(
+    id INTEGER PRIMARY KEY,
+    uuid UUID
+);
+
+INSERT INTO uuid_data (id, uuid) VALUES
+(1, uuid());
+
+-- Example of a complex query
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id
+WHERE e.age > 28
+ORDER BY e.salary DESC;
+
+-- Example of a window function
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+COMMIT;

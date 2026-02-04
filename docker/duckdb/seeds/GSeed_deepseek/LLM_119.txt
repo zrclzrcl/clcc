@@ -1,0 +1,22 @@
+CREATE TABLE test_table (
+    id SERIAL,
+    name VARCHAR(50) UNIQUE,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMP,
+    status BOOLEAN
+);
+
+INSERT INTO test_table (name, price, created_at, status)
+VALUES 
+('Item 1', 10.99, '2023-01-01 00:00:00', TRUE),
+('Item 2', NULL, '2023-01-02 00:00:00', FALSE),
+('Item 3', 5.75, '2023-01-03 00:00:00', TRUE);
+
+SELECT COUNT(*) as total_items,
+       SUM(price) as total_price
+FROM test_table
+GROUP BY status;
+
+SELECT id, name, price,
+       LAG(price, 1) OVER (ORDER BY created_at) as previous_price
+FROM test_table;

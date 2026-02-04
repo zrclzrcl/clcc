@@ -1,0 +1,42 @@
+-- Create table with various data types including unique constraints
+CREATE TABLE test_table(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN CHECK (status IN (0,1)),
+    metadata JSONB,
+    UNIQUE(name)
+);
+
+-- Insert some sample data with edge cases
+INSERT INTO test_table VALUES 
+(1, '', 123.45, '2024-01-01 00:00:00', TRUE, '{"key":"value"}'),
+(2, 'test', NULL, CURRENT_TIMESTAMP, FALSE, NULL),
+(3, 'boundary', 0, '2024-01-01', TRUE, '{"array":[1,2,3]}');
+
+-- Test complex query with aggregates and window functions
+SELECT 
+    id,
+    name,
+    value,
+    COUNT(*) OVER (PARTITION BY status) as total_status_count,
+    ROW_NUMBER() OVER (ORDER BY created_at DESC) as row_num,
+    SUM(value) OVER () as total_sum,
+    CASE 
+        WHEN value > 100 THEN 'High'
+        ELSE 'Low'
+    END as value_category
+FROM test_table
+WHERE name <> ''
+GROUP BY id, name, value, created_at, status
+HAVING COUNT(*) > 0
+ORDER BY created_at DESC;
+
+-- Test JSONB operations
+SELECT metadata->>'key' as extracted_value 
+FROM test_table 
+WHERE metadata IS NOT NULL AND metadata->>'array' IS NOT NULL;
+
+-- Clean up
+DROP TABLE IF EXISTS test_table;

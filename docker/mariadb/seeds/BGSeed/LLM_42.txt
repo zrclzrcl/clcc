@@ -1,0 +1,89 @@
+SET NAMES utf8mb4;
+SET CHARACTER_SET_DATABASE = utf8mb4;
+
+-- Create a database specifically named for testing edge cases with unusual characters.
+CREATE DATABASE IF NOT EXISTS `test_db_特殊字符`;
+USE `test_db_特殊字符`;
+
+-- Table with diverse data types and constraints.
+CREATE TABLE IF NOT EXISTS `数据表_测试` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    `email` VARCHAR(100) UNIQUE,
+    `birthdate` DATE NULL,
+    `amount` DECIMAL(10, 2) DEFAULT 0.00,
+    `description` TEXT,
+    `binary_data` BLOB,
+    `json_data` JSON,
+    `enum_status` ENUM('active', 'inactive', 'pending') DEFAULT 'pending',
+    FULLTEXT INDEX `name_description_index` (`name`, `description`)
+);
+
+-- Insert various data, including edge cases and international characters.
+INSERT INTO `数据表_测试` (`name`, `email`, `birthdate`, `amount`, `description`, `binary_data`, `json_data`) VALUES
+('John Doe', 'john.doe@example.com', '1990-01-01', 123.45, 'A regular user', NULL, '{"key1": "value1", "key2": 123}'),
+('Jane Smith', 'jane.smith@example.com', '1985-05-10', 987.65, 'Another user with a longer description.', NULL, '{"key3": true, "key4": null}'),
+('张三', 'zhang.san@example.com', '1992-12-25', 456.78, '中文描述', NULL, '{"key5": "中文值"}'),
+('محمد', 'mohammad@example.com', '1988-08-15', 789.01, 'وصف عربي', NULL, '{"key6": "قيمة عربية"}'),
+('特殊字符', 'special.chars@example.com', NULL, -10.50, 'Edge case with negative amount and NULL birthdate.', NULL, '{"key7": "!@#$%^&*()"}');
+
+-- Add a spatial index to the table.  Requires spatial data type.
+ALTER TABLE `数据表_测试` ADD `location` POINT NULL;
+
+-- Insert some spatial data
+INSERT INTO `数据表_测试` (`name`, `location`) VALUES ('Point A', ST_GeomFromText('POINT(1 1)')), ('Point B', ST_GeomFromText('POINT(2 2)'));
+
+ALTER TABLE `数据表_测试` ADD SPATIAL INDEX(`location`);
+
+
+-- Create a stored procedure to test procedural code.
+DELIMITER //
+CREATE PROCEDURE `GetUserData`(IN user_id INT)
+BEGIN
+    SELECT * FROM `数据表_测试` WHERE `id` = user_id;
+END //
+DELIMITER ;
+
+-- Call the stored procedure.
+CALL `GetUserData`(1);
+
+-- Create a function to test function calls.
+DELIMITER //
+CREATE FUNCTION `CalculateTax`(amount DECIMAL(10, 2), tax_rate DECIMAL(5, 2)) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE tax DECIMAL(10, 2);
+    SET tax = amount * tax_rate;
+    RETURN tax;
+END //
+DELIMITER ;
+
+-- Use the function.
+SELECT `CalculateTax`(100.00, 0.08);
+
+-- Create a view.
+CREATE VIEW `UserView` AS
+SELECT `id`, `name`, `email` FROM `数据表_测试`;
+
+-- Select from the view.
+SELECT * FROM `UserView`;
+
+-- Test temporal data types (MariaDB specific enhancement over MySQL).
+CREATE TABLE IF NOT EXISTS `TemporalTable` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `valid_from` DATETIME(6),
+    `valid_to` DATETIME(6)
+);
+
+-- Insert some temporal data.
+INSERT INTO `TemporalTable` (`valid_from`, `valid_to`) VALUES (NOW(6), NOW(6) + INTERVAL 1 DAY);
+
+-- Test dynamic columns (MariaDB specific).
+CREATE TABLE IF NOT EXISTS `DynamicColumnsTable` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `data` LONGBLOB
+);
+
+INSERT INTO `DynamicColumnsTable` (`data`) VALUES (COLUMN_CREATE('key1', 'value1', 'key2', 123));
+
+SELECT COLUMN_GET(`data`, 'key1' AS CHAR);

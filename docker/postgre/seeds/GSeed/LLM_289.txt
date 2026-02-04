@@ -1,0 +1,132 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE DATABASE testdb TABLESPACE test_tablespace;
+CREATE USER testuser WITH PASSWORD 'testpass';
+GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;
+\c testdb testuser
+
+CREATE SCHEMA test_schema;
+SET search_path TO test_schema, public;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+CREATE FUNCTION get_mood(person_name text) RETURNS mood AS $$
+    SELECT current_mood FROM person WHERE name = person_name;
+$$ LANGUAGE SQL STABLE;
+
+SELECT get_mood('Moe');
+
+CREATE DOMAIN posint AS INTEGER CHECK (VALUE > 0);
+CREATE TABLE quantity (
+    item text,
+    number posint
+);
+
+INSERT INTO quantity VALUES ('widgets', 10);
+SELECT * FROM quantity;
+
+CREATE VIEW happy_people AS
+    SELECT name FROM person WHERE current_mood = 'happy';
+
+SELECT * FROM happy_people;
+
+CREATE INDEX person_name_idx ON person (name);
+
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+INSERT INTO products VALUES (1, 'Cheese', 9.99);
+
+ALTER TABLE products ADD COLUMN description text;
+UPDATE products SET description = 'A delicious cheese' WHERE product_no = 1;
+
+CREATE SEQUENCE product_id_seq;
+CREATE TABLE products2 (
+    product_no integer DEFAULT nextval('product_id_seq'),
+    name text,
+    price numeric
+);
+
+INSERT INTO products2 (name, price) VALUES ('Tofu', 5.50);
+SELECT * FROM products2;
+
+CREATE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 10;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(integer);
+
+CREATE TABLE inventory (
+    product_no integer REFERENCES products (product_no),
+    quantity integer
+);
+
+INSERT INTO inventory VALUES (1, 50);
+
+SELECT products.name, inventory.quantity
+FROM products JOIN inventory
+ON products.product_no = inventory.product_no;
+
+CREATE TRIGGER check_quantity BEFORE UPDATE OR INSERT ON inventory
+    FOR EACH ROW
+    EXECUTE FUNCTION check_quantity_level();
+
+CREATE FUNCTION check_quantity_level() RETURNS trigger AS $$
+        BEGIN
+                IF NEW.quantity < 0 THEN
+                        RAISE EXCEPTION 'Quantity cannot be negative';
+                END IF;
+                RETURN NEW;
+        END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO inventory VALUES (1, -1);
+
+DROP TRIGGER check_quantity ON inventory;
+DROP FUNCTION check_quantity_level();
+
+CREATE FUNCTION add(a integer, b integer, OUT sum integer) AS $$
+        BEGIN
+                sum := a + b;
+        END;
+$$ LANGUAGE plpgsql;
+SELECT add(1,2);
+
+CREATE FUNCTION sum_n_product (x int, y int, OUT sum int, OUT product int) AS $$
+BEGIN
+    sum := x + y;
+    product := x * y;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM sum_n_product(1,2);
+
+SELECT * FROM pg_tables WHERE schemaname = 'test_schema';
+
+DROP SCHEMA test_schema CASCADE;
+\c postgres postgres
+DROP DATABASE testdb;
+DROP TABLESPACE test_tablespace;
+DROP USER testuser;

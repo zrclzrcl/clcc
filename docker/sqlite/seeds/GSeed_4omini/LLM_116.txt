@@ -1,0 +1,24 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+INSERT INTO users (name, age) VALUES ('Alice', 30);
+INSERT INTO users (name, age) VALUES ('Bob', 25);
+INSERT INTO users (name, age) VALUES ('Charlie', NULL);
+SELECT * FROM users;
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount, date) VALUES (1, 100.50, '2023-01-01');
+INSERT INTO orders (user_id, amount, date) VALUES (2, 200.00, '2023-02-01');
+INSERT INTO orders (user_id, amount, date) VALUES (3, 150.75, NULL);
+SELECT * FROM orders;
+
+UPDATE users SET age = age + 1 WHERE name = 'Alice';
+SELECT name, age FROM users WHERE age > 25;
+
+CREATE INDEX idx_user_name ON users(name);
+SELECT * FROM users WHERE name LIKE 'A%';
+
+DELETE FROM orders WHERE amount < 150.00;
+SELECT COUNT(*) FROM orders;
+
+ALTER TABLE orders ADD COLUMN status TEXT DEFAULT 'pending';
+UPDATE orders SET status = 'completed' WHERE order_id = 1;
+SELECT order_id, status FROM orders;

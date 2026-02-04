@@ -1,0 +1,249 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT
+);
+
+INSERT INTO products (product_name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00);
+
+INSERT INTO customers (customer_name, email) VALUES
+    ('Alice Smith', 'alice@example.com'),
+    ('Bob Johnson', 'bob@example.com');
+
+INSERT INTO orders (customer_id, order_date) VALUES
+    (1, '2024-01-15'),
+    (2, '2024-01-20');
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+    (1, 1, 1),
+    (1, 2, 2),
+    (2, 3, 1);
+
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+SELECT c.customer_name, COUNT(o.order_id) AS total_orders
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name
+ORDER BY total_orders DESC;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+EXPLAIN SELECT * FROM orders WHERE customer_id = 1;
+
+ANALYZE products;
+ANALYZE customers;
+ANALYZE orders;
+ANALYZE order_items;
+
+VACUUM products;
+VACUUM customers;
+VACUUM orders;
+VACUUM order_items;
+
+SELECT version();
+
+SHOW server_version;
+
+SHOW data_directory;
+
+CREATE VIEW customer_orders AS
+SELECT c.customer_name, o.order_id
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT * FROM customer_orders;
+
+DROP VIEW customer_orders;
+
+-- Using window functions
+SELECT product_name, price,
+       AVG(price) OVER () AS average_price
+FROM products;
+
+-- Using common table expression (CTE)
+WITH high_value_orders AS (
+    SELECT order_id
+    FROM order_items
+    GROUP BY order_id
+    HAVING SUM(quantity * (SELECT price FROM products WHERE product_id = order_items.product_id)) > 100
+)
+SELECT o.order_id, c.customer_name
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE o.order_id IN (SELECT order_id FROM high_value_orders);
+
+-- Using generate_series
+SELECT generate_series(1, 10);
+
+-- Using pg_sleep
+SELECT pg_sleep(0.1);
+
+-- PL/pgSQL function example
+CREATE OR REPLACE FUNCTION get_product_price(p_product_name VARCHAR)
+RETURNS DECIMAL AS $$
+DECLARE
+    product_price DECIMAL;
+BEGIN
+    SELECT price INTO product_price FROM products WHERE product_name = p_product_name;
+    RETURN product_price;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_product_price('Laptop');
+
+DROP FUNCTION get_product_price(VARCHAR);
+
+-- Using LISTEN and NOTIFY (Requires a separate psql connection to listen)
+LISTEN product_updates;
+NOTIFY product_updates, 'Price of Laptop updated';
+UNLISTEN product_updates;
+
+-- Create a temporary table
+CREATE TEMP TABLE temp_products AS SELECT * FROM products;
+SELECT * FROM temp_products;
+DROP TABLE temp_products;
+
+-- Triggers
+CREATE OR REPLACE FUNCTION update_order_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.order_date := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_order_date_trigger
+BEFORE UPDATE ON orders
+FOR EACH ROW
+EXECUTE FUNCTION update_order_date();
+
+UPDATE orders SET order_date = '2024-02-01' WHERE order_id = 1;
+
+DROP TRIGGER update_order_date_trigger ON orders;
+DROP FUNCTION update_order_date();
+
+-- Foreign data wrapper example (Requires setup, so commented out for basic seed)
+-- CREATE EXTENSION postgres_fdw;
+-- CREATE SERVER my_foreign_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host 'localhost', port '5432', dbname 'another_db');
+-- CREATE USER MAPPING FOR CURRENT_USER SERVER my_foreign_server OPTIONS (user 'myuser', password 'mypassword');
+-- CREATE FOREIGN TABLE foreign_table (id integer, data text) SERVER my_foreign_server OPTIONS (schema_name 'public', table_name 'mytable');
+-- SELECT * FROM foreign_table;
+
+-- Transactions and savepoints
+BEGIN;
+SAVEPOINT my_savepoint;
+UPDATE products SET price = 1400 WHERE product_name = 'Laptop';
+SELECT * FROM products WHERE product_name = 'Laptop';
+ROLLBACK TO SAVEPOINT my_savepoint;
+SELECT * FROM products WHERE product_name = 'Laptop';
+COMMIT;
+
+-- advisory lock
+SELECT pg_advisory_lock(12345);
+SELECT pg_advisory_unlock(12345);
+
+-- check constraints
+ALTER TABLE products ADD CONSTRAINT price_positive CHECK (price > 0);
+INSERT INTO products (product_name, price) VALUES ('InvalidProduct', -10); -- will throw error
+ALTER TABLE products DROP CONSTRAINT price_positive;
+
+-- Alter table operations
+ALTER TABLE products ADD COLUMN description TEXT;
+ALTER TABLE products ALTER COLUMN description TYPE VARCHAR(500);
+ALTER TABLE products DROP COLUMN description;
+
+-- sequences
+CREATE SEQUENCE product_serial START 100;
+SELECT nextval('product_serial');
+SELECT currval('product_serial');
+SELECT setval('product_serial', 200);
+DROP SEQUENCE product_serial;
+
+-- aggregates
+SELECT sum(price) FROM products;
+SELECT avg(price) FROM products;
+SELECT max(price) FROM products;
+SELECT min(price) FROM products;
+SELECT count(*) FROM products;
+
+-- user defined types (composite types)
+CREATE TYPE inventory_item AS (
+    name text,
+    supplier_id integer,
+    price numeric
+);
+
+CREATE TABLE on_hand (
+    item inventory_item,
+    count integer
+);
+
+INSERT INTO on_hand (item, count) VALUES (ROW('fuzzy dice', 42, 1.99), 1000);
+SELECT (item).name FROM on_hand;
+
+DROP TABLE on_hand;
+DROP TYPE inventory_item;
+
+-- enum types
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+SELECT * FROM person;
+DROP TABLE person;
+DROP TYPE mood;
+
+-- identity columns
+CREATE TABLE example (
+  id bigint GENERATED ALWAYS AS IDENTITY,
+  name text
+);
+
+INSERT INTO example (name) VALUES ('test');
+SELECT * FROM example;
+DROP TABLE example;
+
+-- range types
+CREATE TYPE int4range AS RANGE (subtype = int4);
+CREATE TABLE reservation (room int, during int4range);
+INSERT INTO reservation VALUES (1108, '[10,11)');
+SELECT * FROM reservation;
+DROP TABLE reservation;
+DROP TYPE int4range;
+
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP TABLE customers;
+DROP TABLE products;

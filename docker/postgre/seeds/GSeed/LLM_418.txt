@@ -1,0 +1,99 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location_id INTEGER
+);
+
+CREATE TABLE locations (
+    id SERIAL PRIMARY KEY,
+    address VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    postal_code VARCHAR(20),
+    country VARCHAR(50)
+);
+
+ALTER TABLE departments ADD CONSTRAINT fk_location_id FOREIGN KEY (location_id) REFERENCES locations (id);
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department_id) REFERENCES departments (id);
+
+INSERT INTO locations (address, city, state, postal_code, country) VALUES
+('123 Main St', 'Anytown', 'CA', '91234', 'USA'),
+('456 Oak Ave', 'Springfield', 'IL', '62704', 'USA'),
+('789 Pine Ln', 'Hill Valley', 'CA', '95420', 'USA');
+
+INSERT INTO departments (name, location_id) VALUES
+('Sales', 1),
+('Marketing', 2),
+('Engineering', 3);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 2, 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 3, 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+SELECT first_name, last_name FROM employees ORDER BY last_name;
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+DELETE FROM employees WHERE id = 3;
+
+-- PostgreSQL specific features
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+SELECT word_similarity('hello', 'hallo');
+SELECT * FROM employees WHERE first_name % 'Jon'; -- trigram similarity
+SELECT generate_series(1, 10);
+SELECT md5('test');
+
+-- Test JSON features
+CREATE TABLE json_test (id SERIAL PRIMARY KEY, data JSONB);
+INSERT INTO json_test (data) VALUES ('{"name": "test", "value": 123}');
+SELECT data->'name' FROM json_test;
+SELECT * FROM json_test WHERE data @> '{"name": "test"}';
+
+-- Test array features
+CREATE TABLE array_test (id SERIAL PRIMARY KEY, data INTEGER[]);
+INSERT INTO array_test (data) VALUES ('{1,2,3}');
+SELECT data[1] FROM array_test;
+SELECT * FROM array_test WHERE 2 = ANY(data);
+
+-- Test window functions
+SELECT
+    department_id,
+    AVG(salary) OVER (PARTITION BY department_id) as avg_salary
+FROM
+    employees;
+
+-- Test Common Table Expressions (CTEs)
+WITH AvgSalaries AS (
+  SELECT department_id, AVG(salary) AS avg_salary FROM employees GROUP BY department_id
+)
+SELECT e.first_name, e.last_name, a.avg_salary
+FROM employees e
+JOIN AvgSalaries a ON e.department_id = a.department_id
+WHERE e.salary > a.avg_salary;
+
+--Test user defined functions
+CREATE OR REPLACE FUNCTION add_them(a integer, b integer)
+RETURNS integer AS $$
+        BEGIN
+                RETURN a + b;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_them(5, 10);
+
+-- Test views
+CREATE VIEW employee_names AS
+SELECT first_name, last_name FROM employees;
+
+SELECT * FROM employee_names;

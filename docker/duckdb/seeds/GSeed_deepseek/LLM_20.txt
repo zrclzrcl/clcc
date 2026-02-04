@@ -1,0 +1,105 @@
+-- Create tables with constraints
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INT CHECK (age >= 0),
+    UNIQUE(name)
+);
+
+-- Create a table with foreign key relationships
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    t1_id INT REFERENCES t1(id) ON UPDATE CASCADE ON DELETE SET NULL,
+    value DECIMAL(10, 2) DEFAULT 0.00
+);
+
+-- Create a table with indexes and constraints
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    data TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_t3_data ON t3(data);
+
+-- Common Table Expressions (CTE)
+WITH cte AS (
+    SELECT id, name FROM t1 WHERE age > 25
+),
+cte_recursive AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte_recursive WHERE n < 10
+)
+SELECT * FROM cte_recursive;
+
+-- Window functions and analytics
+SELECT 
+    id,
+    name,
+    ROW_NUMBER() OVER (ORDER BY age DESC) as row_num,
+    RANK() OVER (ORDER BY age DESC) as rank,
+    DENSE_RANK() OVER (ORDER BY age DESC) as dense_rank
+FROM t1;
+
+-- Aggregate functions with HAVING clause
+SELECT 
+    age,
+    COUNT(*) as total,
+    AVG(value) as avg_value
+FROM t2
+GROUP BY age
+HAVING COUNT(*) > 5;
+
+-- UNION ALL operation
+SELECT id, name FROM t1
+UNION ALL
+SELECT id, data FROM t3;
+
+-- Create a view
+CREATE VIEW v1 AS
+SELECT 
+    t1.name,
+    t2.value
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id;
+
+-- Analytic functions with windowing
+SELECT 
+    name,
+    LEAD(value, 1, 0) OVER (ORDER BY age) as next_value,
+    LAG(value, 1, 0) OVER (ORDER BY age) as prev_value
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id;
+
+-- Trigger creation
+CREATE TRIGGER trg_t1_update 
+AFTER UPDATE OF name ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit VALUES (OLD.name, NEW.name, 'name updated', CURRENT_TIMESTAMP);
+END;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW mv1 AS
+SELECT 
+    age,
+    COUNT(*) as count
+FROM t1
+GROUP BY age;
+
+-- JSON functions
+SELECT 
+    json_extract(json '{"a":1,"b":2}', '$.a') as a_value,
+    json_array_length(json '{"array":[1,2,3]}') as array_len,
+    json_object('key', 'value') as new_json;
+
+-- Geometry operations
+CREATE TABLE geom (
+    id INT PRIMARY KEY,
+    point GEOMETRY
+);
+INSERT INTO geom VALUES (1, ST_Point(0, 0));
+SELECT 
+    ST_Buffer(point, 1) as buffered_point,
+    ST_Distance(ST_Point(0,0), ST_Point(1,1)) as distance
+FROM geom;

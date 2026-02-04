@@ -1,0 +1,22 @@
+WITH cte AS (
+    SELECT 
+        NULLIF(1, 1) AS col1,
+        COALESCE(NULL, 'test') AS col2,
+        CAST('123' AS INT) AS col3,
+        SUBSTRING('Hello, World!', 7, 5) AS col4,
+        ROUND(1.2345, 2) AS col5,
+        CASE 
+            WHEN 1 > 0 THEN 'Yes'
+            ELSE 'No'
+        END AS col6,
+        ROW_NUMBER() OVER (ORDER BY 1/0) AS row_num,
+        RANK() OVER (PARTITION BY 1 ORDER BY 1 DESC) AS rank_val,
+        DENSE_RANK() OVER () AS dense_rank,
+        NTILE(2) OVER (ORDER BY 1) AS ntile_val,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY 1) AS percentile_cont,
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY 1) AS percentile_disc,
+        SUM(DISTINCT 1) OVER () AS sum_distinct
+    FROM 
+        (SELECT 1 UNION ALL SELECT 2) t(a)
+)
+SELECT * FROM cte ORDER BY col1, col2;

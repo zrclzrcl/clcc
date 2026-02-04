@@ -1,0 +1,76 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE USER test_user WITH PASSWORD 'password';
+CREATE SCHEMA test_schema AUTHORIZATION test_user;
+SET search_path TO test_schema, public;
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE DOMAIN us_postal_code AS TEXT CHECK (VALUE ~ '^\d{5}(-\d{4})?$');
+CREATE TABLE products (
+    product_no integer UNIQUE NOT NULL,
+    name text,
+    price numeric CHECK (price > 0),
+    description text
+);
+ALTER TABLE products ADD COLUMN color text;
+ALTER TABLE products ALTER COLUMN price TYPE decimal(10, 2);
+ALTER TABLE products ALTER COLUMN description SET DEFAULT 'No description available';
+CREATE TABLE orders (
+    order_id serial PRIMARY KEY,
+    customer_id integer NOT NULL,
+    product_no integer REFERENCES products (product_no),
+    quantity integer NOT NULL,
+    order_date date DEFAULT now()
+);
+CREATE INDEX idx_customer_id ON orders (customer_id);
+CREATE VIEW recent_orders AS
+SELECT order_id, customer_id, product_no, quantity, order_date
+FROM orders
+WHERE order_date >= current_date - interval '30 days';
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT product_no, COUNT(*) AS order_count, AVG(quantity) AS avg_quantity
+FROM orders
+GROUP BY product_no;
+REFRESH MATERIALIZED VIEW product_summary;
+INSERT INTO products (product_no, name, price) VALUES (1, 'Laptop', 1200.00);
+INSERT INTO products (product_no, name, price) VALUES (2, 'Keyboard', 75.50);
+UPDATE products SET price = 1250.00 WHERE product_no = 1;
+DELETE FROM products WHERE product_no = 2;
+SELECT * FROM products WHERE price > 100;
+SELECT name, price FROM products ORDER BY price DESC LIMIT 10;
+SELECT COUNT(*) FROM orders WHERE order_date BETWEEN '2023-01-01' AND '2023-12-31';
+SELECT product_no, SUM(quantity) FROM orders GROUP BY product_no HAVING SUM(quantity) > 10;
+EXPLAIN SELECT * FROM products WHERE price > 1000;
+CREATE FUNCTION discount_price(price numeric, discount numeric) RETURNS numeric AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+SELECT product_no, name, price, discount_price(price, 0.1) AS discounted_price FROM products;
+CREATE OR REPLACE FUNCTION update_product_price(p_product_no integer, p_new_price numeric) RETURNS void AS $$
+BEGIN
+    UPDATE products SET price = p_new_price WHERE product_no = p_product_no;
+END;
+$$ LANGUAGE plpgsql;
+SELECT update_product_price(1, 1300.00);
+CREATE TABLE inventory (
+    product_no integer REFERENCES products (product_no),
+    quantity integer NOT NULL
+);
+INSERT INTO inventory (product_no, quantity) VALUES (1, 50);
+CREATE RULE low_inventory AS ON INSERT TO orders WHERE NEW.quantity > (SELECT quantity FROM inventory WHERE product_no = NEW.product_no) DO INSTEAD NOTHING;
+CREATE TRIGGER check_inventory BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION check_inventory_function();
+CREATE FUNCTION check_inventory_function() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.quantity > (SELECT quantity FROM inventory WHERE product_no = NEW.product_no) THEN
+        RAISE EXCEPTION 'Not enough inventory for product %', NEW.product_no;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TEXT SEARCH CONFIGURATION public.my_config (copy=english);
+ALTER TEXT SEARCH CONFIGURATION public.my_config ALTER MAPPING FOR hword, hword_part, word WITH english_stem;
+SELECT to_tsvector('public.my_config', 'A fat  cat sat on a mat - it ate a fat rats');
+CREATE TABLESPACE fastspace LOCATION '/fast/space';
+DROP TABLESPACE fastspace;
+DROP SCHEMA test_schema CASCADE;
+DROP USER test_user;
+DROP TYPE mood;

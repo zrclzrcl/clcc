@@ -1,0 +1,101 @@
+CREATE TABLE test_range (id int, value numeric) PARTITION BY RANGE (value);
+CREATE TABLE test_range_p1 PARTITION OF test_range FOR VALUES FROM (0) TO (100);
+CREATE TABLE test_range_p2 PARTITION OF test_range FOR VALUES FROM (100) TO (200);
+CREATE TABLE test_list (id int, value text) PARTITION BY LIST (value);
+CREATE TABLE test_list_p1 PARTITION OF test_list FOR VALUES IN ('a', 'b', 'c');
+CREATE TABLE test_list_p2 PARTITION OF test_list FOR VALUES IN ('d', 'e', 'f');
+CREATE TABLE test_hash (id int, value text) PARTITION BY HASH (value);
+CREATE TABLE test_hash_p1 PARTITION OF test_hash FOR VALUES WITH (MODULUS 4, REMAINDER 0);
+CREATE TABLE test_hash_p2 PARTITION OF test_hash FOR VALUES WITH (MODULUS 4, REMAINDER 1);
+CREATE TABLE test_hash_p3 PARTITION OF test_hash FOR VALUES WITH (MODULUS 4, REMAINDER 2);
+CREATE TABLE test_hash_p4 PARTITION OF test_hash FOR VALUES WITH (MODULUS 4, REMAINDER 3);
+INSERT INTO test_range (id, value) SELECT i, i FROM generate_series(1, 150) i;
+INSERT INTO test_list (id, value) SELECT i, chr(97 + (i % 6)) FROM generate_series(1, 100) i;
+INSERT INTO test_hash (id, value) SELECT i, chr(97 + (i % 10)) FROM generate_series(1, 100) i;
+ANALYZE test_range;
+ANALYZE test_list;
+ANALYZE test_hash;
+SELECT * FROM test_range WHERE value > 50 AND value < 150;
+SELECT * FROM test_list WHERE value IN ('a', 'd', 'f');
+SELECT * FROM test_hash WHERE value LIKE 'b%';
+SELECT * FROM test_range t1 JOIN test_list t2 ON t1.id = t2.id WHERE t1.value > 50;
+SELECT * FROM test_hash WHERE id % 2 = 0;
+CREATE INDEX test_range_value_idx ON test_range (value);
+CREATE INDEX test_list_value_idx ON test_list (value);
+CREATE INDEX test_hash_value_idx ON test_hash (value);
+EXPLAIN (COSTS OFF) SELECT * FROM test_range WHERE value > 75 AND value < 125;
+EXPLAIN (COSTS OFF) SELECT * FROM test_list WHERE value IN ('b', 'e');
+EXPLAIN (COSTS OFF) SELECT * FROM test_hash WHERE id > 50;
+CREATE TABLE parent_table (id int, range_col int, list_col text, hash_col text) PARTITION BY RANGE (range_col);
+CREATE TABLE parent_table_p1 PARTITION OF parent_table FOR VALUES FROM (0) TO (100);
+CREATE TABLE parent_table_p2 PARTITION OF parent_table FOR VALUES FROM (100) TO (200);
+INSERT INTO parent_table SELECT i, i, chr(97 + (i % 6)), md5(i::text) FROM generate_series(1, 150) i;
+ANALYZE parent_table;
+SELECT * FROM parent_table WHERE range_col > 50 AND list_col IN ('a', 'd');
+UPDATE parent_table SET hash_col = 'updated' WHERE range_col > 100;
+DELETE FROM parent_table WHERE range_col < 25;
+SELECT count(*) FROM parent_table;
+SELECT avg(range_col) FROM parent_table;
+SELECT list_col, count(*) FROM parent_table GROUP BY list_col ORDER BY list_col;
+SELECT max(range_col), min(range_col) FROM parent_table;
+CREATE VIEW range_view AS SELECT * FROM test_range WHERE value > 25;
+SELECT * FROM range_view;
+DROP VIEW range_view;
+CREATE MATERIALIZED VIEW list_view AS SELECT * FROM test_list WHERE value IN ('a', 'b');
+SELECT * FROM list_view;
+REFRESH MATERIALIZED VIEW list_view;
+DROP MATERIALIZED VIEW list_view;
+CREATE TABLE unlogged_table (id int);
+ALTER TABLE unlogged_table SET UNLOGGED;
+INSERT INTO unlogged_table SELECT i FROM generate_series(1, 10);
+SELECT * FROM unlogged_table;
+DROP TABLE unlogged_table;
+CREATE TEMP TABLE temp_table (id int);
+INSERT INTO temp_table SELECT i FROM generate_series(1, 5);
+SELECT * FROM temp_table;
+DROP TABLE temp_table;
+CREATE SEQUENCE my_sequence START 1 INCREMENT 1;
+SELECT nextval('my_sequence');
+SELECT currval('my_sequence');
+SELECT setval('my_sequence', 10);
+DROP SEQUENCE my_sequence;
+CREATE DOMAIN positive_int AS INTEGER CHECK (VALUE > 0);
+CREATE TABLE domain_test (id positive_int);
+INSERT INTO domain_test VALUES (1);
+DROP TABLE domain_test;
+DROP DOMAIN positive_int;
+CREATE TYPE inventory_item AS (
+    name text,
+    supplier_id integer,
+    price numeric
+);
+CREATE TABLE inventory (item inventory_item);
+INSERT INTO inventory VALUES (ROW('fuzzy dice', 42, 1.99));
+SELECT (item).name FROM inventory;
+DROP TABLE inventory;
+DROP TYPE inventory_item;
+CREATE FUNCTION add_one(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+SELECT add_one(5);
+DROP FUNCTION add_one(integer);
+CREATE TEXT SEARCH DICTIONARY english_stem (
+    template = snowball,
+    language = english
+);
+DROP TEXT SEARCH DICTIONARY english_stem;
+CREATE TEXT SEARCH CONFIGURATION public.custom_config (copy=pg_catalog.english);
+ALTER TEXT SEARCH CONFIGURATION public.custom_config
+    ALTER MAPPING FOR word, asciiword, hword, ashword WITH english_stem;
+DROP TEXT SEARCH CONFIGURATION public.custom_config;
+CREATE CAST (integer AS numeric) WITH FUNCTION castfunc(integer) AS IMPLICIT;
+DROP CAST (integer AS numeric);
+CREATE OPERATOR @@ (
+    LEFTARG = tsvector,
+    RIGHTARG = tsquery,
+    PROCEDURE = tsvector_matches,
+    COMMUTATOR = @@
+);
+DROP OPERATOR @@ (tsvector, tsquery);

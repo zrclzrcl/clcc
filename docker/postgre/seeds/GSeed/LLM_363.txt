@@ -1,0 +1,106 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(12, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO users (username, email) VALUES
+('john_doe', 'john.doe@example.com'),
+('jane_smith', 'jane.smith@example.com');
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop', 1200.00),
+('Mouse', 'Wireless mouse', 25.00);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1225.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00);
+
+-- Add some PostgreSQL specific features
+
+CREATE TABLE employees (
+    id INT GENERATED ALWAYS AS IDENTITY,
+    name TEXT,
+    department TEXT
+);
+
+INSERT INTO employees (name, department) VALUES ('Alice', 'Sales'), ('Bob', 'Marketing');
+
+SELECT * FROM employees WITH ORDINALITY;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+
+INSERT INTO person VALUES ('John', 'happy');
+INSERT INTO person VALUES ('Mary', 'sad');
+
+SELECT name, current_mood FROM person WHERE current_mood = 'happy';
+
+CREATE TABLE jsontable (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO jsontable (data) VALUES ('{"name": "Example", "value": 123}');
+SELECT data ->> 'name' FROM jsontable;
+
+CREATE TABLE array_example (
+  id SERIAL PRIMARY KEY,
+  tags TEXT[]
+);
+
+INSERT INTO array_example (tags) VALUES (ARRAY['tag1', 'tag2']);
+
+SELECT tags[1] FROM array_example;
+
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+
+UPDATE users SET is_active = FALSE WHERE username = 'jane_smith';
+
+DELETE FROM products WHERE name = 'Mouse';
+
+-- Example using pg_catalog
+SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema';
+
+CREATE TABLE conflict_table (
+    id INT PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO conflict_table (id, value) VALUES (1, 'Initial Value') ON CONFLICT (id) DO NOTHING;
+
+-- Transaction isolation levels
+BEGIN ISOLATION LEVEL READ COMMITTED;
+SELECT * FROM users;
+COMMIT;

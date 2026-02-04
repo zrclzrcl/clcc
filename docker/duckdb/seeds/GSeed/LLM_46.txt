@@ -1,0 +1,70 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR,
+    discount_percentage INTEGER
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    city VARCHAR
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO products (id, name, price, category, discount_percentage) VALUES
+    (1, 'Laptop', 1200.00, 'Electronics', 10),
+    (2, 'Keyboard', 75.00, 'Electronics', 5),
+    (3, 'T-shirt', 25.00, 'Apparel', 0),
+    (4, 'Coffee Mug', 12.50, 'Home Goods', 0),
+    (5, 'Book', 15.00, 'Books', 0);
+
+INSERT INTO customers (customer_id, name, city) VALUES
+    (1, 'Alice', 'New York'),
+    (2, 'Bob', 'Los Angeles'),
+    (3, 'Charlie', 'Chicago');
+
+INSERT INTO orders (order_id, customer_id, order_date, total_amount) VALUES
+    (101, 1, '2023-01-15', 1275.00),
+    (102, 2, '2023-02-20', 87.50),
+    (103, 1, '2023-03-10', 50.00);
+
+INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price) VALUES
+    (201, 101, 1, 1, 1200.00),
+    (202, 101, 2, 1, 75.00),
+    (203, 102, 2, 1, 75.00),
+    (204, 102, 4, 1, 12.50),
+    (205, 103, 3, 2, 25.00);
+
+-- DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT category, APPROXIMATE COUNT(DISTINCT name) FROM products GROUP BY category;
+
+-- Example of a potentially problematic operation for mutation: Large string concatenation
+UPDATE products SET name = name || ' - ' || 'Updated Description' WHERE id = 1;
+
+-- Trigger potential division by zero errors (mutate price to 0 for a product)
+UPDATE products SET price = 0 WHERE id = 5;
+SELECT id, name, price, price / discount_percentage FROM products WHERE discount_percentage > 0;
+
+-- Test window functions (DuckDB supports them)
+SELECT
+    order_id,
+    customer_id,
+    total_amount,
+    RANK() OVER (ORDER BY total_amount DESC) as sales_rank
+FROM orders;

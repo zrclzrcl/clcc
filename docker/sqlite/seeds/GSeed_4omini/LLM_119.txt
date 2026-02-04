@@ -1,0 +1,18 @@
+CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price REAL, quantity INTEGER);
+INSERT INTO products (id, name, price, quantity) VALUES (1, 'Widget', 19.99, 10);
+INSERT INTO products (id, name, price, quantity) VALUES (2, 'Gadget', 29.99, 5);
+INSERT INTO products (id, name, price, quantity) VALUES (3, 'Doodad', 39.99, 0);
+
+SELECT name, price, price * quantity AS total_value FROM products WHERE quantity > 0;
+SELECT AVG(price) AS average_price FROM products;
+SELECT COUNT(*) AS total_products, SUM(quantity) AS total_quantity FROM products WHERE price < 30;
+
+CREATE INDEX idx_price ON products(price);
+SELECT name FROM products ORDER BY price DESC LIMIT 1;
+
+WITH top_products AS (
+  SELECT name, price FROM products WHERE price < 30
+)
+SELECT * FROM top_products WHERE price IS NOT NULL;
+
+DELETE FROM products WHERE id = 3;

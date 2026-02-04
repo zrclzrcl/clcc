@@ -1,0 +1,56 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    department VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+-- Insert some initial data
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 50000.00, '2022-01-15'),
+('Bob', 'Marketing', 60000.00, '2021-05-20'),
+('Charlie', 'Engineering', 75000.00, '2020-11-01');
+
+-- Demonstrate DuckDB-specific feature: APPROX_COUNT_DISTINCT
+SELECT department, APPROX_COUNT_DISTINCT(salary) FROM employees GROUP BY department;
+
+-- Test date functions
+SELECT name, DATE_PART('year', hire_date) AS hire_year FROM employees;
+
+-- Demonstrate LIST aggregate function (DuckDB Specific)
+SELECT department, LIST(name) FROM employees GROUP BY department;
+
+-- Demonstrate UNNEST
+SELECT * FROM UNNEST([1, 2, 3], ['a', 'b', 'c']);
+
+-- Try a window function
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- JSON operations (DuckDB Specific)
+CREATE TABLE json_data (data JSON);
+INSERT INTO json_data VALUES ('{"name": "David", "age": 30}');
+SELECT data->'name' FROM json_data;
+
+-- Demonstrate using a STRUCT
+CREATE TABLE structs (s STRUCT(i INT, j VARCHAR));
+INSERT INTO structs VALUES (STRUCT(1, 'hello'));
+SELECT s.i FROM structs;
+
+-- Use a UNION ALL query
+SELECT id, name FROM employees WHERE salary > 50000
+UNION ALL
+SELECT 100, 'Bonus Employee';
+
+-- Try a CREATE VIEW
+CREATE VIEW high_earners AS SELECT name, salary FROM employees WHERE salary > 60000;
+SELECT * FROM high_earners;
+
+-- Test a CASE statement
+SELECT name,
+       CASE
+           WHEN salary > 70000 THEN 'High'
+           WHEN salary > 50000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;

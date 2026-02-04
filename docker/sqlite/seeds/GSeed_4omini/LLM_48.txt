@@ -1,0 +1,18 @@
+PRAGMA encoding=UTF8;
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    age INTEGER CHECK(age >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_username ON users(username);
+INSERT INTO users (username, email, age) VALUES ('alice', 'alice@example.com', 30);
+INSERT INTO users (username, email, age) VALUES ('bob', 'bob@example.com', 25);
+INSERT INTO users (username, email, age) VALUES ('charlie', 'charlie@example.com', 35);
+SELECT * FROM users WHERE age BETWEEN 25 AND 30;
+UPDATE users SET age = 26 WHERE username = 'bob';
+DELETE FROM users WHERE username = 'charlie';
+SELECT username, COUNT(*) FROM users GROUP BY username HAVING COUNT(*) > 1;
+DROP TABLE IF EXISTS temp_users;
+CREATE TEMP TABLE temp_users AS SELECT * FROM users WHERE age < 30;

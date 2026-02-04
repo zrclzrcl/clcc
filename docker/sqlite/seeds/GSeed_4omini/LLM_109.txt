@@ -1,0 +1,9 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, age INTEGER CHECK(age >= 0));
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL CHECK(amount > 0), order_date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, name TEXT, price REAL CHECK(price >= 0), stock INTEGER CHECK(stock >= 0));
+INSERT INTO users(username, password, age) VALUES('john_doe', 'securePass123', 30), ('jane_smith', 'anotherPass456', 25);
+INSERT INTO products(name, price, stock) VALUES('Laptop', 999.99, 10), ('Smartphone', 499.99, 20);
+INSERT INTO orders(user_id, amount, order_date) VALUES(1, 999.99, '2023-10-01'), (2, 499.99, '2023-10-02');
+SELECT u.username, SUM(o.amount) AS total_spent FROM users u JOIN orders o ON u.id = o.user_id WHERE u.age > 20 GROUP BY u.username HAVING total_spent > 500;
+SELECT p.name, p.stock FROM products p WHERE p.stock < 15 ORDER BY p.stock ASC;
+CREATE TRIGGER update_stock AFTER INSERT ON orders BEGIN UPDATE products SET stock = stock - 1 WHERE product_id = NEW.order_id; END;

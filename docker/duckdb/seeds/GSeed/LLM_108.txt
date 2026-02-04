@@ -1,0 +1,33 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE TABLE strings AS SELECT i::VARCHAR AS s FROM range(10);
+CREATE TABLE bools AS SELECT i%2=0 AS b FROM range(10);
+
+-- Test various data types and operations
+SELECT i, s, b, i + 1, length(s), NOT b FROM integers, strings, bools WHERE i = i;
+
+-- Test joins and aggregations
+CREATE TABLE t1 AS SELECT i%3 AS group_id, sum(i) AS sum_i FROM integers GROUP BY group_id;
+CREATE TABLE t2 AS SELECT group_id, count(*) AS count FROM t1 GROUP BY group_id;
+SELECT t1.group_id, t1.sum_i, t2.count FROM t1 INNER JOIN t2 ON t1.group_id = t2.group_id;
+
+-- Test window functions
+CREATE TABLE window_test AS SELECT * FROM range(10);
+SELECT *, row_number() OVER (ORDER BY i) AS row_num FROM window_test;
+SELECT *, sum(i) OVER (ORDER BY i) AS running_sum FROM window_test;
+
+-- Test string functions unique to DuckDB (or less common)
+SELECT regexp_matches('hello world', 'w.*d');
+SELECT string_split('a,b,c', ',');
+SELECT list_value(1,2,3);
+
+-- Test unnesting a list
+CREATE TABLE list_table AS SELECT list_value(1, 2, 3) AS my_list;
+SELECT unnest(my_list) FROM list_table;
+
+--Test date operations and types
+CREATE TABLE date_table AS SELECT date('2023-01-01') + i AS dt FROM range(10);
+SELECT dt, date_part('year', dt), date_trunc('month', dt) FROM date_table;
+
+--Test structs
+CREATE TABLE struct_table AS SELECT struct_pack(a := 1, b := 'hello') AS my_struct;
+SELECT my_struct.a, my_struct.b FROM struct_table;

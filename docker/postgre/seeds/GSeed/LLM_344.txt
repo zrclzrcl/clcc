@@ -1,0 +1,101 @@
+-- Initial seed for PostgreSQL fuzz testing (REL_18_RC1)
+
+-- Create a simple table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some data
+INSERT INTO users (username, email) VALUES
+    ('john_doe', 'john.doe@example.com'),
+    ('jane_smith', 'jane.smith@example.org');
+
+-- Select data
+SELECT * FROM users;
+
+-- Update email address
+UPDATE users SET email = 'john.updated@example.com' WHERE username = 'john_doe';
+
+-- Select with a WHERE clause
+SELECT username, created_at FROM users WHERE id = 1;
+
+-- Create another table with a foreign key
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert some posts
+INSERT INTO posts (user_id, title, content) VALUES
+    (1, 'First Post', 'This is the content of the first post.'),
+    (2, 'Another Post', 'Some more content here.');
+
+-- Join tables
+SELECT users.username, posts.title
+FROM users
+JOIN posts ON users.id = posts.user_id;
+
+-- Aggregation
+SELECT users.username, COUNT(posts.id) AS post_count
+FROM users
+LEFT JOIN posts ON users.id = posts.user_id
+GROUP BY users.username;
+
+-- Subquery
+SELECT username FROM users WHERE id IN (SELECT user_id FROM posts WHERE title LIKE '%Post%');
+
+-- Create a function
+CREATE FUNCTION get_user_post_count(user_id INTEGER)
+RETURNS INTEGER AS $$
+    SELECT COUNT(*) FROM posts WHERE user_id = $1;
+$$ LANGUAGE SQL;
+
+-- Use the function
+SELECT get_user_post_count(1);
+
+-- Create a view
+CREATE VIEW user_post_counts AS
+SELECT users.username, COUNT(posts.id) AS post_count
+FROM users
+LEFT JOIN posts ON users.id = posts.user_id
+GROUP BY users.username;
+
+-- Select from the view
+SELECT * FROM user_post_counts;
+
+-- Alter table: add a constraint
+ALTER TABLE users ADD CONSTRAINT check_username_length CHECK (length(username) > 3);
+
+-- Example using JSONB
+ALTER TABLE posts ADD COLUMN metadata JSONB;
+UPDATE posts SET metadata = '{"tags": ["news", "important"], "likes": 10}'::jsonb WHERE id = 1;
+SELECT metadata -> 'tags' FROM posts WHERE id = 1;
+
+-- Using WITH clause (CTE)
+WITH recent_posts AS (
+  SELECT user_id, title FROM posts ORDER BY created_at DESC LIMIT 5
+)
+SELECT users.username, recent_posts.title
+FROM users JOIN recent_posts ON users.id = recent_posts.user_id;
+
+-- Generated always as identity example
+CREATE TABLE test_identity (
+  id int GENERATED ALWAYS AS IDENTITY,
+  name text
+);
+
+INSERT INTO test_identity (name) VALUES ('test1');
+SELECT * from test_identity;
+
+-- Cleanup (optional for initial seed, but good practice)
+-- DROP VIEW IF EXISTS user_post_counts;
+-- DROP FUNCTION IF EXISTS get_user_post_count(INTEGER);
+-- DROP TABLE IF EXISTS posts;
+-- DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS test_identity;

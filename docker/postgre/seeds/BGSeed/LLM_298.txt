@@ -1,0 +1,142 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    location VARCHAR(255)
+);
+
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    start_date DATE,
+    end_date DATE
+);
+
+CREATE TABLE employee_projects (
+    employee_id INT REFERENCES employees(id),
+    project_id INT REFERENCES projects(id),
+    PRIMARY KEY (employee_id, project_id)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date) VALUES
+('Alice Smith', 60000.00, '2022-01-15'),
+('Bob Johnson', 75000.00, '2021-05-20'),
+('Charlie Brown', 90000.00, '2020-03-10');
+
+INSERT INTO projects (name, start_date, end_date) VALUES
+('Project Alpha', '2023-01-01', '2023-12-31'),
+('Project Beta', '2023-06-01', '2024-05-31');
+
+INSERT INTO employee_projects (employee_id, project_id) VALUES
+(1, 1),
+(2, 2),
+(3, 1);
+
+SELECT * FROM employees WHERE salary > 70000.00;
+
+UPDATE employees SET salary = 80000.00 WHERE name = 'Bob Johnson';
+
+DELETE FROM employees WHERE name = 'Charlie Brown';
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.id = d.id;
+
+ALTER TABLE employees ADD COLUMN department_id INT REFERENCES departments(id);
+
+UPDATE employees SET department_id = 1 WHERE id = 1;
+UPDATE employees SET department_id = 2 WHERE id = 2;
+
+SELECT * FROM employees ORDER BY salary DESC;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+SELECT MIN(salary) FROM employees;
+
+SELECT SUM(salary) FROM employees;
+
+SELECT name, salary FROM employees WHERE salary BETWEEN 60000 AND 80000;
+
+SELECT name FROM employees WHERE name LIKE 'A%';
+
+SELECT name FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2022-12-31';
+
+SELECT name FROM employees WHERE department_id IN (1, 2);
+
+SELECT name FROM employees WHERE department_id IS NULL;
+
+CREATE VIEW employee_summary AS
+SELECT e.name, d.name AS department_name, p.name AS project_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id
+LEFT JOIN employee_projects ep ON e.id = ep.employee_id
+LEFT JOIN projects p ON ep.project_id = p.id;
+
+SELECT * FROM employee_summary;
+
+CREATE FUNCTION calculate_bonus(employee_salary DECIMAL) RETURNS DECIMAL AS $$
+BEGIN
+    RETURN employee_salary * 0.10;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, salary, calculate_bonus(salary) AS bonus FROM employees;
+
+CREATE TYPE address AS (
+  street VARCHAR(100),
+  city VARCHAR(50),
+  state VARCHAR(2),
+  zip VARCHAR(10)
+);
+
+ALTER TABLE employees ADD COLUMN home_address address;
+
+UPDATE employees SET home_address = ROW('123 Main St', 'Anytown', 'CA', '91234')::address WHERE id = 1;
+
+SELECT (home_address).city FROM employees WHERE id = 1;
+
+CREATE TABLE test_jsonb (id SERIAL PRIMARY KEY, data JSONB);
+INSERT INTO test_jsonb (data) VALUES ('{"name": "John Doe", "age": 30}');
+SELECT data ->> 'name' FROM test_jsonb;
+
+CREATE TABLE test_range (id SERIAL PRIMARY KEY, int_range INT4RANGE);
+INSERT INTO test_range (int_range) VALUES ('[10,20)');
+SELECT * FROM test_range WHERE int_range @> 15;
+
+CREATE TABLE test_uuid (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
+INSERT INTO test_uuid DEFAULT VALUES;
+SELECT * FROM test_uuid;
+
+-- Window Function
+SELECT name, salary, AVG(salary) OVER () FROM employees;
+
+-- Common Table Expression (CTE)
+WITH avg_salary AS (SELECT AVG(salary) AS avg_sal FROM employees) SELECT name, salary FROM employees, avg_salary WHERE salary > avg_sal;
+
+-- Materialized View
+CREATE MATERIALIZED VIEW materialized_employee_summary AS SELECT * FROM employee_summary;
+REFRESH MATERIALIZED VIEW materialized_employee_summary;
+SELECT * FROM materialized_employee_summary;
+
+-- Partitioned Table
+CREATE TABLE sales (sale_date DATE, region TEXT, amount DECIMAL) PARTITION BY RANGE (sale_date);
+CREATE TABLE sales_y2023 PARTITION OF sales FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+INSERT INTO sales (sale_date, region, amount) VALUES ('2023-06-15', 'West', 100.00);
+SELECT * FROM sales WHERE sale_date BETWEEN '2023-01-01' AND '2023-12-31';

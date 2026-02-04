@@ -1,0 +1,96 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES
+('Alice', 60000.00, '2022-01-15', 1),
+('Bob', 75000.00, '2021-05-20', 2),
+('Charlie', 90000.00, '2020-11-01', 3),
+('David', 65000.00, '2023-03-10', 1),
+('Eve', 80000.00, '2022-09-01', 3);
+
+SELECT * FROM employees;
+
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department_id, COUNT(*) FROM employees GROUP BY department_id;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE id = 4;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+EXPLAIN SELECT * FROM employees WHERE name = 'Alice';
+
+SELECT version();
+
+SELECT pg_backend_pid();
+
+SELECT inet_client_addr();
+
+SELECT pg_typeof(10);
+
+SELECT generate_series(1, 5);
+
+SELECT current_user;
+
+SELECT session_user;
+
+SHOW search_path;
+
+SET timezone = 'America/Los_Angeles';
+SELECT now();
+
+RESET timezone;
+
+SELECT 'test' LIKE 'te%';
+SELECT 'test' ILIKE 'Te%';
+SELECT 'test' SIMILAR TO 'te%';
+
+SELECT 1::INT + 1;
+SELECT '1'::INT + 1;
+SELECT 1 = 1;
+
+SELECT CASE WHEN 1 > 0 THEN 'positive' ELSE 'negative' END;
+SELECT coalesce(NULL, 'default');
+
+SELECT greatest(1, 2, 3);
+SELECT least(1, 2, 3);
+
+SELECT random();
+SELECT setseed(0.5);
+SELECT random();
+
+SELECT substring('foobar' from 4 for 2);
+SELECT overlay('TxxxxG' placing 'OM' from 2 for 4);
+
+SELECT current_database();
+
+SELECT md5('test');
+SELECT sha256('test');
+
+SELECT to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS');
+
+SELECT date_trunc('month', current_date);

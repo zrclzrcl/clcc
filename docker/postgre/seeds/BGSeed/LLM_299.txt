@@ -1,0 +1,146 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'Los Angeles'),
+    ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES
+    ('Alice Smith', 60000.00, '2022-01-15', 1),
+    ('Bob Johnson', 75000.00, '2021-05-20', 2),
+    ('Charlie Brown', 90000.00, '2020-11-01', 3);
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+CREATE VIEW employee_salaries AS
+SELECT e.name, e.salary, d.name AS department
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT * FROM employee_salaries WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+SELECT COUNT(*) FROM employees;
+
+SELECT AVG(salary) FROM employees;
+
+CREATE FUNCTION get_employee_count(dept_id INT)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees WHERE department_id = dept_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count(2);
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100),
+    operation VARCHAR(10),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() at time zone 'utc')
+);
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION audit_log_function();
+
+CREATE OR REPLACE FUNCTION audit_log_function()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'INSERT');
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'UPDATE');
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'DELETE');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO employees (name, salary, hire_date, department_id) VALUES ('Eve Williams', 80000, '2023-03-10', 1);
+
+UPDATE employees SET salary = 85000 WHERE name = 'Bob Johnson';
+
+DELETE FROM employees WHERE name = 'Charlie Brown';
+
+SELECT * FROM audit_log;
+
+DROP TRIGGER employee_audit ON employees;
+DROP FUNCTION audit_log_function();
+DROP TABLE audit_log;
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(50)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+    ('Laptop', 1200.00, 'Electronics'),
+    ('T-shirt', 25.00, 'Clothing'),
+    ('Coffee Maker', 75.00, 'Appliances');
+
+CREATE OR REPLACE FUNCTION discount_price(original_price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN original_price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT product_name, price, discount_price(price, 10) AS discounted_price FROM products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT NOT NULL,
+    item_price DECIMAL(10, 2)
+);
+
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT
+    p.category,
+    COUNT(oi.product_id) AS total_products_sold,
+    SUM(oi.item_price * oi.quantity) AS total_revenue
+FROM
+    products p
+JOIN
+    order_items oi ON p.product_id = oi.product_id
+GROUP BY
+    p.category;
+
+REFRESH MATERIALIZED VIEW product_summary;
+
+SELECT * FROM product_summary;
+
+DROP MATERIALIZED VIEW product_summary;
+DROP FUNCTION discount_price(DECIMAL, DECIMAL);
+DROP TABLE order_items, orders, products, employees, departments;

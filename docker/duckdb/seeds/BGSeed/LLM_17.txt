@@ -1,0 +1,69 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL(10, 2)
+);
+
+-- Insert some initial data
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 50000.00),
+('Bob', 'Engineering', 75000.00),
+('Charlie', 'Marketing', 60000.00);
+
+-- Create a view to expose only names and departments
+CREATE VIEW employee_names AS SELECT name, department FROM employees;
+
+-- Test various aggregate functions
+SELECT department, AVG(salary), MAX(salary), MIN(salary) FROM employees GROUP BY department;
+
+-- Demonstrate window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Utilize a common table expression (CTE)
+WITH HighEarners AS (
+    SELECT name, salary FROM employees WHERE salary > 60000
+)
+SELECT * FROM HighEarners;
+
+-- Test unnesting an array
+CREATE TABLE array_table (
+    id INTEGER,
+    data INTEGER[]
+);
+INSERT INTO array_table VALUES (1, [1,2,3]), (2, [4,5,6]);
+SELECT id, UNNEST(data) FROM array_table;
+
+-- Use DuckDB-specific features: INSTALL and LOAD extensions (if available)
+-- This might require specific setup, so wrap it in a TRY block
+
+-- TRY
+--   INSTALL httpfs;
+--   LOAD httpfs;
+--   SELECT * FROM read_csv_auto('https://raw.githubusercontent.com/cwida/duckdb/master/data/tpch/sf-0.01/lineitem.tbl.gz'); -- Example using httpfs
+-- CATCH (ALL)
+--   SELECT 'Could not load httpfs extension'; -- Prevent the fuzzing from stopping due to install failures
+-- ENDTRY;
+
+-- Test string manipulation functions
+SELECT name, UPPER(name), LOWER(name), SUBSTRING(name, 1, 3) FROM employees;
+
+-- Demonstrate date/time functions (DuckDB's are powerful)
+CREATE TABLE event_log (
+    event_time TIMESTAMP,
+    event_description VARCHAR
+);
+INSERT INTO event_log VALUES (CURRENT_TIMESTAMP, 'Log entry');
+SELECT event_time, DATE(event_time), TIME(event_time) FROM event_log;
+
+--Vacuum to reoptimize the datastore
+VACUUM;
+
+--Test column default
+CREATE TABLE column_default_test (
+    id INTEGER PRIMARY KEY,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    version INTEGER DEFAULT 1
+);
+INSERT INTO column_default_test(id) VALUES (1),(2);
+SELECT * FROM column_default_test;

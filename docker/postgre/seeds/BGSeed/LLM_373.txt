@@ -1,0 +1,141 @@
+CREATE TABLE products (
+    product_no integer,
+    name text,
+    price numeric
+);
+
+INSERT INTO products (product_no, name, price) VALUES
+    (1, 'Cheese', 9.99),
+    (2, 'Bread', 1.49),
+    (3, 'Milk', 2.99);
+
+SELECT * FROM products;
+
+CREATE TABLE orders (
+    order_id integer,
+    product_no integer,
+    quantity integer
+);
+
+INSERT INTO orders (order_id, product_no, quantity) VALUES
+    (100, 1, 2),
+    (101, 2, 5),
+    (102, 3, 1);
+
+SELECT * FROM orders;
+
+SELECT products.name, orders.quantity
+FROM products
+INNER JOIN orders ON products.product_no = orders.product_no;
+
+CREATE INDEX product_name_idx ON products (name);
+
+SELECT name FROM products WHERE price > 5;
+
+ALTER TABLE products ADD COLUMN description text;
+
+UPDATE products SET description = 'Delicious cheese' WHERE product_no = 1;
+
+DELETE FROM products WHERE product_no = 3;
+
+DROP INDEX product_name_idx;
+
+DROP TABLE orders;
+
+DROP TABLE products;
+
+CREATE TYPE inventory_level AS ENUM ('low', 'medium', 'high');
+
+CREATE TABLE items (
+    item_id SERIAL PRIMARY KEY,
+    item_name TEXT NOT NULL,
+    inventory inventory_level
+);
+
+INSERT INTO items (item_name, inventory) VALUES ('Socks', 'low'), ('Shirts', 'medium'), ('Pants', 'high');
+
+SELECT * FROM items;
+
+ALTER TABLE items ADD COLUMN last_restock DATE;
+UPDATE items SET last_restock = CURRENT_DATE;
+
+SELECT item_name, inventory FROM items WHERE inventory = 'low';
+
+DROP TABLE items;
+DROP TYPE inventory_level;
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    name TEXT,
+    salary NUMERIC(10, 2)
+);
+
+INSERT INTO employees (name, salary) VALUES ('Alice', 60000.00), ('Bob', 75000.00), ('Charlie', 50000.00);
+
+SELECT name, salary FROM employees ORDER BY salary DESC;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 65000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+DROP TABLE employees;
+
+CREATE TABLE logs (
+    log_id SERIAL PRIMARY KEY,
+    log_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    message TEXT
+);
+
+INSERT INTO logs (message) VALUES ('System started'), ('User logged in'), ('Data processed');
+
+SELECT * FROM logs;
+SELECT message FROM logs WHERE log_time < NOW() - INTERVAL '1 day';
+
+DELETE FROM logs;
+DROP TABLE logs;
+
+CREATE TABLE weather (
+    city VARCHAR(80),
+    temp_lo INT,
+    temp_hi INT,
+    prcp REAL,
+    date DATE
+);
+
+INSERT INTO weather (city, temp_lo, temp_hi, prcp, date)
+    VALUES ('San Francisco', 43, 57, 0.0, '1994-11-29');
+
+SELECT * FROM weather;
+
+DROP TABLE weather;
+
+CREATE TABLE measurements (
+    logdate date,
+    peaktemp int,
+    unitsales int
+);
+
+INSERT INTO measurements (logdate, peaktemp, unitsales) VALUES
+    ('2024-01-01', 10, 100),
+    ('2024-01-02', 15, 150),
+    ('2024-01-03', 20, 200);
+
+SELECT logdate, peaktemp, unitsales FROM measurements WHERE logdate BETWEEN '2024-01-01' AND '2024-01-02';
+
+DROP TABLE measurements;
+
+CREATE TABLE points (x int, y int);
+INSERT INTO points VALUES (1, 1), (2, 2), (3, 3);
+
+SELECT * FROM points WHERE x = y;
+
+DROP TABLE points;
+
+CREATE TABLE intervals (start_time timestamp, end_time timestamp);
+INSERT INTO intervals VALUES ('2024-01-01 10:00:00', '2024-01-01 12:00:00'), ('2024-01-02 14:00:00', '2024-01-02 16:00:00');
+
+SELECT * FROM intervals WHERE start_time < end_time;
+
+DROP TABLE intervals;

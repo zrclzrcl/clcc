@@ -1,0 +1,28 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT COLLATE NOCASE,
+    value DOUBLE,
+    data BLOB
+);
+
+INSERT INTO test_table VALUES(1, 'Test', 3.14, x'010203');
+INSERT INTO test_table VALUES(2, NULL, -9999999999999999, '');
+INSERT INTO test_table VALUES(3, 'EdgeCase', 1e+308, x'FFFF');
+
+SELECT COUNT(*), COUNT(name), SUM(value), AVG(value) FROM test_table;
+SELECT MIN(id), MAX(id), MIN(value), MAX(value) FROM test_table;
+SELECT id, name, COUNT(*) FROM test_table GROUP BY id, name;
+
+SELECT * FROM test_table ORDER BY name DESC, value ASC;
+SELECT * FROM test_table WHERE value > 100 ORDER BY data;
+
+SELECT id AS x, name AS y FROM test_table UNION SELECT value AS x, data AS y FROM test_table;
+
+SELECT typeof(id), typeof(name), typeof(value), typeof(data) FROM test_table LIMIT 1;
+
+SELECT t1.id, t2.name FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id;
+
+CREATE INDEX idx_name_value ON test_table(name, value);
+
+SELECT * FROM test_table WHERE value > 100 AND name LIKE 'Test%';
+SELECT value / 2 AS half_value FROM test_table WHERE id = 1;

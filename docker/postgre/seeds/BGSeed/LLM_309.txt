@@ -1,0 +1,119 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email CITEXT UNIQUE,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, email, salary, hire_date) VALUES
+('Alice Smith', 'alice.smith@example.com', 60000.00, '2022-01-15'),
+('Bob Johnson', 'bob.johnson@example.com', 75000.50, '2021-07-01'),
+('Charlie Brown', 'charlie.brown@example.com', 50000.00, '2023-03-10');
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO departments (name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+UPDATE employees SET department_id = 1 WHERE id = 1;
+UPDATE employees SET department_id = 2 WHERE id = 2;
+UPDATE employees SET department_id = 3 WHERE id = 3;
+
+SELECT * FROM employees;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department_id, AVG(salary) FROM employees GROUP BY department_id;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+ALTER TABLE employees ADD COLUMN data JSONB;
+UPDATE employees SET data = '{"bonus": 1000}' WHERE id = 1;
+
+SELECT data ->> 'bonus' FROM employees WHERE id = 1;
+
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO products (name, price) VALUES ('Laptop', 1200.00);
+INSERT INTO products (name, price) VALUES ('Mouse', 25.00);
+INSERT INTO products (name, price) VALUES ('Keyboard', 75.00);
+
+CREATE VIEW expensive_products AS
+SELECT id, name, price FROM products WHERE price > 100.00;
+
+SELECT * FROM expensive_products;
+
+WITH avg_price AS (
+  SELECT AVG(price) AS avg_price FROM products
+)
+SELECT * FROM products WHERE price > (SELECT avg_price FROM avg_price);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER
+);
+
+INSERT INTO orders (product_id, quantity) VALUES (1, 2);
+
+SELECT p.name, SUM(o.quantity) AS total_quantity
+FROM products p
+JOIN orders o ON p.id = o.product_id
+GROUP BY p.name;
+
+CREATE FUNCTION get_employee_count()
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (SELECT COUNT(*) FROM employees);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count();
+
+CREATE TABLE logs (
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    message TEXT
+);
+
+INSERT INTO logs (message) VALUES ('Test log entry');
+
+SELECT * FROM logs;
+
+CREATE TABLE array_test (
+  id SERIAL PRIMARY KEY,
+  names TEXT[]
+);
+
+INSERT INTO array_test (names) VALUES (ARRAY['Alice', 'Bob', 'Charlie']);
+
+SELECT names[1] FROM array_test WHERE id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+DROP VIEW expensive_products;
+
+DROP TABLE orders;
+DROP TABLE array_test;
+DROP TABLE logs;
+DROP TABLE products;
+DROP FUNCTION get_employee_count();
+DROP TABLE employees;
+DROP TABLE departments;

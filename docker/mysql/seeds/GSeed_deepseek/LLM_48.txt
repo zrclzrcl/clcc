@@ -1,0 +1,48 @@
+-- Create a table with various data types to test different storage engines and query handlers
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    int_col INT,
+    varchar_col VARCHAR(255),
+    decimal_col DECIMAL(10, 2),
+    date_col DATE,
+    datetime_col DATETIME,
+    text_col TEXT,
+    blob_col BLOB,
+    enum_col ENUM('a', 'b', 'c'),
+    set_col SET('x', 'y', 'z')
+);
+
+-- Insert edge cases and special values
+INSERT INTO t1 VALUES 
+(0, -2147483648, '', 0.00, '0000-00-00', '0000-00-00 00:00:00', '', '', 'a', 'x'),
+(0, 2147483647, 'test_string', 99999999.99, '9999-12-31', '9999-12-31 23:59:59', 'text_data', 'blob_data', 'c', 'z'),
+(0, 0, '', -0.00, '1970-01-01', '1970-01-01 00:00:01', '', '', 'b', 'y');
+
+-- Test complex queries with edge cases
+SELECT 
+    id,
+    int_col * (-2147483648) AS overflow_test,
+    LENGTH(varchar_col) AS varchar_length,
+    decimal_col / 0 AS division_by_zero,
+    DATE_SUB(date_col, INTERVAL 1000 YEAR),
+    datetime_col + INTERVAL 99999 SECOND,
+    HEX(blob_col),
+    FIND_IN_SET('x', set_col)
+FROM t1;
+
+-- Test aggregate functions with edge values
+SELECT 
+    COUNT(*) AS total_rows,
+    SUM(int_col) AS sum_int,
+    AVG(decimal_col) AS avg_decimal,
+    MIN(date_col) AS min_date,
+    MAX(datetime_col) AS max_datetime
+FROM t1;
+
+-- Test joins and unions to cover more execution paths
+SELECT * FROM t1 t1 JOIN t1 t2 ON t1.id = t2.id;
+UNION ALL
+SELECT * FROM t1 WHERE int_col > 1000;
+
+-- Test sorting with edge cases
+SELECT id, int_col FROM t1 ORDER BY int_col DESC NULLS LAST;

@@ -1,0 +1,49 @@
+-- Create table with various data types and constraints to test edge cases
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    int_col INTEGER DEFAULT 0 CHECK (int_col >= -10 AND int_col <= 10),
+    str_col VARCHAR(50) NOT NULL,
+    bool_col BOOLEAN,
+    date_col DATE,
+    UNIQUE(int_col, str_col)
+);
+
+-- Create index on function of column to test unique edge cases
+CREATE INDEX t1x1 ON t1(ABS(int_col));
+
+-- Insert test data with various values including NULL and boundary conditions
+INSERT INTO t1 VALUES
+    (1, -10, 'test_string_1', TRUE, '2023-01-01'),
+    (2, 0, 'test_string_2', FALSE, '2023-06-15'),
+    (3, NULL, 'test_string_3', NULL, NULL),
+    (4, 10, 'test_string_4', TRUE, '2023-12-31');
+
+-- Create view with CTE to test complex queries and recursion
+WITH RECURSIVE cte AS (
+    SELECT 1 AS n, CAST('a' AS VARCHAR(50)) AS str
+    UNION ALL
+    SELECT n + 1, str || 'b'
+    FROM cte
+    WHERE n < 5
+)
+CREATE VIEW v1 AS SELECT * FROM cte;
+
+-- Create table with window functions to test analytic capabilities
+CREATE TABLE t2 AS
+SELECT 
+    id,
+    int_col,
+    ROW_NUMBER() OVER (ORDER BY int_col) AS row_num,
+    RANK() OVER (PARTITION BY bool_col ORDER BY date_col) AS rank_val
+FROM t1;
+
+-- Create temporary table for testing session-specific data
+CREATE TEMPORARY TABLE temp_t1(
+    id INTEGER PRIMARY KEY,
+    json_col JSONB
+);
+
+-- Insert JSON data to test JSON functionality
+INSERT INTO temp_t1 VALUES
+    (1, '{"key1": "value1", "key2": 123}'),
+    (2, '{"array": [1, 2, 3], "nested": {"a": true}}');

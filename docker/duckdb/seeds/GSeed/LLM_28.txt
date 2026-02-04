@@ -1,0 +1,89 @@
+CREATE TABLE integers (
+  i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE VIEW even_integers AS
+SELECT i
+FROM integers
+WHERE i % 2 = 0;
+
+-- Demonstrate window functions
+SELECT i,
+       ROW_NUMBER() OVER (ORDER BY i) AS row_num,
+       RANK() OVER (ORDER BY i) AS rank_num
+FROM integers;
+
+-- Demonstrate string manipulation functions
+SELECT 'DuckDB',
+       UPPER('DuckDB'),
+       LOWER('DuckDB'),
+       LENGTH('DuckDB');
+
+-- Demonstrate date functions
+SELECT CURRENT_DATE,
+       CURRENT_TIME,
+       CURRENT_TIMESTAMP;
+
+-- Test type casting
+SELECT CAST('10' AS INTEGER),
+       CAST(10 AS VARCHAR);
+
+-- Demonstrate aggregate functions
+SELECT COUNT(*),
+       AVG(i),
+       SUM(i),
+       MAX(i),
+       MIN(i)
+FROM integers;
+
+CREATE TABLE strings (
+  s VARCHAR
+);
+
+INSERT INTO strings VALUES ('a'), ('b'), ('c');
+
+-- Demonstrate LIKE operator
+SELECT s FROM strings WHERE s LIKE 'a%';
+
+-- Demonstrate a correlated subquery
+SELECT i FROM integers WHERE i IN (SELECT i FROM integers WHERE i > 2);
+
+-- Demonstrate DISTINCT
+SELECT DISTINCT i FROM integers;
+
+-- Demonstrate CASE WHEN
+SELECT i,
+       CASE
+           WHEN i % 2 = 0 THEN 'Even'
+           ELSE 'Odd'
+       END AS parity
+FROM integers;
+
+-- Demonstrate EXCEPT ALL, INTERSECT ALL, UNION ALL
+CREATE TABLE integers2 AS SELECT * FROM integers WHERE i < 4;
+
+SELECT * FROM integers EXCEPT ALL SELECT * FROM integers2;
+SELECT * FROM integers INTERSECT ALL SELECT * FROM integers2;
+SELECT * FROM integers UNION ALL SELECT * FROM integers2;
+
+-- Example using duckdb extensions (safe, won't error if extensions aren't loaded)
+-- NOTE: This will likely fail if extensions aren't loaded, but demonstrates syntax we want to exercise
+SELECT duckdb_version();
+SELECT uuid();
+
+--Test for json functionality.
+CREATE TABLE json_test (j JSON);
+INSERT INTO json_test VALUES ('{"a": 1, "b": "hello"}');
+SELECT j['a'] FROM json_test;
+
+--Test for list/array functionality
+
+CREATE TABLE list_test (l INTEGER[]);
+INSERT INTO list_test VALUES (LIST(1, 2, 3));
+SELECT l[1] FROM list_test;
+
+-- Test struct functionality
+CREATE TABLE struct_test AS SELECT STRUCT(a := 1, b := 'test') AS s;
+SELECT s.a FROM struct_test;

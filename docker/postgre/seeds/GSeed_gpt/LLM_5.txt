@@ -1,0 +1,55 @@
+WITH complex_cte AS (
+    SELECT e.employee_id, d.department_name, s.salary
+    FROM employees e
+    JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN salaries s ON e.employee_id = s.employee_id
+    WHERE e.start_date >= '2023-01-01'
+),
+aggregated_data AS (
+    SELECT department_name, AVG(salary) as avg_salary
+    FROM complex_cte
+    GROUP BY department_name
+)
+SELECT cte.employee_id, cte.department_name, cte.salary, ad.avg_salary
+FROM complex_cte cte
+JOIN aggregated_data ad ON cte.department_name = ad.department_name
+WHERE cte.salary > ad.avg_salary;
+
+INSERT INTO employees (employee_id, first_name, last_name, department_id)
+VALUES (1001, 'John', 'Doe', 1),
+       (1002, 'Jane', 'Smith', 2),
+       (1003, 'Bob', 'Johnson', 1);
+
+UPDATE employees
+SET salary = salary + 1000,
+    last_updated = CURRENT_TIMESTAMP
+WHERE department_id IN (
+    SELECT department_id
+    FROM departments
+    WHERE department_name LIKE 'Sales%'
+)
+RETURNING employee_id, first_name, salary;
+
+ALTER TABLE sales_data ADD COLUMN json_column JSONB;
+UPDATE sales_data SET json_column = '{"key1": "value1", "key2": 42}'::JSONB
+WHERE transaction_id > 1000;
+
+CREATE INDEX idx_json_column ON sales_data USING GIN (json_column);
+ANALYZE sales_data;
+
+WITH recursive_cte AS (
+    SELECT employee_id, first_name, manager_id
+    FROM employees
+    WHERE employee_id = 1001
+    UNION ALL
+    SELECT e.employee_id, e.first_name, e.manager_id
+    FROM employees e
+    INNER JOIN recursive_cte rc ON e.manager_id = rc.employee_id
+)
+SELECT * FROM recursive_cte;
+
+EXPLAIN ANALYZE SELECT COUNT(*) 
+FROM (
+    SELECT DISTINCT employee_id 
+    FROM employees
+) subquery;

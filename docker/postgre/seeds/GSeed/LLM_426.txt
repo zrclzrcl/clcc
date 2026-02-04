@@ -1,0 +1,110 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 50000.00, '2023-03-10', 'Sales'),
+('David Lee', 80000.00, '2020-11-01', 'Engineering');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) AS average_salary FROM employees;
+
+SELECT department, COUNT(*) AS employee_count FROM employees GROUP BY department;
+
+SELECT MIN(hire_date) AS earliest_hire_date FROM employees;
+
+SELECT name FROM employees WHERE hire_date BETWEEN '2021-01-01' AND '2022-12-31';
+
+SELECT EXISTS (SELECT 1 FROM employees WHERE name = 'Alice Smith');
+
+CREATE VIEW sales_employees AS SELECT name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees;
+
+DROP VIEW sales_employees;
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+SELECT name, email FROM employees;
+
+ALTER TABLE employees DROP COLUMN email;
+
+SELECT version();
+
+SELECT inet_server_addr();
+
+SELECT current_database();
+
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+-- Example using JSONB
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "model": "XPS 13", "price": 1200.00}'),
+('Mouse', '{"brand": "Logitech", "model": "MX Master 3", "price": 99.99}');
+
+SELECT name, details -> 'brand' AS brand FROM products;
+
+SELECT name FROM products WHERE details @> '{"brand": "Dell"}';
+
+-- Example using window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Example using Common Table Expressions (CTEs)
+WITH high_earners AS (
+    SELECT name, salary FROM employees WHERE salary > 70000
+)
+SELECT name FROM high_earners ORDER BY salary DESC;
+
+-- Example using generate_series
+SELECT generate_series(1, 5);
+
+-- Example using uuid
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50)
+);
+
+INSERT INTO users (username) VALUES ('testuser');
+
+SELECT * FROM users;
+
+DROP TABLE users;
+DROP EXTENSION "uuid-ossp";

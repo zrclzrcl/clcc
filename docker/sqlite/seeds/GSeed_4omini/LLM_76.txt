@@ -1,0 +1,18 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders;
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, item TEXT, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users VALUES(1, 'Alice', 30);
+INSERT INTO users VALUES(2, 'Bob', 25);
+INSERT INTO orders VALUES(1, 1, 'Laptop', 999.99);
+INSERT INTO orders VALUES(2, 1, 'Mouse', 25.50);
+INSERT INTO orders VALUES(3, 2, 'Keyboard', 75.00);
+CREATE INDEX idx_users_age ON users(age);
+CREATE INDEX idx_orders_user ON orders(user_id);
+SELECT * FROM users WHERE age > 20;
+SELECT u.name, SUM(o.amount) AS total_spent 
+FROM users u 
+JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id 
+HAVING total_spent > 100;
+DELETE FROM orders WHERE amount < 50;

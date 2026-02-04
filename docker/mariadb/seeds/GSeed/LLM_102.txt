@@ -1,0 +1,94 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco'),
+('HR', 'Chicago');
+
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES
+('John', 'Doe', 60000.00, '2020-01-15', 1),
+('Jane', 'Smith', 75000.00, '2019-05-20', 2),
+('Peter', 'Jones', 90000.00, '2018-11-01', 3),
+('Alice', 'Brown', 55000.00, '2021-03-10', 4),
+('Bob', 'Williams', 80000.00, '2017-09-25', 1);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+ANALYZE TABLE employees, departments;
+
+SET GLOBAL innodb_adaptive_hash_index = OFF;
+
+SET @start_date = '2019-01-01';
+SET @end_date = '2021-12-31';
+
+SELECT * FROM employees WHERE hire_date BETWEEN @start_date AND @end_date;
+
+-- MariaDB specific function example
+SELECT id, first_name, last_name, mariadb_version() FROM employees LIMIT 1;
+
+-- Example using JSON functions
+SELECT JSON_OBJECT('id', id, 'name', first_name) as employee_json FROM employees LIMIT 1;
+
+-- Example with window function
+SELECT first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Trigger example to test edge cases during inserts/updates
+CREATE TABLE employee_audit (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    old_salary DECIMAL(10,2),
+    new_salary DECIMAL(10,2),
+    change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER before_employee_update
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Salary cannot be negative';
+    END IF;
+    IF NEW.salary > 150000 THEN
+      SET NEW.salary = 150000;
+    END IF;
+    IF NEW.salary != OLD.salary THEN
+        INSERT INTO employee_audit (employee_id, old_salary, new_salary)
+        VALUES (OLD.id, OLD.salary, NEW.salary);
+    END IF;
+END;//
+DELIMITER ;
+
+UPDATE employees SET salary = 160000 WHERE first_name = 'John';
+UPDATE employees SET salary = 76000 WHERE first_name = 'Jane';
+
+--Stored procedure example
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment(IN department_name VARCHAR(50))
+BEGIN
+    SELECT e.first_name, e.last_name
+    FROM employees e
+    JOIN departments d ON e.department_id = d.id
+    WHERE d.name = department_name;
+END //
+DELIMITER ;
+
+CALL GetEmployeesByDepartment('Sales');

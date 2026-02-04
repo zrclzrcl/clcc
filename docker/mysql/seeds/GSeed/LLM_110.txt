@@ -1,0 +1,86 @@
+SET GLOBAL innodb_file_per_table = ON;
+SET SQL_MODE = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+-- Test for different storage engines.
+CREATE TABLE t1 (id INT) ENGINE=InnoDB;
+CREATE TABLE t2 (id INT) ENGINE=MyISAM;
+CREATE TABLE t3 (id INT) ENGINE=MEMORY;
+CREATE TABLE t4 (id INT) ENGINE=CSV;
+INSERT INTO t1 VALUES (1),(2),(3);
+INSERT INTO t2 VALUES (1),(2),(3);
+INSERT INTO t3 VALUES (1),(2),(3);
+INSERT INTO t4 VALUES (1),(2),(3);
+
+-- Test for window functions and common table expressions.
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, manager_id, 0 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.id
+)
+SELECT * FROM employee_hierarchy ORDER BY level, name;
+
+
+-- Test for spatial data types.
+CREATE TABLE geom_test (id INT, g GEOMETRY);
+INSERT INTO geom_test VALUES (1, ST_GeomFromText('POINT(1 1)')), (2, ST_GeomFromText('LINESTRING(0 0, 1 1, 2 2)')),(3,ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))'));
+SELECT ST_AsText(g) FROM geom_test;
+
+-- Test for JSON data types.
+CREATE TABLE json_test (id INT, data JSON);
+INSERT INTO json_test VALUES (1, '{"name": "John", "age": 30, "city": "New York"}'), (2, '{"name": "Jane", "age": 25, "city": "London"}');
+SELECT data->'$.name' FROM json_test;
+
+-- Test for stored procedures.
+DELIMITER //
+CREATE PROCEDURE get_employee_name(IN employee_id INT, OUT employee_name VARCHAR(100))
+BEGIN
+    SELECT name INTO employee_name FROM employees WHERE id = employee_id;
+END //
+DELIMITER ;
+CALL get_employee_name(198, @name);
+SELECT @name;
+
+-- Test for triggers.
+CREATE TABLE audit_log (id INT AUTO_INCREMENT PRIMARY KEY, table_name VARCHAR(255), record_id INT, action VARCHAR(255), timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+DELIMITER //
+CREATE TRIGGER employees_after_insert
+AFTER INSERT ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, record_id, action) VALUES ('employees', NEW.id, 'insert');
+END //
+DELIMITER ;
+
+INSERT INTO employees (ID, NAME, MANAGER_ID) VALUES (444, "Test", 333);
+SELECT * FROM audit_log WHERE table_name = 'employees';
+
+-- Test for user-defined functions.
+DELIMITER //
+CREATE FUNCTION add_one(num INT)
+RETURNS INT DETERMINISTIC
+BEGIN
+  RETURN num + 1;
+END //
+DELIMITER ;
+
+SELECT add_one(5);
+
+-- Test for generated columns.
+CREATE TABLE generated_columns_test (
+    id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    full_name VARCHAR(100) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) VIRTUAL
+);
+INSERT INTO generated_columns_test (id, first_name, last_name) VALUES (1, 'John', 'Doe');
+SELECT * FROM generated_columns_test;
+
+-- Cleanup (important for repeatable testing)
+DROP TABLE IF EXISTS t1,t2,t3,t4, geom_test, json_test, audit_log, generated_columns_test;
+DROP PROCEDURE IF EXISTS get_employee_name;
+DROP FUNCTION IF EXISTS add_one;
+DROP TRIGGER IF EXISTS employees_after_insert;

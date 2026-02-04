@@ -1,0 +1,55 @@
+
+from ubuntu:22.04
+LABEL maintainer="Squirrel"
+
+
+RUN apt-get update && apt-get -y install make cmake build-essential vim sudo git \
+    clang ninja-build pkg-config clang-format libpq-dev llvm libyaml-cpp-dev zlib1g-dev \
+    libreadline8 libreadline-dev bison flex python3-fire python3-pip && pip3 install openai colorama scipy
+
+RUN mkdir -p /home && \
+    groupadd dobigthing && \
+    useradd -l -K UMASK=0000 -d /home -g dobigthing dobigthing && \
+    chown dobigthing:dobigthing /home
+
+RUN	echo "dobigthing:dobigthing" | chpasswd && usermod -a -G sudo dobigthing
+RUN chmod +w /etc/sudoers && \
+    echo "%dobigthing   ALL=(ALL:ALL)NOPASSWD:ALL" >> /etc/sudoers && \
+    chmod -w /etc/sudoers
+
+USER dobigthing
+WORKDIR /home
+ADD ./src/clcc_generator/count_feedbackpoint.py  /home/clcc/count_feedbackpoint.py
+RUN git clone https://github.com/s3team/Squirrel.git && \
+    cd Squirrel && git submodule update --init && rm ./srcs/custom_mutator.cc
+ADD ./src/clcc_mutator/custom_mutator.cc  /home/Squirrel/srcs/custom_mutator.cc
+RUN cd Squirrel && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPOSTGRESQL=ON && \
+    cmake --build build -j && \
+    cd AFLplusplus/ && git remote add upstream https://github.com/AFLplusplus/AFLplusplus.git && git fetch upstream --tags && \
+    git reset --hard v4.31c && \
+    LLVM_CONFIG=llvm-config-14 make -j
+    
+RUN cd Squirrel && rm ./srcs/db_driver.cc && rm -rf /home/Squirrel/srcs/internal/client/client_postgresql.cc
+ADD ./src/db_driver/zrcl_db_driver_for_showmap.cc  /home/Squirrel/srcs/db_driver.cc
+ADD ./src/db_driver/postgre_showmap_config.yml  /home/Squirrel/data/postgre_showmap_config.yml
+ADD ./src/db_driver/my_client_postgre.cc  /home/Squirrel/srcs/internal/client/client_postgresql.cc
+RUN cd Squirrel && cmake -S . -B build_for_showmap -DCMAKE_BUILD_TYPE=Release -Wno-dev -DPOSTGRESQL=ON && \
+    cmake --build build_for_showmap -j 
+
+RUN git clone https://github.com/postgres/postgres.git postgres/ && cd postgres && git checkout REL_17_6 && \
+    mkdir bld/ && cd bld/ && \
+    CC=/home/Squirrel/AFLplusplus/afl-cc CXX=/home/Squirrel/AFLplusplus/afl-c++ \
+    ../postgres/configure
+
+RUN cd bld/ && make -j && sudo make install && \
+    sudo mkdir /usr/local/pgsql/data && sudo chown dobigthing /usr/local/pgsql/data &&  \
+    AFL_IGNORE_PROBLEMS=1 /usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data
+
+RUN mkdir -p /home/for_showmap/pgsql/data &&  cp -r /usr/local/pgsql/data/* /home/for_showmap/pgsql/data/
+
+RUN AFL_DEBUG=1 __AFL_SHM_ID=1234 /usr/local/pgsql/bin/postgres 2>&1 | grep "__afl_map_size" | tail -n 1 | cut -d"," -f8 | cut -d" " -f 3 > /tmp/mapsize
+
+ADD ./docker/set_seed/  /home/Squirrel/data/fuzz_root/set_seed/
+ADD ./src/start_fuzz_py/run_with_no_M.py  /home/Squirrel/scripts/utils/clcc_run.py
+RUN sudo chmod -R 777 /home && sudo chmod -R 750 /home/for_showmap
+WORKDIR /home/Squirrel/scripts/utils

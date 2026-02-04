@@ -1,0 +1,28 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (value) VALUES (42);
+INSERT INTO integers (value) VALUES (NULL);
+INSERT INTO integers (value) VALUES (99);
+
+CREATE VIEW value_view AS SELECT value FROM integers WHERE value > 50;
+
+-- Demonstrates DuckDB's JSON support
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (data) VALUES ('{"name": "Alice", "age": 30}');
+INSERT INTO json_data (data) VALUES ('{"city": "New York", "population": 8000000}');
+
+-- Demonstrates DuckDB's support for UNNEST
+CREATE TABLE list_data (
+    id INTEGER PRIMARY KEY,
+    list INTEGER[]
+);
+
+INSERT INTO list_data (list) VALUES (ARRAY[1, 2, 3]);
+INSERT INTO list_data (list) VALUES (ARRAY[4, 5, NULL]);

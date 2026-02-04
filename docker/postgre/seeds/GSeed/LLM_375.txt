@@ -1,0 +1,120 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+    ('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+    ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+    ('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+    ('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+    ('Eve Wilson', 65000.00, 'Marketing', '2022-09-01');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 60000
+ORDER BY average_salary DESC;
+
+UPDATE employees
+SET salary = salary * 1.10
+WHERE department = 'Sales';
+
+DELETE FROM employees
+WHERE hire_date < '2021-01-01';
+
+CREATE VIEW high_earners AS
+SELECT name, salary, department
+FROM employees
+WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+DECLARE
+    base_salary DECIMAL;
+    bonus_amount DECIMAL;
+BEGIN
+    SELECT salary INTO base_salary FROM employees WHERE id = emp_id;
+    bonus_amount := base_salary * bonus_percentage / 100;
+    RETURN bonus_amount;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1, 10);
+
+CREATE TABLE audit_log (
+    event_time TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    table_name VARCHAR(255),
+    operation VARCHAR(50),
+    user_name TEXT
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO audit_log (table_name, operation, user_name)
+    VALUES (TG_TABLE_NAME, TG_OP, current_user);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('New Employee', 50000, 'HR', '2024-01-01');
+UPDATE employees SET salary = 52000 WHERE name = 'New Employee';
+DELETE FROM employees WHERE name = 'New Employee';
+
+--Demonstrate window function
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+--Demonstrate common table expression (CTE)
+WITH DepartmentAverages AS (
+    SELECT
+        department,
+        AVG(salary) AS avg_salary
+    FROM
+        employees
+    GROUP BY
+        department
+)
+SELECT
+    e.name,
+    e.salary,
+    e.department,
+    da.avg_salary
+FROM
+    employees e
+JOIN
+    DepartmentAverages da ON e.department = da.department
+WHERE e.salary > da.avg_salary;
+
+-- Use generate_series to create a sequence of numbers
+SELECT generate_series(1, 10);
+
+-- Use jsonb functionality.
+UPDATE employees SET department = '{"name": "Sales", "location": "New York"}'::jsonb WHERE name = 'Alice Smith';
+SELECT department ->> 'name' FROM employees WHERE name = 'Alice Smith';
+
+DROP VIEW high_earners;
+DROP TRIGGER employee_audit ON employees;
+DROP FUNCTION log_employee_changes();
+DROP FUNCTION calculate_bonus(INTEGER, DECIMAL);
+DROP TABLE audit_log;
+DROP INDEX idx_employees_department;
+DROP TABLE employees;

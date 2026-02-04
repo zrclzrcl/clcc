@@ -1,0 +1,95 @@
+SET SESSION DEFAULT_STORAGE_ENGINE = InnoDB;
+SET GLOBAL innodb_flush_log_at_trx_commit = 0;
+SET GLOBAL innodb_lock_wait_timeout = 50;
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    category ENUM('Electronics', 'Clothing', 'Home Goods', 'Books')
+);
+
+-- Insert some initial data
+INSERT INTO products (name, description, price, quantity, category) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 1TB SSD', 1200.00, 10, 'Electronics'),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 50, 'Clothing'),
+('Coffee Maker', 'Automatic coffee maker with programmable timer', 75.50, 20, 'Home Goods'),
+('Programming Book', 'Introduction to Python programming', 30.00, 30, 'Books');
+
+-- Create a second table with a foreign key relationship
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Insert some orders
+INSERT INTO orders (product_id, quantity) VALUES
+(1, 2),
+(2, 5),
+(3, 1),
+(4, 3);
+
+-- Create a fulltext index
+ALTER TABLE products ADD FULLTEXT INDEX idx_name_description (name, description);
+
+-- Perform some queries
+SELECT * FROM products WHERE MATCH(name, description) AGAINST('laptop');
+SELECT AVG(price) FROM products;
+SELECT p.name, o.quantity FROM products p JOIN orders o ON p.id = o.product_id;
+
+-- Test some edge cases with partitioning
+CREATE TABLE sales (
+    sale_date DATE NOT NULL,
+    product_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL
+)
+PARTITION BY RANGE (YEAR(sale_date)) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO sales (sale_date, product_id, amount) VALUES
+('2020-12-31', 1, 100.00),
+('2021-06-15', 2, 50.00),
+('2022-03-10', 3, 25.00),
+('2023-01-01', 4, 75.00);
+
+-- Test MariaDB-specific feature: ColumnStore engine (if available) - Remove if not available
+-- CREATE TABLE columnstore_table (id INT, value VARCHAR(255)) ENGINE=ColumnStore;
+-- INSERT INTO columnstore_table VALUES (1, 'test'), (2, 'test2');
+-- SELECT * FROM columnstore_table WHERE value LIKE 'test%';
+
+-- Optimize and analyze tables
+OPTIMIZE TABLE products, orders, sales;
+ANALYZE TABLE products, orders, sales;
+
+-- Add a spatial index (requires SRID definition and geometry column)
+ALTER TABLE products ADD COLUMN location POINT SRID 0;
+UPDATE products SET location = ST_GeomFromText('POINT(0 0)');
+ALTER TABLE products ADD SPATIAL INDEX(location);
+
+-- Test a stored procedure.
+DELIMITER //
+CREATE PROCEDURE GetProductPrice (IN product_name VARCHAR(255), OUT product_price DECIMAL(10,2))
+BEGIN
+    SELECT price INTO product_price FROM products WHERE name = product_name;
+END //
+DELIMITER ;
+
+CALL GetProductPrice('Laptop', @price);
+SELECT @price;
+
+-- Cleanup if necessary for iterative testing (comment out for initial seed)
+-- DROP PROCEDURE GetProductPrice;
+-- DROP TABLE IF EXISTS sales, orders, products;

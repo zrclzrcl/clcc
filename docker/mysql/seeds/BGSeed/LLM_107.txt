@@ -1,0 +1,77 @@
+SET SQL_WARNINGS=1;
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+
+-- Create a table with various data types and constraints
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    category ENUM('Electronics', 'Clothing', 'Home', 'Books') DEFAULT 'Electronics',
+    discount FLOAT NULL, -- Allow NULL for discounts
+    INDEX idx_name (name),
+    FULLTEXT INDEX idx_description (description)
+);
+
+-- Insert some sample data, including edge cases like zero quantity and maximum price
+INSERT INTO products (name, description, price, quantity, category, discount) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 1TB SSD', 1299.99, 5, 'Electronics', 0.1),
+('T-Shirt', 'Comfortable cotton t-shirt', 19.99, 100, 'Clothing', NULL),
+('Coffee Table', 'Modern coffee table for your living room', 149.50, 10, 'Home', 0.05),
+('Programming Book', 'Introduction to Python programming', 29.95, 0, 'Books', 0.0),
+('Gaming Mouse', 'High-precision gaming mouse with RGB lighting', 79.99, 20, 'Electronics', 0.2),
+('Luxury Watch', 'Swiss made automatic watch', 9999.99, 2, NULL, NULL); -- Test NULL category
+
+-- Perform some basic queries to test the table
+SELECT * FROM products WHERE price > 100;
+SELECT name, price FROM products ORDER BY price DESC LIMIT 3;
+UPDATE products SET quantity = quantity + 1 WHERE name = 'T-Shirt';
+DELETE FROM products WHERE quantity = 0;
+
+-- Test FULLTEXT search functionality
+SELECT * FROM products WHERE MATCH (description) AGAINST ('laptop');
+
+-- Test ENUM functionality
+SELECT * FROM products WHERE category = 'Clothing';
+
+-- Test INSERT with IGNORE and ON DUPLICATE KEY UPDATE
+INSERT IGNORE INTO products (name, description, price, quantity) VALUES ('Programming Book', 'Introduction to Python programming', 29.95, 0);
+INSERT INTO products (name, description, price, quantity) VALUES ('Programming Book', 'Introduction to Advanced Python programming', 39.95, 5)
+ON DUPLICATE KEY UPDATE quantity = quantity + 5;
+
+-- Stored procedure example
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN category_name VARCHAR(255))
+BEGIN
+    SELECT * FROM products WHERE category = category_name;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Electronics');
+
+-- Function example
+DELIMITER //
+CREATE FUNCTION CalculateDiscountedPrice(price DECIMAL(10,2), discount FLOAT)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    IF discount IS NULL THEN
+        RETURN price;
+    ELSE
+        RETURN price * (1 - discount);
+    END IF;
+END //
+DELIMITER ;
+
+SELECT name, price, CalculateDiscountedPrice(price, discount) AS discounted_price FROM products;
+
+-- View Example
+CREATE VIEW DiscountedProducts AS
+SELECT id, name, price, CalculateDiscountedPrice(price, discount) AS discounted_price
+FROM products
+WHERE discount > 0;
+
+SELECT * FROM DiscountedProducts;

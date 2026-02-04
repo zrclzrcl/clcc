@@ -1,0 +1,68 @@
+DROP TABLE IF EXISTS sensor_data;
+CREATE TABLE sensor_data (
+    sensor_id INTEGER,
+    timestamp TIMESTAMP,
+    temperature DOUBLE,
+    humidity DOUBLE,
+    pressure DOUBLE,
+    location VARCHAR,
+    PRIMARY KEY (sensor_id, timestamp)
+);
+
+-- Insert some initial sensor data, including edge cases like NaN and NULL values
+INSERT INTO sensor_data (sensor_id, timestamp, temperature, humidity, pressure, location) VALUES
+(1, '2024-01-01 00:00:00', 25.5, 60.2, 1012.5, 'Living Room'),
+(1, '2024-01-01 00:00:05', 25.6, 60.5, 1012.6, 'Living Room'),
+(2, '2024-01-01 00:00:00', 22.0, 55.1, 1015.0, 'Bedroom'),
+(2, '2024-01-01 00:00:05', 22.1, 55.3, 1015.1, 'Bedroom'),
+(3, '2024-01-01 00:00:00', NULL, 70.0, 1000.0, 'Outside'),
+(3, '2024-01-01 00:00:05', 10.0, NULL, 1000.1, 'Outside'),
+(4, '2024-01-01 00:00:00', 30.0, 80.0, NaN, 'Kitchen'),
+(4, '2024-01-01 00:00:05', 30.1, 80.1, 1005.0, 'Kitchen'),
+(5, '2024-01-01 00:00:00', -5.0, 10.0, 1030.0, 'Basement'),
+(5, '2024-01-01 00:00:05', -5.1, 10.1, 1030.1, 'Basement');
+
+-- Perform aggregations with window functions
+SELECT
+    sensor_id,
+    timestamp,
+    temperature,
+    AVG(temperature) OVER (PARTITION BY sensor_id ORDER BY timestamp ASC ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as avg_temp,
+    MAX(humidity) OVER (PARTITION BY location ORDER BY timestamp ASC) as max_humidity_by_location
+FROM sensor_data
+WHERE temperature > 0;
+
+-- Test string operations specific to DuckDB (e.g., string_split)
+SELECT location, string_split(location, ' ') FROM sensor_data;
+
+-- Use a correlated subquery
+SELECT s1.sensor_id, s1.timestamp, s1.temperature
+FROM sensor_data s1
+WHERE s1.temperature > (SELECT AVG(temperature) FROM sensor_data s2 WHERE s2.sensor_id = s1.sensor_id);
+
+-- Test date/time functions, including potentially problematic edge cases
+SELECT timestamp, date_trunc('minute', timestamp), date_diff('second', '2023-12-31 23:59:59', timestamp) FROM sensor_data;
+
+-- Attempt a complex join and group by
+SELECT location, AVG(temperature) AS avg_temp, MAX(humidity) AS max_humidity
+FROM sensor_data
+WHERE timestamp BETWEEN '2024-01-01 00:00:00' AND '2024-01-01 00:00:10'
+GROUP BY location
+HAVING AVG(temperature) > 20
+ORDER BY avg_temp DESC;
+
+--Test unnest function
+SELECT sensor_id, UNNEST(string_split('a,b,c', ',')) as letters FROM sensor_data LIMIT 1;
+
+--Using a try_cast function to handle potential data type issues.
+SELECT TRY_CAST('abc' AS INTEGER);
+
+--Test JSON functionality
+DROP TABLE IF EXISTS json_data;
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (id, data) VALUES (1, '{"name": "John", "age": 30}');
+SELECT json_extract_string(data, '$.name') FROM json_data;

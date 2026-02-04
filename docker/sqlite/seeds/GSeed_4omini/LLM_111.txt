@@ -1,0 +1,34 @@
+BEGIN TRANSACTION;
+
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, email) VALUES ('alice', 'alice@example.com');
+INSERT INTO users (username, email) VALUES ('bob', 'bob@example.com');
+INSERT INTO users (username, email) VALUES ('charlie', 'charlie@example.com');
+INSERT INTO users (username, email) VALUES ('dave', NULL);  -- edge case: NULL value for email
+
+CREATE TABLE posts (
+    post_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    content TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+INSERT INTO posts (user_id, content) VALUES (1, 'Hello World!');
+INSERT INTO posts (user_id, content) VALUES (2, 'SQLite is great!');
+INSERT INTO posts (user_id, content) VALUES (3, 'Testing edge cases...');
+
+CREATE INDEX idx_user_posts ON posts(user_id);
+
+CREATE VIEW user_post_counts AS
+SELECT user_id, COUNT(post_id) AS post_count
+FROM posts
+GROUP BY user_id;
+
+COMMIT;

@@ -1,0 +1,53 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), ('d'), ('e');
+
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-01-02'), ('2023-01-03');
+
+-- Demonstrate window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Demonstrate string functions
+SELECT s, UPPER(s) FROM strings;
+
+-- Demonstrate date functions
+SELECT d, DATE_TRUNC('month', d) FROM dates;
+
+-- Demonstrate joins
+SELECT * FROM integers INNER JOIN strings ON integers.i = LENGTH(strings.s);
+
+-- Demonstrate aggregates
+SELECT SUM(i) FROM integers;
+
+-- Demonstrate CASE statements
+SELECT i, CASE WHEN i > 3 THEN 'big' ELSE 'small' END FROM integers;
+
+-- Demonstrate UNNEST (list comprehension)
+SELECT * FROM UNNEST([1, 2, 3]);
+
+-- Demonstrate JSON functionality (DuckDB-specific)
+CREATE TABLE json_data (j JSON);
+INSERT INTO json_data VALUES ('{"a": 1, "b": "hello"}');
+SELECT j -> 'a' FROM json_data;
+
+-- Demonstrate UDF
+CREATE FUNCTION my_add(a INTEGER, b INTEGER) RETURNS INTEGER AS 'a + b';
+SELECT my_add(1, 2);
+
+-- Demonstrate grouping sets
+CREATE TABLE sales(product VARCHAR, region VARCHAR, amount INTEGER);
+INSERT INTO sales VALUES ('A', 'North', 10), ('A', 'South', 20), ('B', 'North', 30), ('B', 'South', 40);
+SELECT product, region, SUM(amount) FROM sales GROUP BY GROUPING SETS ((product), (region));
+
+-- Demonstrate pivot
+SELECT * FROM pivot('sales', 'product', 'region', 'amount', 'sum');
+
+-- Demonstrate percentile_cont
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY i) FROM integers;
+
+-- Demonstrate CREATE MACRO
+CREATE MACRO my_macro(x) AS (SELECT x + 1);
+SELECT my_macro(5);

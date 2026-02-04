@@ -1,0 +1,60 @@
+SET optimizer_switch='batched_key_access=on,mrr_cost_based=off';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    data JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO t1 (name, data) VALUES 
+('Alice', JSON_OBJECT('age', 30, 'city', 'Paris')),
+('Bob', JSON_ARRAY(42, 'test')),
+('', NULL),
+('Charlie', JSON_OBJECT('hobbies', JSON_ARRAY('reading', 'music')));
+CREATE TABLE t2 (
+    point_id INT AUTO_INCREMENT PRIMARY KEY,
+    location POINT,
+    description VARCHAR(100),
+    FOREIGN KEY (point_id) REFERENCES t1(id)
+);
+INSERT INTO t2 (location, description) VALUES 
+(POINT(48.8566, 2.3522), 'Eiffel Tower'),
+(POINT(51.5074, -0.1278), 'Big Ben');
+CREATE TABLE t3 (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50),
+    location GEOMETRY,
+    start_date DATETIME,
+    UNIQUE INDEX (name)
+);
+INSERT INTO t3 VALUES 
+(NULL, 'Conference', ST_GeomFromText('POINT(48.8566 2.3522)'), '2024-01-01 09:00:00'),
+(NULL, 'Workshop', ST_GeomFromText('POINT(40.7128 -74.0060)'), '2024-02-01 14:30:00');
+DELIMITER //
+CREATE PROCEDURE calculate_distance()
+BEGIN
+    SELECT t2.point_id, t1.name, ST_Distance(t2.location, t3.location) AS distance 
+    FROM t2 JOIN t1 ON t2.point_id = t1.id 
+    JOIN t3 ON t2.point_id = t3.event_id;
+END//
+DELIMITER ;
+DELIMITER //
+CREATE FUNCTION get_event_summary()
+RETURNS TABLE (
+    event_name VARCHAR(50),
+    location GEOMETRY,
+    start_date DATETIME
+)
+RETURN (
+    SELECT name, location, start_date FROM t3
+);
+//
+DELIMITER ;
+CREATE TRIGGER log_insert AFTER INSERT ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (description) VALUES (CONCAT('New entry: ', NEW.name));
+END;
+CREATE VIEW event_view AS
+SELECT t3.name AS event_name, t1.name AS organizer, t3.start_date 
+FROM t3 JOIN t1 ON t3.event_id = t1.id;
+SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';

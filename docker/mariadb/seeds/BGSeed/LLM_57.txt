@@ -1,0 +1,52 @@
+SET GLOBAL optimizer_switch = 'block_encryption_mode=aes-256-cbc';
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    age INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2 (
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10, 2),
+    discount FLOAT DEFAULT 0.0,
+    FOREIGN KEY (product_id) REFERENCES t1(id)
+);
+
+INSERT INTO t1 (name, email, age) VALUES
+('Alice Smith', 'alice.smith@example.com', 30),
+('Bob Johnson', 'bob.johnson@example.com', 25),
+('Charlie Brown', 'charlie.brown@example.com', 40);
+
+INSERT INTO t2 (product_id, quantity, price) VALUES
+(1, 10, 25.50),
+(2, 5, 100.00),
+(3, 2, 500.00);
+
+ANALYZE TABLE t1, t2;
+
+ALTER TABLE t1 ADD COLUMN address VARCHAR(255) AFTER email;
+
+ALTER TABLE t2 MODIFY COLUMN price DECIMAL(12, 2);
+
+CREATE INDEX idx_name ON t1 (name);
+
+CREATE FULLTEXT INDEX idx_email ON t1 (email);
+
+SELECT * FROM t1 WHERE MATCH(email) AGAINST ('alice.smith@example.com');
+
+SET @user_id = 1;
+SELECT * FROM t1 WHERE id = @user_id;
+
+DELIMITER //
+CREATE PROCEDURE update_quantity (IN product_id_param INT, IN quantity_change INT)
+BEGIN
+    UPDATE t2 SET quantity = quantity + quantity_change WHERE product_id = product_id_param;
+END //
+DELIMITER ;
+
+CALL update_quantity(1, 5);
+
+FLUSH TABLES t1, t2;

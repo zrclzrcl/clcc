@@ -1,0 +1,55 @@
+-- DuckDB Initial Seed for Fuzzing
+
+-- Enable parallel execution to test concurrency aspects
+PRAGMA threads=4;
+
+-- Create a table with various data types
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    is_active BOOLEAN,
+    department VARCHAR
+);
+
+-- Insert some initial data
+INSERT INTO employees (id, name, salary, hire_date, is_active, department) VALUES
+(1, 'Alice', 50000.00, '2022-01-01', TRUE, 'Sales'),
+(2, 'Bob', 60000.50, '2022-02-15', TRUE, 'Marketing'),
+(3, 'Charlie', 70000.75, '2022-03-20', FALSE, 'Engineering'),
+(4, 'David', 80000.00, '2022-04-01', TRUE, 'Sales');
+
+-- Create a view based on the table
+CREATE VIEW active_employees AS
+SELECT id, name, salary, department
+FROM employees
+WHERE is_active = TRUE;
+
+-- Perform a complex query involving aggregations and window functions
+SELECT
+    department,
+    AVG(salary) OVER (PARTITION BY department) AS avg_salary,
+    SUM(salary) AS total_salary,
+    COUNT(*) AS employee_count
+FROM employees
+GROUP BY department
+ORDER BY total_salary DESC;
+
+-- Demonstrate JSON functionality (DuckDB specific)
+SELECT JSON(['a', 'b', 1, 2]);
+SELECT JSON_OBJECT(['key1', 'value1', 'key2', 'value2']);
+
+-- Demonstrate UDF functionality (DuckDB specific)
+CREATE FUNCTION string_length(str VARCHAR) RETURNS INTEGER AS 'length';
+SELECT string_length('DuckDB');
+
+-- Test unnesting
+CREATE TABLE items (item_id INTEGER, tags VARCHAR[]);
+INSERT INTO items VALUES (1, ['tag1', 'tag2', 'tag3']);
+SELECT item_id, tag FROM items, UNNEST(tags) AS tag;
+
+-- Example using arrow (DuckDB specific, if enabled)
+-- INSTALL arrow;
+-- LOAD arrow;
+-- SELECT * FROM arrow_scan(NULL);

@@ -1,0 +1,103 @@
+CREATE TABLE accounts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO accounts (name, balance) VALUES
+('Alice', 100.00),
+('Bob', 250.50),
+('Charlie', 75.25);
+
+CREATE TABLE transactions (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  account_id INT NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  transaction_type ENUM('deposit', 'withdrawal', 'transfer') NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO transactions (account_id, amount, transaction_type) VALUES
+(1, 50.00, 'deposit'),
+(2, 25.00, 'withdrawal'),
+(3, 100.00, 'deposit');
+
+-- Test case for stored procedure
+DELIMITER //
+CREATE PROCEDURE transfer_funds(IN from_account INT, IN to_account INT, IN amount DECIMAL(10, 2))
+BEGIN
+  START TRANSACTION;
+  UPDATE accounts SET balance = balance - amount WHERE id = from_account;
+  UPDATE accounts SET balance = balance + amount WHERE id = to_account;
+  INSERT INTO transactions (account_id, amount, transaction_type) VALUES (from_account, -amount, 'transfer');
+  INSERT INTO transactions (account_id, amount, transaction_type) VALUES (to_account, amount, 'transfer');
+  COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds(1, 2, 20.00);
+
+-- Test case for triggers
+CREATE TABLE audit_log (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  table_name VARCHAR(255) NOT NULL,
+  record_id INT NOT NULL,
+  action VARCHAR(255) NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER accounts_after_update
+AFTER UPDATE ON accounts
+FOR EACH ROW
+BEGIN
+  INSERT INTO audit_log (table_name, record_id, action)
+  VALUES ('accounts', NEW.id, 'update');
+END //
+DELIMITER ;
+
+UPDATE accounts SET balance = 120.00 WHERE id = 1;
+
+-- Test case for FULLTEXT index
+CREATE TABLE articles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  FULLTEXT(title, content)
+);
+
+INSERT INTO articles (title, content) VALUES
+('MySQL Tutorial', 'Learn how to use MySQL effectively.'),
+('Database Optimization', 'Tips for optimizing your database queries.'),
+('SQL Fuzzing', 'Testing your SQL databases with fuzzing techniques.');
+
+SELECT * FROM articles WHERE MATCH (title, content) AGAINST ('MySQL' IN NATURAL LANGUAGE MODE);
+
+-- Test case for JSON column
+ALTER TABLE accounts ADD COLUMN preferences JSON;
+UPDATE accounts SET preferences = '{"theme": "dark", "notifications": true}' WHERE id = 1;
+SELECT preferences FROM accounts WHERE id = 1;
+
+-- Test case for window function
+SELECT
+    name,
+    balance,
+    RANK() OVER (ORDER BY balance DESC) as balance_rank
+FROM
+    accounts;
+
+-- Test case for generated column
+ALTER TABLE accounts ADD COLUMN balance_status VARCHAR(20) GENERATED ALWAYS AS (IF(balance > 100, 'High', 'Low')) VIRTUAL;
+SELECT * FROM accounts;
+
+-- Test case for spatial data (Requires spatial extensions to be enabled)
+CREATE TABLE places (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO places (name, location) VALUES ('Restaurant', ST_GeomFromText('POINT(10 10)'));
+SELECT name, ST_AsText(location) FROM places;

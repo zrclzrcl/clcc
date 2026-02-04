@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT);
+CREATE INDEX idx_username ON users(username);
+INSERT INTO users(username, email) VALUES('alice', 'alice@example.com');
+INSERT INTO users(username, email) VALUES('bob', 'bob@example.com');
+INSERT INTO users(username, email) VALUES('charlie', 'charlie@example.com');
+UPDATE users SET email = 'alice_new@example.com' WHERE username = 'alice';
+DELETE FROM users WHERE id = 3;
+SELECT COUNT(*) FROM users;
+SELECT username FROM users WHERE email LIKE '%@example.com';
+SELECT username FROM users WHERE id IN (1, 2);
+SELECT EXISTS(SELECT 1 FROM users WHERE username = 'bob');
+DROP INDEX idx_username;
+DROP TABLE users;

@@ -1,0 +1,146 @@
+CREATE TABLE Employees (
+    EmployeeID SERIAL PRIMARY KEY,
+    FirstName VARCHAR(50) NOT NULL,
+    LastName VARCHAR(50) NOT NULL,
+    Email VARCHAR(100) UNIQUE,
+    HireDate DATE,
+    Salary DECIMAL(10, 2),
+    DepartmentID INT,
+    CONSTRAINT CHK_Salary CHECK (Salary > 0)
+);
+
+CREATE TABLE Departments (
+    DepartmentID SERIAL PRIMARY KEY,
+    DepartmentName VARCHAR(50) NOT NULL
+);
+
+ALTER TABLE Employees
+ADD CONSTRAINT FK_DepartmentID
+FOREIGN KEY (DepartmentID)
+REFERENCES Departments(DepartmentID);
+
+INSERT INTO Departments (DepartmentName) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+INSERT INTO Employees (FirstName, LastName, Email, HireDate, Salary, DepartmentID) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 75000.00, 2),
+('Robert', 'Jones', 'robert.jones@example.com', '2022-05-10', 90000.00, 3);
+
+-- Example of using window functions
+SELECT
+    EmployeeID,
+    FirstName,
+    LastName,
+    Salary,
+    RANK() OVER (ORDER BY Salary DESC) AS SalaryRank
+FROM
+    Employees;
+
+-- Example of using common table expression (CTE)
+WITH HighSalaryEmployees AS (
+    SELECT EmployeeID, FirstName, LastName, Salary
+    FROM Employees
+    WHERE Salary > 70000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Example using GENERATE_SERIES
+SELECT GENERATE_SERIES(1, 10);
+
+-- Example using string functions
+SELECT FirstName, UPPER(LastName) AS UpperLastName FROM Employees;
+
+-- Example using date functions
+SELECT HireDate, EXTRACT(YEAR FROM HireDate) AS HireYear FROM Employees;
+
+-- Example using aggregate functions
+SELECT DepartmentID, AVG(Salary) AS AverageSalary FROM Employees GROUP BY DepartmentID;
+
+-- Example using subquery
+SELECT FirstName, LastName FROM Employees WHERE DepartmentID IN (SELECT DepartmentID FROM Departments WHERE DepartmentName = 'Sales');
+
+-- Example using LIKE operator
+SELECT FirstName, LastName FROM Employees WHERE Email LIKE '%@example.com';
+
+-- Example using ILIKE operator (case-insensitive LIKE)
+SELECT FirstName, LastName FROM Employees WHERE FirstName ILIKE 'j%';
+
+-- Example using SIMILAR TO operator (regular expression-like)
+SELECT FirstName, LastName FROM Employees WHERE FirstName SIMILAR TO '(J|R)%';
+
+-- Example using BETWEEN operator
+SELECT FirstName, LastName, Salary FROM Employees WHERE Salary BETWEEN 50000 AND 80000;
+
+-- Example using CASE statement
+SELECT
+    FirstName,
+    LastName,
+    Salary,
+    CASE
+        WHEN Salary > 80000 THEN 'High'
+        WHEN Salary > 60000 THEN 'Medium'
+        ELSE 'Low'
+    END AS SalaryLevel
+FROM
+    Employees;
+
+-- Example using NULLIF
+SELECT NULLIF(10, 10);
+SELECT NULLIF(10, 5);
+
+-- Example using COALESCE
+SELECT COALESCE(NULL, 'default_value');
+SELECT COALESCE('actual_value', 'default_value');
+
+-- Example using DISTINCT
+SELECT DISTINCT DepartmentID FROM Employees;
+
+-- Example using LIMIT and OFFSET
+SELECT FirstName, LastName FROM Employees LIMIT 2 OFFSET 1;
+
+-- Example using ORDER BY
+SELECT FirstName, LastName, Salary FROM Employees ORDER BY Salary DESC;
+
+-- Example using JSON functions (assuming a JSON column exists or adding a JSON column)
+ALTER TABLE Employees ADD COLUMN Details JSONB;
+UPDATE Employees SET Details = '{"age": 30, "city": "New York"}'::JSONB WHERE EmployeeID = 1;
+SELECT EmployeeID, Details ->> 'city' AS City FROM Employees;
+
+-- Example using array functions (assuming an array column exists or adding one)
+ALTER TABLE Employees ADD COLUMN Skills TEXT[];
+UPDATE Employees SET Skills = ARRAY['SQL', 'Python'] WHERE EmployeeID = 1;
+SELECT EmployeeID, Skills[1] AS FirstSkill FROM Employees;
+
+-- Example using pg_sleep
+SELECT pg_sleep(0.1);
+
+-- Example using inet data type (create a table first if one does not exist)
+CREATE TABLE IPAddresses (
+    IPAddress inet
+);
+
+INSERT INTO IPAddresses VALUES ('192.168.1.1');
+SELECT * FROM IPAddresses;
+
+-- Example using range types (create a table if one does not exist)
+CREATE TABLE RangeTable (
+    IntRange int4range
+);
+
+INSERT INTO RangeTable VALUES ('[10,20]');
+SELECT * FROM RangeTable;
+
+-- Example with EXPLAIN
+EXPLAIN SELECT * FROM Employees WHERE Salary > 70000;
+
+-- Example with ANALYZE
+ANALYZE Employees;
+
+-- Example using REINDEX
+REINDEX TABLE Employees;
+
+-- Example with CREATE INDEX CONCURRENTLY
+CREATE INDEX CONCURRENTLY idx_lastname ON Employees (LastName);

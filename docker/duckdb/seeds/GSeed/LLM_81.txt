@@ -1,0 +1,32 @@
+DROP TABLE IF EXISTS integers;
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+DROP TABLE IF EXISTS strings;
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL);
+
+-- DuckDB specific JSON functionality
+SELECT JSON '{"a": 1, "b": [2, 3]}';
+SELECT JSON_EXTRACT('{"a": 1, "b": [2, 3]}', '$.a');
+
+-- Demonstrate window functions
+SELECT i, AVG(i) OVER () FROM integers;
+
+-- Demonstrate string functions
+SELECT s, UPPER(s) FROM strings;
+
+-- DuckDB specific UDF example (though creating a UDF within a seed might be too complex; simpler aggregates/scalar functions are better)
+
+-- Demonstrate date/time functions
+SELECT CURRENT_DATE, CURRENT_TIMESTAMP;
+
+-- Test NULL handling
+SELECT * FROM integers WHERE i IS NULL;
+SELECT * FROM strings WHERE s IS NOT NULL;
+
+-- Test correlated subquery
+SELECT * FROM integers i1 WHERE EXISTS (SELECT 1 FROM integers i2 WHERE i1.i = i2.i + 1);
+
+-- DuckDB supports UNNEST
+SELECT * FROM UNNEST([1, 2, 3]);

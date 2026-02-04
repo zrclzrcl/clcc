@@ -1,0 +1,99 @@
+CREATE EXTENSION IF NOT EXISTS plpgsql;
+
+-- Table creation
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+-- Add a foreign key
+ALTER TABLE employee ADD COLUMN dept_id INTEGER;
+ALTER TABLE employee ADD CONSTRAINT fk_department FOREIGN KEY (dept_id) REFERENCES department (id);
+
+-- Insert data
+INSERT INTO department (name, location) VALUES ('Sales', 'New York');
+INSERT INTO department (name, location) VALUES ('Marketing', 'London');
+INSERT INTO department (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employee (name, salary, department, hire_date, dept_id) VALUES ('Alice', 60000.00, 'Sales', '2022-01-15', (SELECT id FROM department WHERE name = 'Sales'));
+INSERT INTO employee (name, salary, department, hire_date, dept_id) VALUES ('Bob', 75000.00, 'Marketing', '2021-05-20', (SELECT id FROM department WHERE name = 'Marketing'));
+INSERT INTO employee (name, salary, department, hire_date, dept_id) VALUES ('Charlie', 90000.00, 'Engineering', '2023-03-10', (SELECT id FROM department WHERE name = 'Engineering'));
+
+-- Basic SELECT query
+SELECT * FROM employee WHERE salary > 70000;
+
+-- Join query
+SELECT e.name, d.name AS department FROM employee e JOIN department d ON e.dept_id = d.id;
+
+-- Aggregate query
+SELECT department, AVG(salary) FROM employee GROUP BY department;
+
+-- Update statement
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales';
+
+-- Delete statement
+DELETE FROM employee WHERE id = 1;
+
+-- INSERT with ON CONFLICT
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL
+);
+
+INSERT INTO users (username) VALUES ('john_doe') ON CONFLICT (username) DO NOTHING;
+
+-- CREATE INDEX
+CREATE INDEX idx_employee_name ON employee (name);
+
+-- CREATE VIEW
+CREATE VIEW employee_salary AS SELECT name, salary FROM employee;
+
+-- SELECT from view
+SELECT * FROM employee_salary WHERE salary > 65000;
+
+-- Materialized view
+CREATE MATERIALIZED VIEW mv_employee_avg_salary AS SELECT department, AVG(salary) AS avg_salary FROM employee GROUP BY department;
+REFRESH MATERIALIZED VIEW mv_employee_avg_salary;
+
+-- Window function
+SELECT name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) FROM employee;
+
+-- Common Table Expression (CTE)
+WITH EmployeeSalaries AS (
+    SELECT name, salary FROM employee WHERE salary > 60000
+)
+SELECT * FROM EmployeeSalaries;
+
+-- Using WITH ORDINALITY
+SELECT * FROM unnest(ARRAY['a','b','c']) WITH ORDINALITY;
+
+-- JSON functions
+CREATE TABLE json_test (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_test (data) VALUES ('{"name": "John", "age": 30}');
+SELECT data ->> 'name' FROM json_test;
+SELECT * FROM json_test WHERE data @> '{"age": 30}';
+
+-- DROP TABLE
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS json_test;
+
+-- DROP VIEW
+DROP VIEW IF EXISTS employee_salary;
+
+-- DROP MATERIALIZED VIEW
+DROP MATERIALIZED VIEW IF EXISTS mv_employee_avg_salary;

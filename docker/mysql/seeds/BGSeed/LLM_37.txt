@@ -1,0 +1,142 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET @auto_increment_increment=@@auto_increment_increment;
+SET auto_increment_increment=1;
+
+-- Test various data types and constraints
+CREATE TABLE test_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10, 2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(10),
+    varchar_col VARCHAR(50),
+    binary_col BINARY(20),
+    varbinary_col VARBINARY(20),
+    tinyblob_col TINYBLOB,
+    tinytext_col TINYTEXT,
+    blob_col BLOB,
+    text_col TEXT,
+    mediumblob_col MEDIUMBLOB,
+    mediumtext_col MEDIUMTEXT,
+    longblob_col LONGBLOB,
+    longtext_col LONGTEXT,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3'),
+    geometry_col GEOMETRY NULL,
+    json_col JSON NULL
+);
+
+-- Insert some diverse data
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, binary_col, varbinary_col, tinyblob_col, tinytext_col, blob_col, text_col, mediumblob_col, mediumtext_col, longblob_col, longtext_col, enum_col, set_col, geometry_col, json_col) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-27', '2023-10-27 10:30:00', '10:30:00', 2023, 'char', 'varchar', 'binary', 'varbinary', 'tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext', 'value1', 'option1,option2', ST_GeomFromText('POINT(1 1)'), '{"key": "value"}'),
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -3.14, -2.71828, -12345.67, '2000-01-01', '2000-01-01 00:00:00', '00:00:00', 2000, 'char2', 'varchar2', 'binary2', 'varbinary2', 'tinyblob2', 'tinytext2', 'blob2', 'text2', 'mediumblob2', 'mediumtext2', 'longblob2', 'longtext2', 'value2', 'option2,option3', ST_GeomFromText('LINESTRING(0 0,1 1,2 2)'), '{"key2": "value2"}');
+
+-- Test indexing
+CREATE INDEX idx_varchar ON test_types (varchar_col(10));
+CREATE FULLTEXT INDEX idx_text ON test_types (text_col);
+
+-- Test constraints
+ALTER TABLE test_types ADD CONSTRAINT unique_varchar UNIQUE (varchar_col);
+
+-- Test views
+CREATE VIEW test_view AS SELECT id, varchar_col FROM test_types WHERE normal_int > 0;
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN input_int INT)
+BEGIN
+    SELECT * FROM test_types WHERE normal_int > input_int;
+END //
+DELIMITER ;
+
+-- Test functions
+DELIMITER //
+CREATE FUNCTION test_function (input_int INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN input_int * 2;
+END //
+DELIMITER ;
+
+-- Call the stored procedure and function
+CALL test_procedure(100);
+SELECT test_function(5);
+
+-- Test triggers
+CREATE TABLE trigger_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message VARCHAR(255)
+);
+
+DELIMITER //
+CREATE TRIGGER test_trigger
+AFTER INSERT ON test_types
+FOR EACH ROW
+BEGIN
+    INSERT INTO trigger_log (message) VALUES (CONCAT('New row inserted with id: ', NEW.id));
+END //
+DELIMITER ;
+
+INSERT INTO test_types (normal_int) VALUES (1);
+
+SELECT * FROM trigger_log;
+
+-- Test partitioning
+CREATE TABLE partitioned_table (
+    id INT,
+    ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+PARTITION BY RANGE (YEAR(ts)) (
+    PARTITION p0 VALUES LESS THAN (2023),
+    PARTITION p1 VALUES LESS THAN (2024),
+    PARTITION p2 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO partitioned_table (id, ts) VALUES (1, '2022-01-01'), (2, '2023-07-01'), (3, '2024-01-01');
+
+SELECT * FROM partitioned_table PARTITION (p0);
+
+-- Test foreign keys
+CREATE TABLE parent_table (
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE child_table (
+    id INT PRIMARY KEY,
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES parent_table(id)
+);
+
+INSERT INTO parent_table VALUES (1);
+INSERT INTO child_table VALUES (1, 1);
+
+-- Test subqueries
+SELECT * FROM test_types WHERE id IN (SELECT id FROM test_view);
+
+-- Test window functions
+SELECT id, normal_int, ROW_NUMBER() OVER (ORDER BY normal_int) AS row_num FROM test_types;
+
+-- Cleanup (optional, but good practice)
+DROP VIEW IF EXISTS test_view;
+DROP PROCEDURE IF EXISTS test_procedure;
+DROP FUNCTION IF EXISTS test_function;
+DROP TRIGGER IF EXISTS test_trigger;
+DROP TABLE IF EXISTS trigger_log;
+DROP TABLE IF EXISTS child_table;
+DROP TABLE IF EXISTS parent_table;
+DROP TABLE IF EXISTS partitioned_table;
+DROP TABLE IF EXISTS test_types;
+
+SET sql_mode=@old_sql_mode;
+SET auto_increment_increment=@auto_increment_increment;

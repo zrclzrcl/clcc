@@ -1,0 +1,36 @@
+CREATE TABLE integers (
+  i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+  s VARCHAR
+);
+
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL);
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test string functions specific to DuckDB (e.g., string_split)
+SELECT string_split(s, ' ') FROM strings;
+
+-- Test unnest
+SELECT * FROM UNNEST([1, 2, 3]);
+
+-- Test correlation
+SELECT * FROM integers i1 WHERE EXISTS (SELECT 1 FROM integers i2 WHERE i1.i = i2.i);
+
+-- Test date and time functions
+SELECT now();
+SELECT date('2024-01-01');
+
+-- Test NULL handling
+SELECT i FROM integers WHERE i IS NULL;
+
+-- Test array functions
+SELECT list_value(1,2,3);
+
+-- Test case when
+SELECT CASE WHEN i > 1 THEN 'greater' ELSE 'less or equal' END FROM integers;

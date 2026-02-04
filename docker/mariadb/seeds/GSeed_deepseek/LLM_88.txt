@@ -1,0 +1,88 @@
+-- Initial seed for MariaDB fuzz testing
+SET @@global.sql_mode = 'ANSI,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age TINYINT UNSIGNED DEFAULT 0,
+    balance DECIMAL(10,2) DEFAULT 0.00,
+    last_login DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2 (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    account_number VARCHAR(20) UNIQUE NOT NULL,
+    amount DECIMAL(15,4) UNSIGNED,
+    status ENUM('PENDING', 'COMPLETED', 'FAILED') DEFAULT 'PENDING',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE @var1 INT DEFAULT 1;
+    DECLARE @var2 INT DEFAULT 2;
+    
+    SET @var1 = @var1 + @var2;
+    
+    INSERT INTO t1 (name, age, balance) 
+    VALUES ('Test User', @var1, 100.50);
+    
+    SELECT * FROM t1 WHERE id = LAST_INSERT_ID();
+END$$
+
+DELIMITER ;
+
+CREATE TRIGGER trg_after_update
+AFTER UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    IF NEW.balance < 0 THEN
+        SET NEW.balance = OLD.balance;
+    END IF;
+END;
+
+CREATE VIEW vw_balance AS
+SELECT 
+    u.name,
+    u.age,
+    t.amount,
+    t.status
+FROM t1 u
+JOIN t2 t ON u.id = t.transaction_id
+WHERE t.status = 'COMPLETED';
+
+INSERT INTO t1 (name, age, balance) VALUES ('Alice', 30, 1500.75);
+INSERT INTO t1 (name, age, balance) VALUES ('Bob', 45, 2500.00);
+
+CREATE TABLE t3 (
+    id INT,
+    data TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+PARTITION BY HASH(id)
+PARTITIONS 4;
+
+INSERT INTO t3 VALUES(1, 'Test Data 1', NOW());
+INSERT INTO t3 VALUES(2, 'Test Data 2', NOW());
+
+DELIMITER $$
+
+CREATE FUNCTION fn_test(a INT, b INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE result INT;
+    SET result = a + b * 5;
+    RETURN result;
+END$$
+
+DELIMITER ;
+
+SELECT 
+    t1.name,
+    t1.balance,
+    t2.amount,
+    vw_balance.status
+FROM t1
+JOIN t2 ON t1.id = t2.transaction_id
+JOIN vw_balance ON t1.id = vw_balance.id
+WHERE t1.balance > 1000;

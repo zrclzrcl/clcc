@@ -1,0 +1,85 @@
+-- Create a table with various data types and constraints
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    score FLOAT CHECK (score >= 0 AND score <= 100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_updated DATE,
+    description TEXT,
+    UNIQUE (name)
+);
+
+-- Create another table for testing relationships
+CREATE TABLE t2 (
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    value DECIMAL(10, 2) NOT NULL,
+    metadata JSONB
+);
+
+-- Create indexes to test query optimization
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE INDEX idx_t2_value ON t2(value);
+CREATE INDEX idx_t2_metadata USING GIN (metadata);
+
+-- Create a partitioned table for testing partitioning logic
+CREATE TABLE t3 (
+    id INTEGER PRIMARY KEY,
+    region VARCHAR(50),
+    amount DECIMAL(10, 2)
+) PARTITION BY HASH(region);
+
+-- Insert sample data to test various operations
+INSERT INTO t1 VALUES (1, 'Test', TRUE, 85.5, CURRENT_TIMESTAMP, CURRENT_DATE, 'Sample description');
+INSERT INTO t1 VALUES (2, 'Another Test', FALSE, NULL, '2023-01-01 12:00:00', '2023-01-01', 'Another sample');
+
+-- Create a view to test query optimization and caching
+CREATE VIEW v1 AS SELECT id, name, score FROM t1 WHERE active = TRUE;
+
+-- Create a trigger for testing event-driven functionality
+CREATE TABLE t_log (
+    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    table_name VARCHAR(50),
+    action VARCHAR(20),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_t1_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t_log (table_name, action) VALUES ('t1', 'INSERT');
+END;
+
+-- Create a stored procedure for testing procedural logic
+CREATE PROCEDURE sp_test()
+LANGUAGE SQL
+AS $$
+    INSERT INTO t2 (id, t1_id, value)
+    SELECT 1, id, score * 100 FROM t1 WHERE active = TRUE;
+$$;
+
+-- Create a materialized view for testing refresh operations
+CREATE MATERIALIZED VIEW mv_t1 AS SELECT COUNT(*) as total_records FROM t1;
+
+-- Create an index on the materialized view
+CREATE INDEX idx_mv_t1 ON mv_t1(total_records);
+
+-- Test complex queries with joins, aggregations, and window functions
+SELECT 
+    t1.name,
+    t2.value,
+    RANK() OVER (ORDER BY t2.value DESC) as rank
+FROM t1
+JOIN t2 ON t1.id = t2.t1_id
+WHERE t1.active = TRUE
+GROUP BY t1.name, t2.value
+HAVING COUNT(*) > 1
+LIMIT 10;
+
+-- Test recursive common table expressions (CTEs)
+WITH RECURSIVE cte AS (
+    SELECT 1 as n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 5
+)
+SELECT * FROM cte;

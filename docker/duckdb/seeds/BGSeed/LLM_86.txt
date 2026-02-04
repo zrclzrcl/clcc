@@ -1,0 +1,48 @@
+DROP TABLE IF EXISTS integers;
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5), (NULL);
+
+DROP TABLE IF EXISTS strings;
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL), ('');
+
+-- Test window functions and NULL handling
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+SELECT i, RANK() OVER (ORDER BY i) FROM integers;
+SELECT i, DENSE_RANK() OVER (ORDER BY i) FROM integers;
+SELECT s, FIRST_VALUE(s) OVER (ORDER BY s) FROM strings;
+SELECT i, LEAD(i, 1, -1) OVER (ORDER BY i) FROM integers;
+SELECT i, LAG(i, 1, -1) OVER (ORDER BY i) FROM integers;
+
+-- Test unnest and list aggregations
+SELECT UNNEST([1, 2, 3]);
+SELECT string_agg(s, ',') FROM strings;
+SELECT list(i) FROM integers;
+
+-- Test date/time functions
+SELECT date('2023-10-27');
+SELECT strftime('%Y-%m-%d %H:%M:%S', '2023-10-27 12:34:56');
+SELECT date_trunc('month', timestamp '2023-10-27 12:34:56');
+
+-- Test string functions
+SELECT upper('hello');
+SELECT lower('WORLD');
+SELECT substring('abcdef', 2, 3);
+
+-- Test math functions
+SELECT abs(-5);
+SELECT sqrt(25);
+SELECT round(3.14159, 2);
+
+-- Test case expressions
+SELECT i, CASE WHEN i > 3 THEN 'high' ELSE 'low' END FROM integers;
+
+-- Test aggregate functions with filter clause
+SELECT sum(i) FILTER (WHERE i > 2) FROM integers;
+
+-- Test pivot functionality (DuckDB specific)
+DROP TABLE IF EXISTS sales;
+CREATE TABLE sales (product VARCHAR, day VARCHAR, amount INTEGER);
+INSERT INTO sales VALUES
+('A', 'Mon', 10), ('A', 'Tue', 15), ('B', 'Mon', 20), ('B', 'Wed', 25);
+SELECT * FROM sales PIVOT product BY day USING sum(amount);

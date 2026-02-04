@@ -1,0 +1,14 @@
+create table users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT, age INTEGER CHECK(age > 0));
+insert into users(username, email, age) values('user1', 'user1@example.com', 25);
+insert into users(username, email, age) values('user2', 'user2@example.com', 30);
+insert into users(username, email, age) values('user3', 'user3@example.com', 22);
+insert into users(username, email, age) values('user4', 'user4@example.com', 29);
+insert into users(username, email, age) values('admin', 'admin@example.com', 35);
+
+create index idx_age on users(age);
+create temp table temp_users(username TEXT);
+insert into temp_users values('test_user1'), ('test_user2'), ('test_user3');
+
+select * from users where age between 20 and 30;
+select count(*) from users where username like 'user%';
+select username from users where email like '%@example.com' except select username from temp_users;

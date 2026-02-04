@@ -1,0 +1,30 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c');
+
+-- DuckDB specific: try using UNNEST with a range
+SELECT * FROM UNNEST(range(1, 5));
+
+-- DuckDB specific: try using generate_series
+SELECT * FROM generate_series(1, 5);
+
+-- DuckDB specific: try using date_trunc
+SELECT date_trunc('day', '2023-10-27'::DATE);
+
+-- Try a window function with a partition
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) as rn FROM integers;
+
+SELECT i, ROW_NUMBER() OVER (PARTITION BY i ORDER BY i) as rn FROM integers;
+
+-- Try a correlated subquery
+SELECT s, (SELECT COUNT(*) FROM integers WHERE i < 3) FROM strings;
+
+-- Try a CASE statement
+SELECT i, CASE WHEN i > 2 THEN 'big' ELSE 'small' END FROM integers;
+
+-- Test for JSON functionality
+CREATE TABLE jsontest (j JSON);
+INSERT INTO jsontest VALUES ('{"a": 1, "b": "hello"}');
+SELECT j['a'] FROM jsontest;

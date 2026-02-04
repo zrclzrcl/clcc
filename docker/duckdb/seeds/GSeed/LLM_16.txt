@@ -1,0 +1,72 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+-- Test window functions with different frame clauses
+SELECT i, AVG(i) OVER (ORDER BY i ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM integers;
+SELECT i, SUM(i) OVER (ORDER BY i DESC RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM integers;
+
+-- Test string functions
+SELECT string_split('hello,world', ',');
+SELECT regexp_matches('hello world', 'hello');
+SELECT replace('hello world', 'world', 'duckdb');
+
+-- Test date/time functions
+SELECT date('now');
+SELECT date_trunc('month', timestamp '2023-10-26 12:00:00');
+SELECT time('now');
+SELECT now();
+
+-- Test json functions
+SELECT json_extract('{"a":1, "b":2}', '$.a');
+SELECT json_group_array(i) FROM integers;
+
+-- Test list functions (DuckDB specific)
+SELECT list_value(1, 2, 3);
+SELECT list_sum(list_value(1, 2, 3));
+
+-- Test map functions (DuckDB specific)
+SELECT map(['key1', 'key2'], [1, 2]);
+SELECT map_extract(map(['key1', 'key2'], [1, 2]), 'key1');
+
+-- Test structs
+CREATE TYPE my_struct AS (a INTEGER, b VARCHAR);
+CREATE TABLE struct_table (s my_struct);
+INSERT INTO struct_table VALUES ((1, 'hello'));
+SELECT s.a, s.b FROM struct_table;
+
+-- Test unions (DuckDB specific)
+CREATE TYPE my_union AS UNION(a INTEGER, b VARCHAR);
+CREATE TABLE union_table (u my_union);
+INSERT INTO union_table VALUES (1), ('hello');
+SELECT * FROM union_table;
+
+-- Test pivot
+CREATE TABLE sales (
+    product VARCHAR,
+    quarter VARCHAR,
+    sales_amount INTEGER
+);
+
+INSERT INTO sales VALUES
+('A', 'Q1', 100),
+('A', 'Q2', 150),
+('B', 'Q1', 200),
+('B', 'Q2', 250);
+
+SELECT * FROM sales
+PIVOT sales ON quarter USING SUM(sales_amount) GROUP BY product;
+
+-- Test unpivot (DuckDB specific)
+CREATE TABLE weekly_temperature (
+    city VARCHAR,
+    week1 INTEGER,
+    week2 INTEGER,
+    week3 INTEGER
+);
+
+INSERT INTO weekly_temperature VALUES
+('Berlin', 12, 15, 10),
+('London', 10, 12, 8);
+
+SELECT * FROM weekly_temperature
+UNPIVOT (temperature FOR week IN (week1, week2, week3));

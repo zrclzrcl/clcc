@@ -1,0 +1,85 @@
+CREATE TABLE test_edge_cases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bool_col BOOLEAN NOT NULL DEFAULT FALSE,
+    tinyint_col TINYINT UNSIGNED,
+    smallint_col SMALLINT,
+    mediumint_col MEDIUMINT,
+    int_col INT,
+    bigint_col BIGINT,
+    float_col FLOAT(10, 2),
+    double_col DOUBLE,
+    decimal_col DECIMAL(15, 4) NOT NULL DEFAULT 0.0000,
+    char_col CHAR(255),
+    varchar_col VARCHAR(2048),
+    text_col TEXT,
+    blob_col BLOB,
+    date_col DATE,
+    time_col TIME,
+    datetime_col DATETIME(6),
+    timestamp_col TIMESTAMP,
+    year_col YEAR,
+    enum_col ENUM('option1', 'option2', 'option3'),
+    set_col SET('value1', 'value2', 'value3'),
+    json_col JSON
+);
+
+CREATE INDEX idx_bool ON test_edge_cases (bool_col);
+CREATE INDEX idx_num ON test_edge_cases (tinyint_col, smallint_col, mediumint_col, int_col, bigint_col);
+CREATE FULLTEXT INDEX idx_text ON test_edge_cases (char_col, varchar_col, text_col);
+
+DELIMITER ;;
+CREATE TRIGGER trg_after_insert AFTER INSERT ON test_edge_cases
+FOR EACH ROW
+BEGIN
+    IF NEW.bool_col THEN
+        UPDATE another_table SET counter = counter + 1 WHERE id = NEW.id;
+    END IF;
+END;;
+DELIMITER ;
+
+DELIMITER ;;
+CREATE PROCEDURE proc_complex()
+BEGIN
+    DECLARE var_int INT DEFAULT 0;
+    DECLARE var_str VARCHAR(255);
+    
+    SET var_str = 'test_string';
+    
+    WHILE var_int < 10 DO
+        INSERT INTO test_edge_cases (bool_col, tinyint_col, varchar_col)
+        VALUES (TRUE, var_int, CONCAT(var_str, var_int));
+        SET var_int = var_int + 1;
+    END WHILE;
+    
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Procedure completed successfully';
+END;;
+DELIMITER ;
+
+CREATE EVENT evt_daily
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_TIMESTAMP
+DO
+BEGIN
+    TRUNCATE TABLE test_edge_cases;
+    INSERT INTO test_edge_cases (bool_col, tinyint_col, int_col)
+    VALUES (FALSE, NULL, RAND() * 100);
+    
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'test_edge_cases') THEN
+        SIGNAL SQLSTATE '00000' SET MESSAGE_TEXT = 'Daily maintenance completed';
+    END IF;
+END;;
+
+CREATE TABLE test_partitions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(15,4),
+    region VARCHAR(50),
+    created_at DATETIME
+)
+PARTITION BY RANGE (YEAR(created_at)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO test_edge_cases (bool_col, tinyint_col, int_col)
+VALUES (TRUE, 1, 100), (FALSE, NULL, -50);

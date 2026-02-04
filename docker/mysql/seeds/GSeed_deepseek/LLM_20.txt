@@ -1,0 +1,64 @@
+-- Initial seed for MySQL fuzz testing
+SET @OLD_UNIQUE_CHECKS = @@UNIQUE_CHECKS;
+SET UNIQUE_CHECKS = 0;
+
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, age) VALUES 
+('Alice', 30),
+('Bob', 25),
+('Charlie', 40),
+('', 100); -- Testing edge case with empty name
+
+CREATE TABLE another_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    value DECIMAL(10, 2),
+    status ENUM('active', 'inactive') DEFAULT 'active'
+);
+
+INSERT INTO another_table (value) VALUES 
+(100.5), 
+(-50.75); -- Testing negative decimal values
+
+CREATE INDEX idx_name ON test_table(name);
+ANALYZE TABLE test_table;
+
+SELECT t.name, a.value 
+FROM test_table t 
+JOIN another_table a ON t.id = a.id 
+WHERE t.age > 30 AND a.status = 'active';
+
+UPDATE test_table 
+SET age = age + 10 
+WHERE name LIKE 'B%'; -- Testing pattern matching in UPDATE
+
+DELETE FROM another_table 
+WHERE value < (SELECT AVG(value) FROM another_table);
+
+CREATE TRIGGER after_insert_test
+AFTER INSERT ON test_table
+FOR EACH ROW
+INSERT INTO another_table (value) VALUES (100.0); -- Testing triggers
+
+DELIMITER $$
+CREATE PROCEDURE simple_proc()
+BEGIN
+    DECLARE x INT;
+    SET x = 10;
+    WHILE x > 5 DO
+        INSERT INTO test_table (name, age) VALUES ('Test', x);
+        SET x = x - 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL simple_proc();
+
+SELECT BENCHMARK(1000000, MD5('test')); -- Testing performance and edge cases
+
+SET UNIQUE_CHECKS = @OLD_UNIQUE_CHECKS;

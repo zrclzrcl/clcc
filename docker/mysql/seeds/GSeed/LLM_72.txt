@@ -1,0 +1,68 @@
+SET GLOBAL innodb_file_per_table = ON;
+SET GLOBAL innodb_large_prefix = ON;
+SET SESSION sql_mode = 'STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE `test_table` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `data` JSON NULL,
+  `point` POINT NULL,
+  SPATIAL INDEX(point),
+  PRIMARY KEY (`id`),
+  FULLTEXT INDEX `name_idx` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `test_table` (`name`, `email`, `data`, `point`) VALUES
+('John Doe', 'john.doe@example.com', '{"age": 30, "city": "New York"}', ST_GeomFromText('POINT(10 10)')),
+('Jane Smith', 'jane.smith@example.com', '{"age": 25, "city": "Los Angeles"}', ST_GeomFromText('POINT(20 20)')),
+('Alice Johnson', NULL, '{"age": 40, "city": "Chicago"}', ST_GeomFromText('POINT(30 30)'));
+
+CREATE TABLE `test_partitioned` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `created_at` DATE NOT NULL,
+  `value` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+PARTITION BY RANGE ( YEAR(`created_at`) ) (
+  PARTITION p2020 VALUES LESS THAN (2021),
+  PARTITION p2021 VALUES LESS THAN (2022),
+  PARTITION p2022 VALUES LESS THAN (2023),
+  PARTITION p2023 VALUES LESS THAN (2024),
+  PARTITION pMAX VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO `test_partitioned` (`created_at`, `value`) VALUES
+('2020-01-01', 'Value 1'),
+('2021-05-15', 'Value 2'),
+('2022-12-31', 'Value 3'),
+('2023-07-04', 'Value 4');
+
+CREATE PROCEDURE `test_procedure`()
+BEGIN
+    SELECT COUNT(*) FROM `test_table` WHERE `age` > 25;
+END;
+
+CREATE FUNCTION `test_function`(`input` INT) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN input * 2;
+END;
+
+SELECT `test_function`(5);
+CALL `test_procedure`();
+
+ALTER TABLE `test_table` ADD COLUMN `new_column` INT NULL AFTER `data`;
+
+CREATE TRIGGER `test_trigger_insert` AFTER INSERT ON `test_table`
+FOR EACH ROW
+BEGIN
+    INSERT INTO `test_partitioned` (`created_at`, `value`) VALUES (CURDATE(), NEW.`name`);
+END;
+
+INSERT INTO `test_table` (`name`) VALUES ('Trigger Test');
+
+OPTIMIZE TABLE `test_table`;
+ANALYZE TABLE `test_table`;
+SHOW CREATE TABLE `test_table`;
+SHOW INDEX FROM `test_table`;

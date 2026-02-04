@@ -1,0 +1,52 @@
+PRAGMA enable_object_names;
+CREATE TABLE integers AS SELECT i FROM range(1000) AS t(i);
+CREATE TABLE strings AS SELECT uuid() AS s FROM range(100);
+CREATE TABLE bools AS SELECT CASE WHEN i % 2 = 0 THEN TRUE ELSE FALSE END AS b FROM range(10);
+CREATE TABLE floats AS SELECT random() AS f FROM range(50);
+
+-- Test various data types and constraints
+CREATE TABLE test_table (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  value DOUBLE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT current_timestamp,
+  data BLOB,
+  CHECK (value > -100 AND value < 100)
+);
+
+-- Insert some initial data
+INSERT INTO test_table (name, value, data) VALUES
+('Record 1', 3.14, randomblob(16)),
+('Record 2', -5.0, randomblob(32)),
+('Record 3', 42.0, randomblob(64));
+
+-- Test aggregate functions
+SELECT AVG(value), SUM(value), COUNT(*) FROM test_table;
+
+-- Test string functions
+SELECT UPPER(name), LENGTH(name), SUBSTR(name, 1, 3) FROM test_table;
+
+-- Test date/time functions
+SELECT DATE(created_at), STRFTIME('%Y-%m-%d', created_at) FROM test_table;
+
+-- Test window functions
+SELECT id, name, value, RANK() OVER (ORDER BY value) FROM test_table;
+
+-- Test joins (cross join to generate more data)
+CREATE TABLE extra_data(extra_val INTEGER);
+INSERT INTO extra_data VALUES (1), (2), (3);
+SELECT * FROM test_table CROSS JOIN extra_data;
+
+-- Test updates with subqueries
+UPDATE test_table SET value = (SELECT AVG(value) FROM test_table) WHERE id = 1;
+
+-- Test deletions with conditions
+DELETE FROM test_table WHERE value < 0;
+
+-- Test DuckDB specific features:
+SELECT * FROM read_csv_auto('test.csv'); -- Attempt to read a non-existent CSV.
+SELECT typeof(NULL);
+SELECT list_value(1,2,3,4,5);
+SELECT map_from_entries(list_value(list_value('key1', 'value1'), list_value('key2', 'value2')));
+SELECT json('[1, 2, 3]');

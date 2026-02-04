@@ -1,0 +1,45 @@
+-- Initial seed for PostgreSQL testing environment
+
+-- Create a simple table for demonstration purposes
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a table with array data type
+CREATE TABLE IF NOT EXISTS products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    categories TEXT[] NOT NULL,
+    price NUMERIC(10, 2) NOT NULL
+);
+
+-- Insert sample data into users table
+INSERT INTO users (name, email)
+VALUES 
+    ('John Doe', 'john.doe@example.com'),
+    ('Jane Smith', 'jane.smith@example.com'),
+    ('Bob Johnson', 'bob.johnson@example.com');
+
+-- Create an index on the email column for faster lookups
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+-- Create a table with composite data type
+CREATE TYPE IF NOT EXISTS product_info AS (
+    id INT,
+    name VARCHAR(100),
+    price NUMERIC(10, 2)
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+    product_info product_info,
+    stock INT NOT NULL
+);
+
+-- Insert sample data into inventory table
+INSERT INTO inventory (product_info, stock)
+VALUES 
+    ((1, 'Laptop', 999.99), 50),
+    ((2, 'Smartphone', 699.99), 100);

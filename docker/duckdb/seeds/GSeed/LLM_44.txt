@@ -1,0 +1,50 @@
+CREATE TABLE integers AS SELECT range i FROM range(10);
+CREATE TABLE strings AS SELECT i::VARCHAR str FROM integers;
+CREATE TABLE floats AS SELECT i::DOUBLE flt FROM integers;
+CREATE TABLE bools AS SELECT i%2=0 bl FROM integers;
+
+-- Test various types and operations
+SELECT i + 1, str || 'a', flt * 2, NOT bl FROM integers, strings, floats, bools LIMIT 3;
+
+-- Test date and time functions
+CREATE TABLE dates AS SELECT date('2023-01-01') + i date_val FROM integers;
+SELECT date_trunc('month', date_val), date_part('dayofweek', date_val) FROM dates LIMIT 3;
+
+-- Test window functions
+CREATE TABLE sales AS SELECT i id, i*10 sale FROM integers;
+SELECT id, sale, AVG(sale) OVER () FROM sales LIMIT 3;
+
+-- Test grouping and aggregation
+SELECT i % 3, COUNT(*), SUM(i) FROM integers GROUP BY 1;
+
+-- Test joins
+CREATE TABLE ids AS SELECT i id FROM integers WHERE i < 5;
+SELECT i.id, s.sale FROM ids i JOIN sales s ON i.id = s.id;
+
+-- Test case statements
+SELECT i, CASE WHEN i < 5 THEN 'small' ELSE 'large' END FROM integers;
+
+-- Test unnesting
+CREATE TABLE list_table AS SELECT list([1,2,3,i]) AS my_list FROM integers WHERE i < 3;
+SELECT i,unnest(my_list) FROM list_table;
+
+-- Test JSON functionality
+CREATE TABLE json_table AS SELECT JSON('{"a": ' || i || ', "b": "test"}') AS my_json FROM integers WHERE i < 3;
+SELECT my_json -> 'a' FROM json_table;
+
+-- Test DuckDB specific functions
+SELECT typeof(1), current_date(), last_day(date('2024-02-15'));
+
+-- Test Parquet writing/reading (may need adjustment if parquet extension is not available)
+-- COPY (SELECT * FROM integers) TO 'test.parquet' (FORMAT 'parquet');
+-- SELECT * FROM 'test.parquet';
+
+-- Test data generation with sequence
+CREATE SEQUENCE my_seq START 1 INCREMENT 1;
+SELECT nextval('my_seq') FROM range(3);
+
+-- Test string functions
+SELECT upper('test'), lower('TEST'), substring('testing', 2, 3);
+
+-- Test null handling
+SELECT NULLIF(10, 10), COALESCE(NULL, 5, 10);

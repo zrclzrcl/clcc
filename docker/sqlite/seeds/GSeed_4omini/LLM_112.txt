@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, age INT CHECK(age > 0));
+INSERT INTO users(name, email, age) VALUES('Alice', 'alice@example.com', 30), ('Bob', 'bob@example.com', 25), ('Charlie', 'charlie@example.com', 35);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, order_date TEXT DEFAULT CURRENT_TIMESTAMP, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50), (2, 75.25), (1, 50.00);
+CREATE UNIQUE INDEX idx_email ON users(email);
+CREATE INDEX idx_order_date ON orders(order_date);
+ANALYZE;
+DROP TABLE IF EXISTS sqlite_stat4;
+INSERT INTO sqlite_stat1 VALUES('users', 'idx_email', '20 20 20 2 2'); 
+INSERT INTO sqlite_stat1 VALUES('orders', 'idx_order_date', '15 15 15 3 3');
+DROP TABLE IF EXISTS temp_users;
+CREATE TEMP TABLE temp_users AS SELECT * FROM users WHERE age > 28;
+SELECT * FROM temp_users WHERE email LIKE '%@example.com';

@@ -1,0 +1,75 @@
+CREATE TABLE test_table (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255),
+  value INTEGER,
+  data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"key1": "value1", "key2": 20}'),
+('Bob', 20, '{"key1": "value2", "key2": 30}'),
+('Charlie', 30, '{"key1": "value3", "key2": 40}');
+
+SELECT * FROM test_table WHERE value > 15;
+
+UPDATE test_table SET value = value + 5 WHERE name LIKE 'A%';
+
+DELETE FROM test_table WHERE id = 3;
+
+CREATE INDEX idx_name ON test_table (name);
+
+CREATE VIEW test_view AS SELECT name, value FROM test_table WHERE value > 20;
+
+SELECT * FROM test_view;
+
+DROP VIEW test_view;
+
+SELECT jsonb_agg(data) FROM test_table;
+
+SELECT name, string_agg(value::text, ', ') WITHIN GROUP (ORDER BY value) from test_table group by name;
+
+CREATE COLLATION german (locale = 'de_DE');
+
+SELECT name COLLATE "german" FROM test_table ORDER BY name COLLATE "german";
+
+ALTER TABLE test_table ADD COLUMN description TEXT;
+
+UPDATE test_table SET description = 'This is a test record' WHERE id = 1;
+
+SELECT id, name, value, data FROM test_table WHERE data @> '{"key1": "value1"}';
+
+SELECT id, name, value, data FROM test_table WHERE data ? 'key2';
+
+SELECT id, name, value FROM test_table ORDER BY value DESC NULLS LAST;
+
+SELECT count(*) FROM test_table;
+
+SELECT max(value), min(value), avg(value) FROM test_table;
+
+SELECT current_database();
+
+SELECT current_user;
+
+SELECT version();
+
+EXPLAIN SELECT * FROM test_table WHERE value > 10;
+
+CREATE TEMPORARY TABLE temp_table (like test_table);
+
+INSERT INTO temp_table SELECT * FROM test_table;
+
+SELECT * FROM temp_table;
+
+DROP TABLE temp_table;
+
+--Edge cases
+INSERT INTO test_table (name, value) VALUES (NULL, NULL);
+SELECT * FROM test_table WHERE name IS NULL;
+SELECT * FROM test_table WHERE value IS NULL;
+SELECT name FROM test_table WHERE name = '';
+
+-- Boundary value tests
+INSERT INTO test_table (name,value) VALUES ('very_long_name__________________________________________________________________________________________________________________________________________________________________________________________________________', 2147483647);
+SELECT * FROM test_table WHERE value = 2147483647;
+
+DROP TABLE test_table;

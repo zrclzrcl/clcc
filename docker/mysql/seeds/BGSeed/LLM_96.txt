@@ -1,0 +1,49 @@
+CREATE TABLE `employees` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `first_name` VARCHAR(50) NOT NULL,
+  `last_name` VARCHAR(50) NOT NULL,
+  `email` VARCHAR(100) UNIQUE,
+  `phone_number` VARCHAR(20),
+  `hire_date` DATE NOT NULL,
+  `job_id` VARCHAR(10) NOT NULL,
+  `salary` DECIMAL(10,2) NOT NULL,
+  `commission_pct` DECIMAL(4,2),
+  `manager_id` INT,
+  `department_id` INT,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`manager_id`) REFERENCES `employees`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Trigger to prevent salary increases exceeding 50%
+DELIMITER //
+CREATE TRIGGER `before_employee_update` BEFORE UPDATE ON `employees`
+FOR EACH ROW
+BEGIN
+  IF NEW.salary > OLD.salary * 1.5 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Salary increase exceeds maximum allowed (50%).';
+  END IF;
+END//
+DELIMITER ;
+
+-- Stored procedure to calculate bonus based on performance rating
+DELIMITER //
+CREATE PROCEDURE `calculate_bonus`(IN emp_id INT, IN rating INT, OUT bonus DECIMAL(10,2))
+BEGIN
+  DECLARE base_bonus DECIMAL(10,2);
+  SET base_bonus = 1000;
+
+  CASE rating
+    WHEN 1 THEN SET bonus = base_bonus * 0.5;
+    WHEN 2 THEN SET bonus = base_bonus * 0.75;
+    WHEN 3 THEN SET bonus = base_bonus;
+    WHEN 4 THEN SET bonus = base_bonus * 1.25;
+    WHEN 5 THEN SET bonus = base_bonus * 1.5;
+    ELSE SET bonus = 0; -- Invalid rating
+  END CASE;
+END//
+DELIMITER ;
+
+-- Insert some initial data
+INSERT INTO `employees` (`first_name`, `last_name`, `email`, `hire_date`, `job_id`, `salary`) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 'IT_PROG', 60000.00),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-03-10', 'SALES_REP', 50000.00);

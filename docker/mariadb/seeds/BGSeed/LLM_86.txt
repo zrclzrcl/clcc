@@ -1,0 +1,119 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test for stored procedures with error handling
+DROP PROCEDURE IF EXISTS sp_test_error_handling;
+CREATE PROCEDURE sp_test_error_handling()
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'An error occurred';
+        RESIGNAL; -- Re-raise the exception
+    END;
+
+    SELECT 1/0; -- Force an error (division by zero)
+END;
+
+-- Call the stored procedure to test error handling
+CALL sp_test_error_handling();
+
+-- Test case-insensitive collation and comparison.
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci
+);
+
+INSERT INTO t2 (id, name) VALUES
+(1, 'apple'),
+(2, 'Apple'),
+(3, 'Banana');
+
+SELECT * FROM t2 WHERE name = 'apple'; -- Should return apple
+SELECT * FROM t2 WHERE name = 'Apple'; -- Should return apple
+SELECT * FROM t2 WHERE name COLLATE utf8mb4_bin = 'Apple'; -- Should return Apple only
+
+-- Test temporary tables
+CREATE TEMPORARY TABLE tmp_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    value VARCHAR(255)
+);
+
+INSERT INTO tmp_table (value) VALUES ('test1'), ('test2');
+
+SELECT * FROM tmp_table;
+
+-- Test fulltext index
+CREATE TABLE articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255),
+    body TEXT,
+    FULLTEXT (title, body)
+);
+
+INSERT INTO articles (title, body) VALUES
+('MariaDB Full-Text Search', 'This article explains full-text search in MariaDB.'),
+('Using Full-Text Indexes', 'Learn how to create and use full-text indexes.');
+
+SELECT * FROM articles WHERE MATCH (title, body) AGAINST ('MariaDB' IN NATURAL LANGUAGE MODE);
+
+-- Test JSON functionality
+CREATE TABLE jsontable (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data JSON
+);
+
+INSERT INTO jsontable (data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}'),
+('{"name": "Jane", "age": 25, "city": "London"}');
+
+SELECT data->'$.name' AS name FROM jsontable;
+SELECT * FROM jsontable WHERE JSON_EXTRACT(data, '$.age') > 27;
+
+-- Test spatial data types
+
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    location POINT SRID 4326
+);
+
+INSERT INTO spatial_data (location) VALUES
+(ST_GeomFromText('POINT(-73.9857 40.7484)')), -- New York
+(ST_GeomFromText('POINT(-0.1278 51.5074)')); -- London
+
+SELECT ST_AsText(location) FROM spatial_data;
+
+-- Test window functions
+CREATE TABLE sales (
+    product VARCHAR(255),
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+);
+
+INSERT INTO sales (product, sale_date, amount) VALUES
+('ProductA', '2023-01-01', 100.00),
+('ProductA', '2023-01-02', 150.00),
+('ProductB', '2023-01-01', 200.00),
+('ProductB', '2023-01-02', 250.00);
+
+SELECT
+    product,
+    sale_date,
+    amount,
+    SUM(amount) OVER (PARTITION BY product ORDER BY sale_date) AS running_total
+FROM sales;
+
+-- Test common table expressions (CTEs)
+WITH ProductTotals AS (
+    SELECT product, SUM(amount) AS total_amount
+    FROM sales
+    GROUP BY product
+)
+SELECT product, total_amount FROM ProductTotals WHERE total_amount > 200;
+
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS jsontable;
+DROP TABLE IF EXISTS articles;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS spatial_data;
+SET sql_mode=@old_sql_mode;

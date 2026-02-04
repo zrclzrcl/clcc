@@ -1,0 +1,114 @@
+-- Initial seed for PostgreSQL 18_RC1 fuzzing
+
+-- Basic Data Definition and Manipulation
+
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO fuzz_test_table (name, value, data) VALUES
+('test1', 10, '{"a": 1, "b": "test"}'),
+('test2', 20, '{"c": 2, "d": "another"}');
+
+UPDATE fuzz_test_table SET value = 30 WHERE name = 'test1';
+
+DELETE FROM fuzz_test_table WHERE value = 20;
+
+SELECT * FROM fuzz_test_table;
+
+-- More complex queries
+
+SELECT jsonb_agg(data) FROM fuzz_test_table;
+
+SELECT name, value FROM fuzz_test_table WHERE value > 10 ORDER BY name;
+
+-- Data types and casting
+
+CREATE TABLE data_types_test (
+    id SERIAL PRIMARY KEY,
+    ts TIMESTAMP WITH TIME ZONE,
+    num NUMERIC(10, 2),
+    bin BYTEA
+);
+
+INSERT INTO data_types_test (ts, num, bin) VALUES
+(NOW(), 1234.56, '\xdeadbeef');
+
+SELECT ts::TEXT, num::INTEGER FROM data_types_test;
+
+-- Indexes
+
+CREATE INDEX idx_name ON fuzz_test_table (name);
+
+CREATE INDEX CONCURRENTLY idx_value ON fuzz_test_table (value); -- PostgreSQL Specific
+
+-- Transactions
+
+BEGIN;
+INSERT INTO fuzz_test_table (name, value) VALUES ('trans_test', 40);
+SELECT * FROM fuzz_test_table WHERE name = 'trans_test';
+ROLLBACK;
+
+SELECT * FROM fuzz_test_table WHERE name = 'trans_test'; -- Should be empty
+
+BEGIN;
+INSERT INTO fuzz_test_table (name, value) VALUES ('trans_test2', 50);
+COMMIT;
+
+SELECT * FROM fuzz_test_table WHERE name = 'trans_test2'; -- Should exist
+
+-- Functions
+
+CREATE FUNCTION add_one(i INTEGER) RETURNS INTEGER AS $$
+    BEGIN
+        RETURN i + 1;
+    END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_one(5);
+
+-- Advanced features (PostgreSQL Specific)
+
+CREATE TYPE status AS ENUM ('active', 'inactive', 'pending');
+
+CREATE TABLE enum_test (
+    id SERIAL PRIMARY KEY,
+    current_status status
+);
+
+INSERT INTO enum_test (current_status) VALUES ('active');
+
+SELECT current_status FROM enum_test;
+
+-- Extensions
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+SELECT gen_random_uuid();
+
+-- Roles and Privileges
+
+CREATE ROLE fuzz_user;
+GRANT SELECT ON fuzz_test_table TO fuzz_user;
+REVOKE SELECT ON fuzz_test_table FROM fuzz_user;
+DROP ROLE fuzz_user;
+
+-- Views
+
+CREATE VIEW fuzz_view AS SELECT id, name FROM fuzz_test_table WHERE value > 0;
+
+SELECT * FROM fuzz_view;
+
+DROP VIEW fuzz_view;
+
+-- Clean up (reverse order of creation to avoid dependencies)
+DROP TABLE enum_test;
+DROP TYPE status;
+DROP FUNCTION add_one(INTEGER);
+DROP TABLE data_types_test;
+DROP INDEX CONCURRENTLY idx_value;
+DROP INDEX idx_name;
+DROP TABLE fuzz_test_table;

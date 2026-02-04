@@ -1,0 +1,96 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, description, price, quantity) VALUES
+('Laptop', 'High-performance laptop for professionals', 1200.50, 10),
+('The Lord of the Rings', 'A classic fantasy novel', 15.99, 50),
+('T-Shirt', 'Comfortable cotton t-shirt', 22.75, 100),
+('Smartphone', 'Latest generation smartphone', 999.99, 20),
+('Database Fuzzing: A Practical Guide', 'Learn how to fuzz databases effectively', 49.95, 5),
+('Jeans', 'Durable denim jeans', 59.00, 75);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1), (2, 2), (3, 3), (4, 1), (5, 2), (6, 3);
+
+CREATE OR REPLACE VIEW ProductSummary AS
+SELECT p.id, p.name, p.price, c.name AS category
+FROM products p
+JOIN product_categories pc ON p.id = pc.product_id
+JOIN categories c ON pc.category_id = c.id;
+
+-- Test spatial functions (MariaDB specific)
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO spatial_data (name, location) VALUES
+('Office', ST_GeomFromText('POINT(10 20)')),
+('Warehouse', ST_GeomFromText('POINT(30 40)'));
+
+SELECT name, ST_AsText(location) FROM spatial_data WHERE ST_Distance(location, ST_GeomFromText('POINT(15 25)')) < 20;
+
+-- Test window functions
+SELECT name, price,
+       RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Test stored procedure with error handling
+DELIMITER //
+CREATE PROCEDURE UpdateProductQuantity(IN product_id INT, IN new_quantity INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+    UPDATE products SET quantity = new_quantity WHERE id = product_id;
+    IF (SELECT quantity FROM products WHERE id = product_id) < 0 THEN
+       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Quantity cannot be negative';
+    END IF;
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL UpdateProductQuantity(1, 15);
+-- CALL UpdateProductQuantity(1, -5); -- Uncomment to test error handling.
+
+-- Test JSON functions (MariaDB specific)
+UPDATE products SET description = JSON_SET(description, '$.manufacturer', 'Generic');
+SELECT name, JSON_EXTRACT(description, '$.manufacturer') FROM products WHERE id = 1;
+
+ANALYZE TABLE products, categories, product_categories, spatial_data;
+
+CHECK TABLE products, categories, product_categories, spatial_data;
+
+REPAIR TABLE products, categories, product_categories, spatial_data;
+
+SET sql_mode=@old_sql_mode;

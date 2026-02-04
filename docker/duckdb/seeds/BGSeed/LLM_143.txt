@@ -1,0 +1,37 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (value) VALUES (1), (2), (3);
+
+-- Test DuckDB-specific features: APPROXIMATE COUNT DISTINCT
+SELECT approx_count_distinct(value) FROM integers;
+
+-- Test window functions
+SELECT value, rank() OVER (ORDER BY value) FROM integers;
+
+-- Test JSON functions (Requires JSON extension to be loaded for full functionality)
+-- INSTALL json;  -- Uncomment to install json extension.  The fuzzer might handle this better if it's separated.
+-- LOAD json;     -- Uncomment to load json extension. The fuzzer might handle this better if it's separated.
+
+CREATE TABLE json_test (data JSON);
+INSERT INTO json_test VALUES ('{"a": 1, "b": "hello"}');
+SELECT json_extract_string(data, '$.b') FROM json_test;
+
+-- Test string functions
+SELECT upper('duckdb'), lower('DUCKDB');
+
+-- Test date/time functions
+SELECT current_date, current_time, current_timestamp;
+
+-- Test list/array functions
+CREATE TABLE list_test (my_list INTEGER[]);
+INSERT INTO list_test VALUES (ARRAY[1, 2, 3]);
+SELECT list_extract(my_list, 1) FROM list_test;
+
+-- Test aggregate functions with filter clause (SQL:2003 extension)
+SELECT count(*) FILTER (WHERE value > 1) FROM integers;
+
+-- Test case-insensitive matching
+SELECT * FROM integers WHERE lower(CAST(value AS VARCHAR)) = '1';

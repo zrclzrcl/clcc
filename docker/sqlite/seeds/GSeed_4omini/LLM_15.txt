@@ -1,0 +1,9 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT, password TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE posts(id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id));
+CREATE TABLE comments(id INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, text TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (post_id) REFERENCES posts(id), FOREIGN KEY (user_id) REFERENCES users(id));
+INSERT INTO users(username, email, password) VALUES('testuser', 'test@example.com', 'passwordhash');
+INSERT INTO posts(user_id, content) VALUES(1, 'This is a test post');
+INSERT INTO comments(post_id, user_id, text) VALUES(1, 1, 'This is a comment on the test post');
+ALTER TABLE users ADD COLUMN last_login DATETIME;
+CREATE INDEX idx_username ON users(username);
+CREATE VIEW user_posts AS SELECT users.username, posts.content FROM users JOIN posts ON users.id = posts.user_id;

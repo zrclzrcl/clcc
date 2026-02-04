@@ -1,0 +1,111 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    location_id INT
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(id);
+
+CREATE TABLE job_grades (
+    grade_level VARCHAR(3) PRIMARY KEY,
+    lowest_sal INT,
+    highest_sal INT
+);
+
+INSERT INTO job_grades (grade_level, lowest_sal, highest_sal) VALUES
+('A', 1000, 2999),
+('B', 3000, 5999),
+('C', 6000, 9999),
+('D', 10000, 14999),
+('E', 15000, 24999);
+
+CREATE VIEW employee_details AS
+SELECT
+    e.id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    d.name AS department_name,
+    e.salary,
+    jg.grade_level AS salary_grade
+FROM
+    employees e
+JOIN
+    departments d ON e.department_id = d.id
+LEFT JOIN
+    job_grades jg ON e.salary BETWEEN jg.lowest_sal AND jg.highest_sal;
+
+-- Stored procedure to calculate total salary expense for a department
+DELIMITER //
+CREATE PROCEDURE CalculateDepartmentSalaryExpense(IN dept_id INT, OUT total_expense DECIMAL(12,2))
+BEGIN
+    SELECT SUM(salary) INTO total_expense
+    FROM employees
+    WHERE department_id = dept_id;
+END //
+DELIMITER ;
+
+-- Trigger to log salary changes
+CREATE TABLE salary_audit (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2),
+    change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER salary_update_trigger
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary <> OLD.salary THEN
+        INSERT INTO salary_audit (employee_id, old_salary, new_salary)
+        VALUES (OLD.id, OLD.salary, NEW.salary);
+    END IF;
+END //
+DELIMITER ;
+
+-- Function to calculate years of service.
+DELIMITER //
+CREATE FUNCTION YearsOfService(hire_date DATE)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+  DECLARE years INT;
+  SET years = TIMESTAMPDIFF(YEAR, hire_date, CURDATE());
+  RETURN years;
+END //
+DELIMITER ;
+
+-- Example usage of the function
+SELECT YearsOfService(hire_date) FROM employees;
+
+-- Inserting sample data
+INSERT INTO departments (name, location_id) VALUES ('Sales', 100), ('Marketing', 200), ('IT', 300);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2020-01-15', 60000, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-03-20', 75000, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2019-05-10', 90000, 3);
+
+-- Testing the stored procedure
+CALL CalculateDepartmentSalaryExpense(1, @total);
+SELECT @total;
+
+-- Update salary to trigger audit.
+UPDATE employees SET salary = 65000 WHERE first_name = 'John';

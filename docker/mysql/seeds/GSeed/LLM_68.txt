@@ -1,0 +1,100 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category ENUM('Electronics', 'Clothing', 'Books', 'Home Goods')
+);
+
+CREATE TABLE customers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status ENUM('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled') DEFAULT 'Pending',
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO products (name, description, price, category) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 'Electronics'),
+('T-Shirt', 'Cotton T-Shirt', 20.00, 'Clothing'),
+('The Lord of the Rings', 'Fantasy novel', 15.00, 'Books'),
+('Coffee Maker', 'Automatic coffee maker', 50.00, 'Home Goods');
+
+INSERT INTO customers (first_name, last_name, email, phone_number) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210');
+
+INSERT INTO orders (customer_id, total_amount, status) VALUES
+(1, 1220.00, 'Processing'),
+(2, 35.00, 'Pending');
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 20.00),
+(2, 3, 1, 15.00),
+(2, 2, 1, 20.00);
+
+-- MySQL Specific: Spatial Index
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO spatial_data (id, name, location) VALUES
+(1, 'Point A', ST_GeomFromText('POINT(1 1)')),
+(2, 'Point B', ST_GeomFromText('POINT(2 2)'));
+
+CREATE SPATIAL INDEX sp_index ON spatial_data(location);
+
+-- MySQL Specific: Fulltext Index
+ALTER TABLE products ADD FULLTEXT INDEX idx_name_description (name, description);
+
+SELECT * FROM products WHERE MATCH (name, description) AGAINST ('laptop');
+
+-- Test JSON functions
+CREATE TABLE json_data (
+    id INT PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (id, data) VALUES (1, '{"name": "Test", "value": 123}');
+
+SELECT data->'$.name' FROM json_data;
+
+ANALYZE TABLE products, customers, orders, order_items, spatial_data, json_data;
+
+-- Partitioning
+CREATE TABLE logs (
+    ts DATETIME,
+    level VARCHAR(10),
+    message TEXT
+)
+PARTITION BY RANGE ( YEAR(ts) ) (
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO logs (ts, level, message) VALUES
+('2022-12-31 23:59:59', 'INFO', 'Log message from 2022'),
+('2023-01-01 00:00:00', 'ERROR', 'Log message from 2023');

@@ -1,0 +1,33 @@
+-- Initial seed for DuckDB fuzz testing
+CREATE TABLE main_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    value DECIMAL CHECK (value > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO main_table (name, value) 
+VALUES ('Test1', 100.5), ('Test2', 200.3), (NULL, 150.0); -- Testing NULL insertion
+
+ALTER TABLE main_table ADD COLUMN status VARCHAR(50) DEFAULT 'active'; -- Adding a new column
+ALTER TABLE main_table DROP CONSTRAINT name; -- Dropping a constraint
+
+CREATE VIRTUAL TABLE IF NOT EXISTS virtual_data USING generate_series(1, 10); -- DuckDB-specific feature
+
+SELECT 
+    id,
+    name,
+    RANK() OVER (ORDER BY value DESC) as rank_value -- Using window function
+FROM main_table;
+
+WITH cte AS (
+    SELECT 
+        id, 
+        name, 
+        created_at 
+    FROM main_table 
+    WHERE status = 'active'
+)
+SELECT * FROM cte LIMIT 5; -- Testing CTE and LIMIT
+
+CREATE INDEX idx_value ON main_table(value) WHERE value > 100; -- Indexed with condition

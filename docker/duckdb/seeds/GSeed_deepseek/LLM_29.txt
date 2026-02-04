@@ -1,0 +1,39 @@
+CREATE TABLE test_table (
+    id INTEGER,
+    name VARCHAR(50),
+    value DECIMAL,
+    created_at TIMESTAMP,
+    status BOOLEAN
+);
+
+INSERT INTO test_table VALUES 
+(1, 'Alice', 100.5, '2023-01-01 00:00:00', true),
+(2, 'Bob', NULL, '2023-01-02 00:00:00', false),
+(3, 'Charlie', 200.75, NULL, true);
+
+WITH cte AS (
+    SELECT 
+        id,
+        name,
+        RANK() OVER (ORDER BY value DESC) as value_rank
+    FROM test_table
+)
+SELECT 
+    t.id,
+    t.name,
+    t.value,
+    cte.value_rank,
+    COUNT(*) OVER () as total_rows
+FROM test_table t
+JOIN cte ON t.id = cte.id
+WHERE status IS true;
+
+ALTER TABLE test_table RENAME COLUMN created_at TO timestamp_col;
+
+SELECT 
+    name,
+    value,
+    COALESCE(value, 0) as safe_value,
+    EXTRACT(YEAR FROM timestamp_col) as year_extracted
+FROM test_table
+ORDER BY id DESC;

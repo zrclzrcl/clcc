@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS orders;
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age > 0));
+INSERT INTO users (name, age) VALUES ('Alice', 30);
+INSERT INTO users (name, age) VALUES ('Bob', 25);
+INSERT INTO users (name, age) VALUES ('Charlie', 35);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL NOT NULL, date TEXT NOT NULL,
+FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount, date) VALUES (1, 100.50, '2023-01-01');
+INSERT INTO orders (user_id, amount, date) VALUES (2, 200.75, '2023-01-02');
+INSERT INTO orders (user_id, amount, date) VALUES (3, 150.00, '2023-01-03');
+SELECT u.name, SUM(o.amount) AS total_spent FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id;
+SELECT * FROM users WHERE age BETWEEN 20 AND 35;
+SELECT DISTINCT u.name FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 100;
+CREATE INDEX idx_age ON users(age);
+DELETE FROM orders WHERE amount < 200;

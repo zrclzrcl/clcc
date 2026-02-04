@@ -1,0 +1,22 @@
+CREATE TABLE employees(id INTEGER PRIMARY KEY, name TEXT, position TEXT, salary REAL);
+CREATE TABLE departments(id INTEGER PRIMARY KEY, dept_name TEXT);
+CREATE TABLE project_assignments(emp_id INTEGER, proj_id INTEGER, FOREIGN KEY(emp_id) REFERENCES employees(id), FOREIGN KEY(proj_id) REFERENCES projects(id));
+
+CREATE TABLE projects(id INTEGER PRIMARY KEY, proj_name TEXT, start_date TEXT, end_date TEXT);
+BEGIN;
+INSERT INTO employees(name, position, salary) VALUES('Alice', 'Developer', 70000);
+INSERT INTO employees(name, position, salary) VALUES('Bob', 'Manager', 80000);
+INSERT INTO employees(name, position, salary) VALUES('Charlie', 'Analyst', 60000);
+INSERT INTO departments(dept_name) VALUES('Engineering');
+INSERT INTO departments(dept_name) VALUES('Sales');
+INSERT INTO projects(proj_name, start_date, end_date) VALUES('Project A', '2022-01-01', '2022-12-31');
+INSERT INTO projects(proj_name, start_date, end_date) VALUES('Project B', '2022-06-01', '2023-05-31');
+INSERT INTO project_assignments(emp_id, proj_id) VALUES(1, 1);
+INSERT INTO project_assignments(emp_id, proj_id) VALUES(2, 1);
+INSERT INTO project_assignments(emp_id, proj_id) VALUES(3, 2);
+END;
+
+SELECT * FROM employees WHERE salary > 65000;
+SELECT d.dept_name, COUNT(e.id) as num_employees FROM departments d LEFT JOIN employees e ON d.id = e.id GROUP BY d.dept_name;
+DELETE FROM projects WHERE end_date < '2022-12-31';
+UPDATE employees SET salary = salary * 1.10 WHERE position = 'Developer';

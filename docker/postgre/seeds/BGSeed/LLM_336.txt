@@ -1,0 +1,155 @@
+-- Initial seed for PostgreSQL 18 RC1 fuzz testing
+
+-- Create schema for testing purposes
+CREATE SCHEMA IF NOT EXISTS fuzz_test;
+SET search_path TO fuzz_test;
+
+-- Create a simple table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert some data
+INSERT INTO users (username, email) VALUES
+    ('alice', 'alice@example.com'),
+    ('bob', 'bob@example.com'),
+    ('charlie', 'charlie@example.com');
+
+-- Create another table with foreign key
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(200) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert some posts
+INSERT INTO posts (user_id, title, content) VALUES
+    (1, 'Alice''s first post', 'This is Alice''s first post.'),
+    (2, 'Bob''s thoughts', 'Some random thoughts from Bob.');
+
+-- Basic SELECT query
+SELECT * FROM users;
+
+-- SELECT with WHERE clause
+SELECT * FROM users WHERE username = 'bob';
+
+-- UPDATE query
+UPDATE users SET email = 'alice.new@example.com' WHERE username = 'alice';
+
+-- DELETE query
+DELETE FROM users WHERE username = 'charlie';
+
+-- JOIN query
+SELECT users.username, posts.title FROM users JOIN posts ON users.id = posts.user_id;
+
+-- Aggregate query
+SELECT user_id, COUNT(*) FROM posts GROUP BY user_id;
+
+-- Subquery
+SELECT username FROM users WHERE id IN (SELECT user_id FROM posts);
+
+-- CREATE INDEX
+CREATE INDEX idx_username ON users (username);
+
+-- ALTER TABLE - Add column
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+
+-- ALTER TABLE - Drop column
+ALTER TABLE users DROP COLUMN email;
+
+-- DROP INDEX
+DROP INDEX idx_username;
+
+-- DROP TABLE
+DROP TABLE posts;
+
+-- Unlogged Table
+CREATE UNLOGGED TABLE temp_data (
+    id SERIAL PRIMARY KEY,
+    value TEXT
+);
+
+INSERT INTO temp_data (value) VALUES ('unlogged data');
+
+-- Materialized view
+CREATE MATERIALIZED VIEW active_users AS
+SELECT id, username FROM users WHERE is_active = TRUE;
+
+REFRESH MATERIALIZED VIEW active_users;
+
+-- Window function
+SELECT
+    username,
+    created_at,
+    ROW_NUMBER() OVER (ORDER BY created_at) AS row_num
+FROM users;
+
+-- Common Table Expression (CTE)
+WITH user_counts AS (
+    SELECT user_id, COUNT(*) AS post_count FROM posts GROUP BY user_id
+)
+SELECT users.username, user_counts.post_count
+FROM users
+JOIN user_counts ON users.id = user_counts.user_id;
+
+-- TABLESAMPLE (Bernoulli sampling)
+SELECT * FROM users TABLESAMPLE BERNOULLI(20);
+
+-- JSONB example
+ALTER TABLE users ADD COLUMN data JSONB;
+UPDATE users SET data = '{"age": 30, "city": "New York"}' WHERE username = 'alice';
+SELECT username, data ->> 'city' FROM users WHERE data IS NOT NULL;
+
+-- Generated Column
+ALTER TABLE users ADD COLUMN username_upper GENERATED ALWAYS AS (UPPER(username)) STORED;
+
+-- GRANT and REVOKE
+GRANT SELECT ON TABLE users TO public;
+REVOKE SELECT ON TABLE users FROM public;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION get_user_count()
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (SELECT COUNT(*) FROM users);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_user_count();
+
+-- EXPLAIN query
+EXPLAIN SELECT * FROM users WHERE username = 'alice';
+
+-- ANALYZE table
+ANALYZE users;
+
+-- Recursive CTE example (requires a table; creating one if it doesn't exist)
+CREATE TABLE IF NOT EXISTS employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    manager_id INTEGER REFERENCES employee(id)
+);
+
+INSERT INTO employee (name, manager_id) VALUES
+('John', NULL),
+('Jane', 1),
+('Peter', 2);
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, manager_id, 0 AS level
+    FROM employee
+    WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, eh.level + 1
+    FROM employee e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.id
+)
+SELECT * FROM employee_hierarchy;
+
+-- Cleanup (important to prevent errors on re-runs)
+DROP SCHEMA IF EXISTS fuzz_test CASCADE;

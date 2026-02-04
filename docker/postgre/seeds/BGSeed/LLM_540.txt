@@ -1,0 +1,126 @@
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    emp_name VARCHAR(255) NOT NULL,
+    department VARCHAR(100),
+    salary DECIMAL(10, 2)
+);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(100) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+-- Add foreign key constraint after tables are created
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+INSERT INTO departments (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (emp_name, dept_id, salary) VALUES
+('Alice Smith', 1, 60000.00),
+('Bob Johnson', 2, 75000.00),
+('Charlie Brown', 3, 90000.00);
+
+-- Using window functions
+SELECT emp_name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Using common table expressions (CTEs)
+WITH AvgSalaries AS (
+    SELECT dept_id, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY dept_id
+)
+SELECT e.emp_name, d.dept_name, a.avg_salary
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id
+JOIN AvgSalaries a ON e.dept_id = a.dept_id
+WHERE e.salary > a.avg_salary;
+
+-- Create an index
+CREATE INDEX idx_emp_dept ON employees (dept_id);
+
+-- Create a view
+CREATE VIEW EmployeeDetails AS
+SELECT e.emp_id, e.emp_name, d.dept_name, d.location, e.salary
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+SELECT * FROM EmployeeDetails WHERE salary > 70000;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+-- Using JSON functions
+SELECT json_build_object('emp_name', emp_name, 'salary', salary) AS employee_json FROM employees;
+
+-- Using array functions
+SELECT array_agg(emp_name) AS all_employees FROM employees;
+
+-- Using string functions
+SELECT upper(emp_name) FROM employees;
+
+-- Using date functions (if applicable, assuming a date column)
+-- ALTER TABLE employees ADD COLUMN hire_date DATE;
+-- UPDATE employees SET hire_date = CURRENT_DATE - (emp_id * interval '1 year');
+-- SELECT emp_name, EXTRACT(YEAR FROM hire_date) AS hire_year FROM employees;
+
+-- Triggers Example
+CREATE OR REPLACE FUNCTION check_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_check_trigger
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION check_salary();
+
+-- Materialized View
+CREATE MATERIALIZED VIEW MV_EMP_DEPT AS
+SELECT e.emp_name, d.dept_name
+FROM employees e JOIN departments d
+ON e.dept_id = d.dept_id;
+
+REFRESH MATERIALIZED VIEW MV_EMP_DEPT;
+
+-- Window functions with partitioning
+SELECT emp_name, salary, dept_id, AVG(salary) OVER (PARTITION BY dept_id) FROM employees;
+
+-- Recursive CTE (Requires creating suitable data first)
+CREATE TABLE category (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  parent_id INTEGER REFERENCES category(id)
+);
+
+INSERT INTO category (name, parent_id) VALUES
+('Electronics', NULL),
+('TV', 1),
+('Smart TV', 2);
+
+WITH RECURSIVE category_tree AS (
+  SELECT id, name, parent_id, 1 AS level
+  FROM category
+  WHERE parent_id IS NULL
+  UNION ALL
+  SELECT c.id, c.name, c.parent_id, ct.level + 1
+  FROM category c
+  JOIN category_tree ct ON c.parent_id = ct.id
+)
+SELECT * FROM category_tree;
+
+-- DROP TABLE statements (optional - use with caution in fuzzing)
+-- DROP VIEW IF EXISTS EmployeeDetails;
+-- DROP MATERIALIZED VIEW IF EXISTS MV_EMP_DEPT;
+-- DROP TABLE IF EXISTS employees;
+-- DROP TABLE IF EXISTS departments;
+-- DROP TABLE IF EXISTS category;
+-- DROP FUNCTION IF EXISTS check_salary();

@@ -1,0 +1,112 @@
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+DROP SEQUENCE IF EXISTS seq_employee_id;
+
+CREATE SEQUENCE seq_employee_id START WITH 1;
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY DEFAULT nextval('seq_employee_id'),
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    job_id VARCHAR(10),
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
+);
+
+INSERT INTO departments (department_name) VALUES
+('Sales'),
+('Marketing'),
+('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, department_id, salary) VALUES
+('John', 'Doe', 'john.doe@example.com', 1, 60000.00),
+('Jane', 'Smith', 'jane.smith@example.com', 2, 70000.00),
+('Peter', 'Jones', 'peter.jones@example.com', 3, 80000.00);
+
+SELECT * FROM employees;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 1;
+
+DELETE FROM employees WHERE department_id = 2;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+CREATE VIEW employee_summary AS
+SELECT department_name, COUNT(*) AS employee_count, AVG(salary) AS avg_salary
+FROM employees e JOIN departments d ON e.department_id = d.department_id
+GROUP BY department_name;
+
+SELECT * FROM employee_summary;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.05 WHERE salary > 75000;
+
+SELECT first_name, last_name, salary, bonus, salary + bonus AS total_compensation FROM employees;
+
+CREATE OR REPLACE FUNCTION calculate_tax(salary DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN salary * 0.25;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT first_name, last_name, salary, calculate_tax(salary) AS tax_amount FROM employees;
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50),
+    operation VARCHAR(10),
+    record_id INT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation, record_id)
+        VALUES ('employees', 'DELETE', OLD.employee_id);
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation, record_id)
+        VALUES ('employees', 'UPDATE', OLD.employee_id);
+        RETURN NEW;
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation, record_id)
+        VALUES ('employees', 'INSERT', NEW.employee_id);
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_employee_changes();
+
+UPDATE employees SET salary = salary * 1.02 WHERE department_id = 3;
+DELETE FROM employees WHERE employee_id = 1;
+INSERT INTO employees (first_name, last_name, email, department_id, salary) VALUES ('Test', 'User', 'test.user@example.com', 1, 55000.00);
+
+SELECT * FROM audit_log;
+
+DROP FUNCTION calculate_tax(DECIMAL);
+DROP TRIGGER employee_audit ON employees;
+DROP FUNCTION log_employee_changes();
+DROP VIEW employee_summary;
+DROP INDEX idx_employee_last_name;
+DROP TABLE employees;
+DROP TABLE departments;
+DROP SEQUENCE seq_employee_id;

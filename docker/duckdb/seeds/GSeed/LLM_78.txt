@@ -1,0 +1,41 @@
+CREATE TABLE integers (i INTEGER);
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+INSERT INTO strings VALUES ('a'), ('b'), (NULL), ('c');
+
+-- Test aggregate functions and NULL handling
+SELECT SUM(i) FROM integers;
+SELECT AVG(i) FROM integers WHERE i > 1;
+SELECT COUNT(*) FROM strings WHERE s IS NOT NULL;
+SELECT MAX(i), MIN(i) FROM integers;
+
+-- Test string manipulation functions (DuckDB specific)
+SELECT string_split(s, '') FROM strings WHERE s IS NOT NULL; -- DuckDB string_split
+SELECT list_value(1,2,3) FROM integers WHERE i IS NOT NULL limit 1; -- DuckDB list_value
+SELECT flatten(list_value(1, list_value(2,3), 4)) FROM integers LIMIT 1; -- DuckDB flatten
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers WHERE i IS NOT NULL;
+SELECT s, RANK() OVER (ORDER BY s) FROM strings WHERE s IS NOT NULL;
+
+-- Test joins
+CREATE TABLE other_integers (j INTEGER);
+INSERT INTO other_integers VALUES (2), (4), (5);
+
+SELECT * FROM integers INNER JOIN other_integers ON i = j;
+SELECT * FROM integers LEFT JOIN other_integers ON i = j;
+SELECT * FROM integers RIGHT JOIN other_integers ON i = j;
+SELECT * FROM integers FULL OUTER JOIN other_integers ON i = j;
+
+-- Test CASE statements
+SELECT i, CASE WHEN i > 2 THEN 'high' WHEN i IS NULL THEN 'null' ELSE 'low' END FROM integers;
+
+-- Test date functions (add table for date operations)
+CREATE TABLE dates (d DATE);
+INSERT INTO dates VALUES ('2023-01-01'), ('2023-01-05'), (NULL);
+SELECT d, date_part('dayofweek', d) FROM dates WHERE d IS NOT NULL; -- DuckDB date_part
+
+-- Test arithmetic operations
+SELECT i + 10, i * 2 FROM integers;
+SELECT i / 2 FROM integers WHERE i IS NOT NULL and i != 0;
+SELECT i % 2 FROM integers WHERE i IS NOT NULL;

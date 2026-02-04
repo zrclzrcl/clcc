@@ -1,0 +1,104 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id)
+    REFERENCES departments (id)
+    ON DELETE SET NULL;
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES
+('John', 'Doe', 60000.00, '2022-01-15', 1),
+('Jane', 'Smith', 75000.00, '2021-05-20', 2),
+('Peter', 'Jones', 90000.00, '2020-09-01', 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT first_name, last_name FROM employees WHERE department_id = 1;
+
+UPDATE employees SET salary = 65000.00 WHERE id = 1;
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT e.first_name, e.last_name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.id;
+
+SELECT AVG(salary) AS average_salary FROM employees;
+
+SELECT COUNT(*) AS total_employees FROM employees;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+-- Test with some unusual data types and functions.
+CREATE TABLE test_table (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    json_data JSONB,
+    ts TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO test_table (json_data) VALUES
+('{"name": "Test", "value": 123}'),
+('{"name": "Another", "value": 456}');
+
+SELECT id, json_data ->> 'name' FROM test_table;
+
+-- Use of window functions
+SELECT
+    first_name,
+    last_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Test for array types
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    int_array INTEGER[],
+    text_array TEXT[]
+);
+
+INSERT INTO array_test (int_array, text_array) VALUES
+(ARRAY[1, 2, 3], ARRAY['a', 'b', 'c']);
+
+SELECT int_array[2] FROM array_test;
+
+-- Testing of generated columns
+CREATE TABLE generated_test (
+    a INTEGER,
+    b INTEGER,
+    c INTEGER GENERATED ALWAYS AS (a + b) STORED
+);
+
+INSERT INTO generated_test (a, b) VALUES (1, 2);
+
+SELECT * FROM generated_test;
+
+-- Use of pg_sleep
+SELECT pg_sleep(0.01);
+
+-- Enum type test
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name TEXT,
+    current_mood mood
+);
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+SELECT * FROM person;

@@ -1,0 +1,74 @@
+BEGIN;
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    description VARCHAR
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR
+);
+
+CREATE TABLE product_categories (
+    product_id INTEGER,
+    category_id INTEGER,
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+INSERT INTO products (name, price, description) VALUES
+('Awesome Widget', 19.99, 'A truly awesome widget.'),
+('Deluxe Gadget', 49.99, 'The ultimate gadget for all your needs.'),
+('Basic Thing', 9.99, 'A simple, yet effective thing.');
+
+INSERT INTO categories (name) VALUES
+('Electronics'),
+('Home Goods'),
+('Toys');
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1),
+(2, 1),
+(2, 2),
+(3, 3);
+
+-- DuckDB specific: Using UNNEST with a list
+SELECT * FROM UNNEST(['DuckDB', 'PostgreSQL', 'SQLite']);
+
+-- Demonstrate window function
+SELECT name, price, AVG(price) OVER () AS avg_price FROM products;
+
+-- Test string functions
+SELECT name, UPPER(name), LENGTH(name) FROM products WHERE description LIKE '%awesome%';
+
+-- Test date functionality, create a new table
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    order_date DATE,
+    customer_id INTEGER
+);
+
+INSERT INTO orders (order_date, customer_id) VALUES ('2023-10-26', 1);
+SELECT order_date, DATE_TRUNC('month', order_date) FROM orders;
+
+
+--Use of pivot tables (DuckDB Extension)
+INSTALL pivot;
+LOAD pivot;
+
+CREATE TABLE sales (
+  year INT,
+  product VARCHAR,
+  sales INT
+);
+INSERT INTO sales VALUES
+(2021, 'ProductA', 100),
+(2021, 'ProductB', 200),
+(2022, 'ProductA', 150),
+(2022, 'ProductB', 250);
+
+SELECT * FROM pivot_wider(sales, id_cols='year', names_from='product', values_from='sales');
+
+COMMIT;

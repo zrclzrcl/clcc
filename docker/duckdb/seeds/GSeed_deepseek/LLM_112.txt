@@ -1,0 +1,74 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP,
+    status BOOLEAN,
+    data JSONB,
+    UNIQUE (name)
+);
+
+INSERT INTO test_table VALUES 
+(1, 'Test Name', 100.50, '2023-01-01 12:00:00', true, '{"key": "value"}'),
+(2, NULL, NULL, '2023-01-02 12:00:00', false, NULL),
+(3, 'Edge Case', -9999.99, CURRENT_TIMESTAMP, true, '{"test": [1,2,3]}');
+
+CREATE INDEX idx_value ON test_table(value);
+CREATE UNIQUE INDEX idx_status_name ON test_table(status, name);
+
+CREATE TABLE referenced_table (
+    id INTEGER PRIMARY KEY,
+    ref_id INTEGER REFERENCES test_table(id)
+);
+
+INSERT INTO referenced_table VALUES 
+(1, 1),
+(2, NULL);
+
+CREATE VIEW v_test AS
+SELECT 
+    id,
+    name,
+    value,
+    created_at::DATE as date_only,
+    status,
+    data->>'key' as extracted_key
+FROM test_table;
+
+CREATE MATERIALIZED VIEW mv_test AS
+SELECT 
+    COUNT(*) as total_records,
+    SUM(value) as total_value,
+    MIN(created_at) as first_record,
+    MAX(created_at) as last_record
+FROM test_table;
+
+CREATE OR REPLACE PROCEDURE proc_test(IN p_input INTEGER, OUT result INTEGER)
+AS $$
+BEGIN
+    result := p_input * 2;
+END;
+$$ LANGUAGE plpgsql;
+
+CALL proc_test(5);
+
+CREATE TRIGGER trg_after_insert 
+AFTER INSERT ON test_table
+FOR EACH ROW
+EXECUTE FUNCTION pg_notify('test_channel', NEW.name);
+
+WITH recursive_cte AS (
+    SELECT 1 as n
+    UNION ALL
+    SELECT n + 1 FROM recursive_cte WHERE n < 10
+)
+SELECT * FROM recursive_cte;
+
+SELECT 
+    id,
+    name,
+    ROW_NUMBER() OVER (ORDER BY value DESC) as rank
+FROM test_table
+ORDER BY rank;
+
+VACUUM ANALYZE;

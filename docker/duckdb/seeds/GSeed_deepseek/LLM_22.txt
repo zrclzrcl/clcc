@@ -1,0 +1,27 @@
+-- Create a table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    date DATE,
+    amount DECIMAL(10, 2) NOT NULL,
+    status BOOLEAN DEFAULT FALSE UNIQUE
+);
+
+-- Insert some sample data with edge cases
+INSERT INTO test_table (id, name, date, amount)
+VALUES 
+    (1, '', '2023-01-01', 0.0),
+    (2, 'test', '2023-01-02', NULL);
+
+-- Test ALTER TABLE functionality
+ALTER TABLE test_table ADD COLUMN description TEXT;
+ALTER TABLE test_table DROP COLUMN status;
+
+-- Create an index to test indexing functionality
+CREATE INDEX idx_amount ON test_table(amount);
+
+-- SELECT statements with various operations and functions
+SELECT name, amount * 100 AS scaled_amount FROM test_table WHERE id > 0;
+SELECT SUBSTR(name, 2) FROM test_table WHERE description IS NOT NULL;
+SELECT COUNT(*) OVER () AS total_rows FROM test_table;
+SELECT ROW_NUMBER() OVER (ORDER BY date DESC) AS row_num FROM test_table;

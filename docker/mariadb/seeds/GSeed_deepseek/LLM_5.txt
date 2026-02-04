@@ -1,0 +1,67 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT,
+    balance DECIMAL(10, 2),
+    last_login DATETIME,
+    settings JSON,
+    status ENUM('active', 'inactive'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modified_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO t1 VALUES (1, 'John Doe', 30, 1000.50, '2024-01-01 12:00:00', '{"theme": "dark", "notifications": true}', 'active', DEFAULT, DEFAULT);
+INSERT INTO t1 VALUES (2, 'Jane Smith', 25, -500.75, '2023-12-31 23:59:59', '{"theme": "light"}', 'inactive', DEFAULT, DEFAULT);
+
+SELECT 
+    id,
+    name,
+    balance,
+    last_login,
+    settings->>'$.theme' AS theme,
+    status,
+    created_at,
+    modified_at
+FROM t1
+WHERE age > 25 AND status = 'active'
+ORDER BY balance DESC;
+
+CREATE INDEX idx_name ON t1(name(30));
+CREATE INDEX idx_last_login ON t1(last_login);
+CREATE INDEX idx_status_balance ON t1(status, balance);
+
+DELIMITER $$
+CREATE FUNCTION fn_increment(n INT) RETURNS INT
+BEGIN
+    RETURN n + 1;
+END$$
+
+DELIMITER $$
+CREATE PROCEDURE sp_process_data()
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    
+    SELECT SUM(balance) INTO total FROM t1 WHERE status = 'active';
+    
+    IF total > 1000 THEN
+        UPDATE t1 SET balance = fn_increment(balance * 100)/100 WHERE id = 1;
+    END IF;
+END$$
+
+DELIMITER ;
+
+WITH cte AS (
+    SELECT 
+        id,
+        name,
+        balance,
+        ROW_NUMBER() OVER (ORDER BY balance DESC) as row_num
+    FROM t1
+)
+SELECT * FROM cte WHERE row_num <= 5;
+
+ANALYZE TABLE t1;
+
+SELECT /*+ USE_INDEX(t1 idx_status_balance) */ *
+FROM t1
+WHERE status = 'active' AND balance > 0;

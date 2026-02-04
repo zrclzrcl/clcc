@@ -1,0 +1,63 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), (NULL), ('');
+
+CREATE TABLE doubles (d DOUBLE);
+INSERT INTO doubles VALUES (1.1), (2.2), (3.3), (NULL);
+
+-- DuckDB specific: UUID type and generation
+CREATE TABLE uuids (u UUID);
+INSERT INTO uuids VALUES (uuid()), (uuid()), (NULL);
+
+-- DuckDB specific: Date and Interval
+CREATE TABLE dates (dt DATE, interval_val INTERVAL);
+INSERT INTO dates VALUES ('2023-10-26', '1 day'), ('2023-10-27', '1 month'), (NULL, NULL);
+
+-- Arithmetic operations
+SELECT i + d, i - d, i * d, i / d FROM integers, doubles;
+
+-- String operations
+SELECT s || s, length(s), upper(s), lower(s) FROM strings;
+
+-- DuckDB specific: JSON operations
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}'), ('[1, 2, 3]'), (NULL);
+SELECT j['a'], json_extract_string(j, 'a') FROM jsons WHERE j IS NOT NULL;
+
+-- DuckDB specific: LIST operations
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES ([1, 2, 3]), ([4, 5, NULL]), (NULL);
+SELECT list_sum(l), list_contains(l, 2) FROM lists WHERE l IS NOT NULL;
+
+-- Aggregate functions
+SELECT sum(i), avg(i), min(i), max(i), count(i) FROM integers;
+
+-- Window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i) FROM integers WHERE i IS NOT NULL;
+
+-- Joins
+SELECT * FROM integers JOIN strings ON i = length(s); -- unlikely to match, but tests join condition evaluation
+
+-- Create table with constraints
+CREATE TABLE constrained_table (
+    id INTEGER PRIMARY KEY,
+    value INTEGER NOT NULL CHECK (value > 0),
+    text VARCHAR UNIQUE
+);
+
+INSERT INTO constrained_table (id, value, text) VALUES (1, 10, 'unique_text');
+-- Attempt to violate constraints (will fail when executed directly, testing error handling)
+-- INSERT INTO constrained_table (id, value, text) VALUES (1, -1, 'unique_text'); -- Duplicate key and check violation
+
+-- DuckDB specific: APPROXIMATE COUNT DISTINCT
+SELECT approx_count_distinct(i) FROM integers;
+
+-- DuckDB specific: bloom filter
+CREATE TABLE bloom_test (a INTEGER);
+INSERT INTO bloom_test VALUES (1), (2), (3);
+CREATE BLOOM FILTER idx_bloom ON bloom_test (a);
+SELECT * FROM bloom_test WHERE a = 4; -- will use bloom filter
+
+DROP TABLE IF EXISTS bloom_test; --Cleanup

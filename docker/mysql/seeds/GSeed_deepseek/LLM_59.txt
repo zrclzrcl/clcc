@@ -1,0 +1,55 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age TINYINT UNSIGNED,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN,
+    score FLOAT(5,2)
+);
+
+INSERT INTO test_table (name, age, status, score) VALUES
+('Alice', 30, TRUE, 98.7),
+('Bob', NULL, FALSE, 85.5),
+('', 25, TRUE, NULL);
+
+CREATE TABLE test_table2 (
+    id INT PRIMARY KEY,
+    value DECIMAL(10,4) NOT NULL,
+    description TEXT
+);
+
+ALTER TABLE test_table ADD COLUMN email VARCHAR(255);
+ALTER TABLE test_table DROP COLUMN status;
+
+DELIMITER $$
+CREATE FUNCTION get_total_score() RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    DECLARE total FLOAT;
+    SELECT SUM(score) INTO total FROM test_table WHERE score IS NOT NULL;
+    RETURN total;
+END$$
+DELIMITER ;
+
+CREATE TRIGGER after_insert_test_table AFTER INSERT ON test_table FOR EACH ROW
+BEGIN
+    INSERT INTO test_table2 (id, value, description) VALUES (NEW.id, NEW.score, CONCAT('New entry: ', NEW.name));
+END;
+
+SET @total = get_total_score();
+SELECT @total;
+
+START TRANSACTION;
+INSERT INTO test_table (name, age, email) VALUES ('Charlie', 35, 'charlie@example.com');
+SAVEPOINT my_savepoint;
+INSERT INTO test_table (name, age) VALUES ('David', NULL);
+ROLLBACK TO my_savepoint;
+COMMIT;
+
+SELECT t1.name AS name1, t2.description
+FROM test_table t1
+JOIN test_table2 t2 ON t1.id = t2.id
+WHERE t1.age > 25 AND t2.value IS NOT NULL
+GROUP BY t1.name
+HAVING COUNT(*) > 1
+ORDER BY t1.created_at DESC;

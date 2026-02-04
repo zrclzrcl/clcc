@@ -1,0 +1,46 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('foo'), ('bar'), ('baz'), (NULL);
+
+-- Test DuckDB-specific aggregate functions
+SELECT median(i) FROM integers;
+SELECT quantile(i, 0.5) FROM integers;
+
+-- Test unnesting
+SELECT * FROM unnest([1, 2, 3]);
+
+-- Test string functions specific to DuckDB
+SELECT string_split('hello,world', ',');
+SELECT string_to_array('hello,world', ',');
+
+-- Test date functions
+SELECT date_trunc('year', '2023-10-26'::DATE);
+
+-- Test window functions
+SELECT i, RANK() OVER (ORDER BY i) FROM integers;
+
+-- Test table-valued functions
+SELECT * FROM range(5);
+
+-- Test casting between types
+SELECT CAST('10' AS INTEGER);
+SELECT TRY_CAST('abc' AS INTEGER);
+
+-- Test null handling
+SELECT coalesce(NULL, 1);
+
+-- Test json functionality (common but important)
+CREATE TABLE json_test (j JSON);
+INSERT INTO json_test VALUES ('{"a": 1, "b": "hello"}');
+SELECT j['a'] FROM json_test;
+
+-- Test blob creation and manipulation
+SELECT typeof(blob('test'));
+
+-- Test list creation and manipulation
+SELECT list_value(1,2,3);
+
+-- Test map creation and manipulation
+SELECT map(['key1', 'key2'], [1,2]);

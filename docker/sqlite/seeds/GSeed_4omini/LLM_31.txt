@@ -1,0 +1,12 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT);
+CREATE TABLE posts(post_id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE comments(comment_id INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, comment TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE VIEW user_posts AS SELECT u.username, p.content FROM users u JOIN posts p ON u.id = p.user_id;
+INSERT INTO users (username, email) VALUES ('alice', 'alice@example.com'), ('bob', 'bob@example.com');
+INSERT INTO posts (user_id, content) VALUES (1, 'Hello World!'), (1, 'SQLite is great!'), (2, 'First post by Bob.');
+INSERT INTO comments (post_id, user_id, comment) VALUES (1, 1, 'Nice post!'), (1, 2, 'I agree!'), (2, 1, 'Thanks for sharing!');
+SELECT u.username, COUNT(p.post_id) AS post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id GROUP BY u.username HAVING post_count > 0;
+SELECT * FROM user_posts WHERE username = 'alice' ORDER BY created_at DESC;
+DROP VIEW IF EXISTS user_posts;
+CREATE VIEW recent_comments AS SELECT c.comment, u.username FROM comments c JOIN users u ON c.user_id = u.id ORDER BY c.created_at DESC LIMIT 5;
+SELECT * FROM recent_comments;

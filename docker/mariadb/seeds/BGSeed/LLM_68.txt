@@ -1,0 +1,98 @@
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO users (username, password, email) VALUES
+('testuser1', 'password123', 'test1@example.com'),
+('testuser2', 'securepass', 'test2@example.com'),
+('testuser3', 'anotherpass', 'test3@example.com');
+
+INSERT INTO products (name, description, price) VALUES
+('Product A', 'Description of product A', 19.99),
+('Product B', 'Description of product B', 29.99),
+('Product C', 'Description of product C', 9.99);
+
+INSERT INTO orders (user_id, total) VALUES
+(1, 49.97),
+(2, 9.99),
+(3, 59.98);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 19.99),
+(1, 2, 1, 29.98),
+(2, 3, 1, 9.99),
+(3, 1, 1, 19.99),
+(3, 2, 1, 39.99);
+
+-- MariaDB specific functions and features
+SELECT CONCAT(username, '@example.com') AS full_email FROM users WHERE id = 1;
+
+-- Optimizations and indexing
+ANALYZE TABLE users, products, orders, order_items;
+OPTIMIZE TABLE users, products, orders, order_items;
+
+-- Stored Procedure (basic example)
+DELIMITER //
+CREATE PROCEDURE GetUserOrders(IN user_id INT)
+BEGIN
+  SELECT * FROM orders WHERE user_id = user_id;
+END //
+DELIMITER ;
+
+CALL GetUserOrders(1);
+
+-- Create a View
+CREATE VIEW order_summary AS
+SELECT
+    o.id AS order_id,
+    u.username,
+    SUM(oi.quantity * oi.price) AS total_amount
+FROM
+    orders o
+JOIN
+    users u ON o.user_id = u.id
+JOIN
+    order_items oi ON o.id = oi.order_id
+GROUP BY
+    o.id, u.username;
+
+SELECT * FROM order_summary;
+
+-- Create a FULLTEXT index for product search.  Note: Minimum word length is important.
+ALTER TABLE products ADD FULLTEXT INDEX product_search (name, description);
+SELECT * FROM products WHERE MATCH(name, description) AGAINST ('Product A' IN NATURAL LANGUAGE MODE);
+
+-- MariaDB Sequence example
+CREATE SEQUENCE seq_example START WITH 1 INCREMENT BY 1;
+SELECT SEQ_EXAMPLE.NEXTVAL;
+SELECT SEQ_EXAMPLE.CURRVAL;

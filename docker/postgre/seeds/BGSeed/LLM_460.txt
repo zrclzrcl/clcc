@@ -1,0 +1,124 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2),
+    category VARCHAR(50)
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+    ('Laptop', 1200.00, 'Electronics'),
+    ('Keyboard', 75.00, 'Electronics'),
+    ('Mouse', 25.00, 'Electronics'),
+    ('Office Chair', 150.00, 'Furniture'),
+    ('Desk', 300.00, 'Furniture');
+
+CREATE INDEX idx_category ON products (category);
+
+SELECT category, AVG(price) AS average_price
+FROM products
+GROUP BY category
+ORDER BY average_price DESC;
+
+SELECT product_name, price
+FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+
+CREATE VIEW high_priced_products AS
+SELECT product_name, price
+FROM products
+WHERE price > 500;
+
+SELECT * FROM high_priced_products;
+
+CREATE OR REPLACE FUNCTION discount_price(original_price DECIMAL, discount_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN original_price * (1 - discount_percentage / 100);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT product_name, price, discount_price(price, 10) AS discounted_price
+FROM products;
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    order_date DATE
+);
+
+INSERT INTO orders (product_id, quantity, order_date) VALUES
+    (1, 2, '2024-01-15'),
+    (2, 5, '2024-01-20'),
+    (4, 1, '2024-01-25');
+
+SELECT p.product_name, SUM(o.quantity) AS total_quantity
+FROM products p
+JOIN orders o ON p.product_id = o.product_id
+GROUP BY p.product_name
+ORDER BY total_quantity DESC;
+
+ALTER TABLE products ADD COLUMN description TEXT;
+UPDATE products SET description = 'High-performance laptop' WHERE product_name = 'Laptop';
+
+SELECT product_name, description FROM products WHERE product_name = 'Laptop';
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    employee_name VARCHAR(255),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (employee_name, salary) VALUES ('Alice', 60000), ('Bob', 75000), ('Charlie', 90000);
+
+SELECT employee_name, salary,
+       RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+SELECT employee_name, salary,
+       DENSE_RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+SELECT employee_name, salary,
+       ROW_NUMBER() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+SELECT employee_name, salary,
+       NTILE(3) OVER (ORDER BY salary DESC) as salary_group
+FROM employees;
+
+-- Using generate_series to create some date data for time-series queries
+CREATE TABLE date_series_example (
+  date_val DATE
+);
+
+INSERT INTO date_series_example (date_val)
+SELECT generate_series(
+  '2023-01-01'::date,
+  '2023-01-10'::date,
+  '1 day'::interval
+);
+
+SELECT * FROM date_series_example;
+
+DROP TABLE date_series_example;
+
+CREATE TABLE json_example (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO json_example (data) VALUES
+('{"name": "Alice", "age": 30, "city": "New York"}'),
+('{"name": "Bob", "age": 25, "city": "Los Angeles"}');
+
+SELECT data ->> 'name' AS name, data ->> 'age' AS age FROM json_example;
+
+DROP TABLE json_example;
+
+-- Test some basic string manipulation functions
+SELECT UPPER('hello world');
+SELECT LOWER('HELLO WORLD');
+SELECT LENGTH('hello');
+SELECT SUBSTRING('hello world', 1, 5);
+SELECT REPLACE('hello world', 'world', 'PostgreSQL');

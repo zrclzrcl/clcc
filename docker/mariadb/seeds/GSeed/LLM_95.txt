@@ -1,0 +1,54 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_ALL_TABLES';
+SET autocommit=0;
+CREATE TABLE `t2` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  `value` decimal(10,2) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+INSERT INTO `t2` (`name`, `value`) VALUES ('Item A', 19.99), ('Item B', 29.99), ('Item C', 9.99);
+
+CREATE TABLE `t3` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `t2_id` int(11) NOT NULL,
+  `quantity` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`t2_id`) REFERENCES `t2` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `t3` (`t2_id`, `quantity`) VALUES (1, 2), (2, 1), (3, 5);
+
+-- MariaDB specific feature: virtual columns
+ALTER TABLE `t2` ADD COLUMN `value_plus_tax` DECIMAL(10,2) GENERATED ALWAYS AS (`value` * 1.07) VIRTUAL;
+
+-- MariaDB specific feature: sequence
+CREATE SEQUENCE seq_example START WITH 1 INCREMENT BY 1 MAXVALUE 1000 CYCLE;
+SELECT NEXT VALUE FOR seq_example;
+
+-- Test index hints
+SELECT * FROM t2 USE INDEX (idx_name) WHERE name LIKE 'Item%';
+
+-- Test stored procedure
+DELIMITER //
+CREATE PROCEDURE `get_item_value`(IN itemName VARCHAR(50), OUT itemValue DECIMAL(10,2))
+BEGIN
+    SELECT value INTO itemValue FROM t2 WHERE name = itemName;
+END //
+DELIMITER ;
+
+CALL get_item_value('Item A', @item_value);
+SELECT @item_value;
+
+-- Test window function
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value DESC) as row_num FROM t2;
+
+-- Test JSON functions
+ALTER TABLE `t2` ADD COLUMN `metadata` JSON;
+UPDATE `t2` SET `metadata` = JSON_OBJECT('description', 'This is an example item', 'details', JSON_OBJECT('color', 'red', 'size', 'large')) WHERE id = 1;
+SELECT id, JSON_EXTRACT(metadata, '$.description') FROM t2;
+
+COMMIT;
+SET sql_mode=@old_sql_mode;
+SET autocommit=1;

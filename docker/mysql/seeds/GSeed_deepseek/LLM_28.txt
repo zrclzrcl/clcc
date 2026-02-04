@@ -1,0 +1,37 @@
+SET @original_flush = @@global.innodb_flush_log_at_trx_commit;
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX unique_name (name)
+) ENGINE = InnoDB ROW_FORMAT = COMPRESSED;
+
+EXPLAIN SELECT * FROM test_table WHERE name LIKE 'test%';
+INSERT INTO test_table (name, value) VALUES ('test1', 100.5);
+SELECT SLEEP(1);
+
+DELIMITER $$
+CREATE PROCEDURE simple_proc()
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 10 DO
+        INSERT INTO test_table (name, value) VALUES (CONCAT('proc_row_', i), RAND() * 100);
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL simple_proc();
+
+CREATE TRIGGER after_insert_trigger AFTER INSERT ON test_table FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (action, table_name, row_id) VALUES ('INSERT', 'test_table', NEW.id);
+END;
+
+ALTER TABLE test_table ADD COLUMN comments TEXT;
+UPDATE test_table SET comments = CONCAT('Updated at ', CURRENT_TIMESTAMP()) WHERE id > 0;
+
+COMMIT;
+SET GLOBAL innodb_flush_log_at_trx_commit = @original_flush;
+DROP TABLE IF EXISTS test_table;

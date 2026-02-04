@@ -1,0 +1,73 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number INT UNIQUE NOT NULL,
+    account_type ENUM('checking', 'savings', 'credit') NOT NULL DEFAULT 'checking',
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    description VARCHAR(255)
+);
+
+CREATE TABLE transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    transaction_type ENUM('deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'fee') NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    transaction_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(255),
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO accounts (account_number, account_type, balance) VALUES
+(12345, 'checking', 1000.00),
+(67890, 'savings', 5000.00),
+(13579, 'credit', -200.00);
+
+INSERT INTO transactions (account_id, transaction_type, amount, description) VALUES
+(1, 'deposit', 500.00, 'Initial deposit'),
+(1, 'withdrawal', 100.00, 'Grocery shopping'),
+(2, 'deposit', 2000.00, 'Monthly savings');
+
+-- Using MariaDB specific feature: SEQUENCE
+CREATE SEQUENCE seq_account_number START WITH 10000 INCREMENT BY 1;
+
+-- Using MariaDB specific feature: Virtual Columns
+ALTER TABLE accounts ADD COLUMN account_status VARCHAR(20) AS (IF(balance >= 0, 'active', 'overdrawn'));
+
+-- Stored Procedure for transfer
+DELIMITER //
+CREATE PROCEDURE transfer_funds(IN from_account INT, IN to_account INT, IN amount DECIMAL(15, 2))
+BEGIN
+    START TRANSACTION;
+    UPDATE accounts SET balance = balance - amount WHERE account_number = from_account;
+    UPDATE accounts SET balance = balance + amount WHERE account_number = to_account;
+    INSERT INTO transactions (account_id, transaction_type, amount, description) VALUES
+    ((SELECT id FROM accounts WHERE account_number = from_account), 'transfer_out', amount, CONCAT('Transfer to account ', to_account)),
+    ((SELECT id FROM accounts WHERE account_number = to_account), 'transfer_in', amount, CONCAT('Transfer from account ', from_account));
+    COMMIT;
+END //
+DELIMITER ;
+
+CALL transfer_funds(12345, 67890, 100.00);
+
+-- Analyze Table for Query Optimization
+ANALYZE TABLE accounts, transactions;
+
+-- Set transaction isolation level for concurrent access testing
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- User Defined Function (UDF) example
+-- Assuming UDF library is installed (not executable without actual library)
+-- CREATE FUNCTION my_custom_function(input_string VARCHAR(255)) RETURNS VARCHAR(255) SONAME 'my_udf.so';
+-- SELECT my_custom_function('test');
+
+-- Test GIS functions (requires spatial extensions)
+-- CREATE TABLE gis_test (location POINT);
+-- INSERT INTO gis_test VALUES (ST_GeomFromText('POINT(1 1)'));
+-- SELECT ST_Distance(location, ST_GeomFromText('POINT(2 2)')) FROM gis_test;
+
+-- Example of dynamic SQL
+SET @sql = CONCAT('SELECT * FROM accounts WHERE account_type = ''', 'checking', '''');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

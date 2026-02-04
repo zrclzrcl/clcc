@@ -1,0 +1,73 @@
+BEGIN;
+CREATE TABLE t1 (
+    id INTEGER,
+    name VARCHAR(50),
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN
+);
+
+INSERT INTO t1 VALUES 
+    (1, 'Test1', 100.5, '2023-01-01 00:00:00', true),
+    (2, 'Test2', NULL, '2023-01-02 00:00:00', false),
+    (3, 'Test3', -50.75, '2023-01-03 00:00:00', true),
+    (4, '', 0.0, '2023-01-04 00:00:00', false),
+    (5, 'Test5', 123456789.99, CURRENT_TIMESTAMP, true);
+
+CREATE TABLE t2 (
+    id INTEGER,
+    t1_id INTEGER REFERENCES t1(id),
+    category VARCHAR(20)
+);
+
+INSERT INTO t2 VALUES 
+    (1, 1, 'Category A'),
+    (2, 1, 'Category B'),
+    (3, 2, 'Category C'),
+    (4, 5, 'Category D'),
+    (5, 5, 'Category E');
+
+SELECT 
+    t1.id,
+    t1.name,
+    t1.value,
+    t1.created_at,
+    t1.is_active,
+    COUNT(t2.id) AS category_count
+FROM 
+    t1
+LEFT JOIN 
+    t2 ON t1.id = t2.t1_id
+GROUP BY 
+    t1.id, t1.name, t1.value, t1.created_at, t1.is_active
+HAVING 
+    COUNT(t2.id) > 0;
+
+WITH RECURSIVE cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 10
+)
+SELECT * FROM cte;
+
+SELECT 
+    id,
+    name,
+    value,
+    created_at,
+    is_active,
+    ROW_NUMBER() OVER (ORDER BY created_at DESC) AS row_num,
+    RANK() OVER (PARTITION BY is_active ORDER BY value DESC) AS rank_value
+FROM 
+    t1
+WHERE 
+    value > 50.0 OR name LIKE 'Test%';
+
+SELECT 
+    DISTINCT name 
+FROM 
+    t1 
+ORDER BY 
+    name COLLATE "C";
+
+COMMIT;

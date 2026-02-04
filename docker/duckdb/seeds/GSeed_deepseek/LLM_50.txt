@@ -1,0 +1,31 @@
+CREATE TABLE "t1"(
+    "id" INTEGER,
+    "name" TEXT,
+    "value" FLOAT,
+    "created_at" TIMESTAMP,
+    "is_active" BOOLEAN
+);
+
+INSERT INTO "t1" VALUES(1, 'Alice', 100.5, NULL, TRUE);
+INSERT INTO "t1" VALUES(2, 'Bob', 200.3, '2023-10-01 12:00:00', FALSE);
+
+CREATE TABLE "t2"(
+    "id" INTEGER,
+    "t1_id" INTEGER REFERENCES "t1"("id"),
+    "description" TEXT
+);
+
+INSERT INTO "t2" VALUES(1, 1, 'Description for Alice');
+INSERT INTO "t2" VALUES(2, 2, 'Description for Bob');
+
+SELECT "t1"."name", (SELECT COUNT(*) FROM "t2" WHERE "t2"."t1_id" = "t1"."id") AS "count"
+FROM "t1";
+
+ALTER TABLE "t1" ADD CONSTRAINT "non_null_name" CHECK ("name" IS NOT NULL);
+
+SELECT "id", SUM("value") OVER (ORDER BY "id") AS "running_total"
+FROM "t1";
+
+CREATE INDEX "idx_t1_id" ON "t1"("id");
+
+DROP INDEX "idx_t1_id";

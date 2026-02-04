@@ -1,0 +1,95 @@
+CREATE UNLOGGED TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    category VARCHAR(50),
+    inventory_count INTEGER DEFAULT 0 CHECK (inventory_count >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount >= 0),
+    status VARCHAR(20) DEFAULT 'pending',
+    shipping_address TEXT
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price_per_unit DECIMAL(10, 2) NOT NULL CHECK (price_per_unit > 0)
+);
+
+-- Insert some sample data
+INSERT INTO customers (first_name, last_name, email, phone_number, address) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '555-123-4567', '123 Main St'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '555-987-6543', '456 Oak Ave'),
+('Charlie', 'Brown', 'charlie.brown@example.com', '555-555-5555', '789 Pine Ln');
+
+INSERT INTO products (product_name, description, price, category, inventory_count) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 'Electronics', 10),
+('Mouse', 'Wireless mouse', 25.00, 'Electronics', 50),
+('T-Shirt', 'Cotton T-shirt', 20.00, 'Clothing', 100);
+
+INSERT INTO orders (customer_id, total_amount, status, shipping_address) VALUES
+(1, 1225.00, 'shipped', '123 Main St'),
+(2, 50.00, 'pending', '456 Oak Ave');
+
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 2, 2, 25.00);
+
+-- Example queries using different SQL features
+SELECT c.first_name, c.last_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.total_amount > 100
+ORDER BY o.order_date DESC
+LIMIT 10;
+
+SELECT category, AVG(price) AS average_price
+FROM products
+GROUP BY category
+HAVING AVG(price) > 50
+ORDER BY average_price;
+
+UPDATE products SET price = price * 1.1 WHERE category = 'Electronics';
+
+DELETE FROM order_items WHERE quantity = 1;
+
+-- Using a CTE (WITH clause)
+WITH HighValueCustomers AS (
+    SELECT customer_id
+    FROM orders
+    GROUP BY customer_id
+    HAVING SUM(total_amount) > 1000
+)
+SELECT c.first_name, c.last_name
+FROM customers c
+JOIN HighValueCustomers hvc ON c.customer_id = hvc.customer_id;
+
+-- Using generate_series to create a sequence of dates
+SELECT generate_series(NOW() - INTERVAL '1 week', NOW(), INTERVAL '1 day')::date;
+
+-- Example using JSON (requires a JSON column, adding one for demonstration)
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"color": "black", "size": "M"}'::jsonb WHERE product_name = 'T-Shirt';
+SELECT product_name, details ->> 'color' AS color FROM products WHERE details IS NOT NULL;
+
+CREATE INDEX CONCURRENTLY idx_orders_customer_id ON orders(customer_id);

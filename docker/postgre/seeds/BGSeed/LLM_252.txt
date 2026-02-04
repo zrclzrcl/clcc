@@ -1,0 +1,81 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location TEXT
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department) REFERENCES departments(name);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Alice Smith', 60000.00, 'Sales', '2022-01-15');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20');
+INSERT INTO employees (name, salary, department, hire_date) VALUES ('Charlie Brown', 90000.00, 'Engineering', '2020-11-01');
+
+SELECT * FROM employees WHERE salary > 70000 ORDER BY name;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_employee_name ON employees (name);
+
+CREATE VIEW high_earners AS SELECT name, salary FROM employees WHERE salary > 80000;
+
+SELECT * FROM high_earners;
+
+-- PostgreSQL specific features
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE TYPE inventory_item AS (
+    name            TEXT,
+    supplier_id     INTEGER,
+    price           NUMERIC
+);
+
+CREATE TABLE items (
+    item inventory_item
+);
+
+INSERT INTO items VALUES (ROW('fuzzy dice', 42, 1.99));
+
+SELECT (item).name FROM items;
+
+-- Using window functions
+SELECT name, salary, department,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+--Using Common Table Expression
+WITH DepartmentSalaries AS (
+  SELECT department, AVG(salary) AS avg_salary
+  FROM employees
+  GROUP BY department
+)
+SELECT e.name, e.salary, d.avg_salary
+FROM employees e
+JOIN DepartmentSalaries d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Using generate_series
+SELECT generate_series(1, 10);
+
+-- Grant and Revoke Privileges
+GRANT SELECT ON employees TO PUBLIC;
+REVOKE ALL PRIVILEGES ON departments FROM PUBLIC;

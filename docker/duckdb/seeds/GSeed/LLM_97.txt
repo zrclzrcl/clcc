@@ -1,0 +1,59 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    value DOUBLE,
+    data BLOB
+);
+
+INSERT INTO test_table (name, value) VALUES ('Alice', 10.5);
+INSERT INTO test_table (name, value) VALUES ('Bob', 20.0);
+INSERT INTO test_table (name, value) VALUES ('Charlie', 15.75);
+
+-- DuckDB specific: Using LIST type
+CREATE TABLE list_table (
+    id INTEGER,
+    my_list INTEGER[]
+);
+
+INSERT INTO list_table VALUES (1, [1, 2, 3]);
+INSERT INTO list_table VALUES (2, [4, 5, 6]);
+
+-- DuckDB specific: UNNEST and LIST_VALUE
+SELECT id, UNNEST(my_list) FROM list_table;
+SELECT LIST_VALUE(1, 2, 3, 4);
+
+-- DuckDB specific: Generate series
+SELECT generate_series(1, 5);
+
+-- Window functions
+SELECT name, value, AVG(value) OVER () FROM test_table;
+
+-- String functions
+SELECT name, UPPER(name) FROM test_table;
+
+-- Date/Time functions (DuckDB specific: DATE_DIFF)
+CREATE TABLE date_table (
+    start_date DATE,
+    end_date DATE
+);
+
+INSERT INTO date_table VALUES ('2023-01-01', '2023-01-10');
+SELECT DATE_DIFF('day', start_date, end_date) FROM date_table;
+
+-- Aggregate functions with FILTER (DuckDB support)
+SELECT AVG(value) FILTER (WHERE value > 15) FROM test_table;
+
+-- JSON functions (DuckDB support through extension)
+INSTALL json;
+LOAD json;
+
+CREATE TABLE json_table (
+    id INTEGER,
+    json_data VARCHAR
+);
+
+INSERT INTO json_table VALUES (1, '{"name": "David", "age": 30}');
+SELECT json_extract_string(json_data, '$.name') FROM json_table;
+
+-- Try a weird cast to trigger edge cases
+SELECT CAST('2024-01-01' AS BIGINT);

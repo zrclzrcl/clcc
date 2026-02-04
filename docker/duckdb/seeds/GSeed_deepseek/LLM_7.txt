@@ -1,0 +1,60 @@
+-- Create a table with various data types including integer, text, real, and timestamp
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert sample data into the table
+INSERT INTO t1 (id, name, value) VALUES
+(1, 'Alice', 100.5),
+(2, 'Bob', 200.3),
+(3, 'Charlie', NULL),
+(4, 'David', 150.7);
+
+-- Alter the table to add a new column
+ALTER TABLE t1 ADD COLUMN status TEXT DEFAULT 'active';
+
+-- Insert more data into the altered table with NULL values for testing edge cases
+INSERT INTO t1 (id, name, value, status) VALUES
+(5, 'Eve', 300.2, 'inactive'),
+(6, 'Frank', NULL, 'suspended');
+
+-- Create a second table with an integer and text column
+CREATE TABLE t2 (
+    id INTEGER,
+    description TEXT,
+    FOREIGN KEY (id) REFERENCES t1(id)
+);
+
+-- Insert data into the second table
+INSERT INTO t2 VALUES
+(1, 'First entry'),
+(2, 'Second entry'),
+(3, NULL),
+(5, 'Fifth entry');
+
+-- Perform a JOIN between the two tables on the id column
+SELECT t1.id, t1.name, t2.description FROM t1
+JOIN t2 ON t1.id = t2.id;
+
+-- Use aggregate functions to test counting and summing operations
+SELECT COUNT(*) AS total_rows,
+       COUNT(value) AS non_null_values,
+       SUM(value) AS total_value,
+       AVG(value) AS average_value
+FROM t1;
+
+-- Create an index on the name column for testing query optimization
+CREATE INDEX idx_name ON t1(name);
+
+-- Use a Common Table Expression (CTE) with a window function and DuckDB-specific features
+WITH cte AS (
+    SELECT id, name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+    FROM t1
+)
+SELECT id, name, value, row_num,
+       APPROXIMATE_QUANTILE(value, 0.5) OVER () as median_value
+FROM cte;

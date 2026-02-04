@@ -1,0 +1,132 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT,
+    unit_price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00),
+('Monitor', 300.00);
+
+INSERT INTO customers (customer_name, email) VALUES
+('John Doe', 'john.doe@example.com'),
+('Jane Smith', 'jane.smith@example.com');
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES
+(1, '2024-01-15', 1225.00),
+(2, '2024-01-20', 375.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 1, 25.00),
+(2, 3, 5, 75.00);
+
+SELECT * FROM products WHERE price > 100;
+
+SELECT customer_name, email FROM customers WHERE customer_name LIKE 'J%';
+
+SELECT order_id, order_date FROM orders WHERE customer_id = 1 ORDER BY order_date DESC;
+
+SELECT p.product_name, oi.quantity, oi.unit_price
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+WHERE oi.order_id = 2;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+CREATE INDEX idx_customer_email ON customers (email);
+
+DROP INDEX idx_customer_email;
+
+CREATE VIEW customer_order_summary AS
+SELECT c.customer_name, COUNT(o.order_id) AS total_orders, SUM(o.total_amount) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name;
+
+SELECT * FROM customer_order_summary;
+
+DROP VIEW customer_order_summary;
+
+ALTER TABLE products ADD COLUMN description TEXT;
+
+UPDATE products SET description = 'High-performance laptop' WHERE product_name = 'Laptop';
+
+ALTER TABLE products DROP COLUMN description;
+
+CREATE FUNCTION calculate_total(quantity INT, price DECIMAL) RETURNS DECIMAL AS $$
+BEGIN
+    RETURN quantity * price;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_total(5, 10.50);
+
+DROP FUNCTION calculate_total(INT, DECIMAL);
+
+CREATE TYPE address AS (
+    street VARCHAR(255),
+    city VARCHAR(255),
+    zip_code VARCHAR(10)
+);
+
+CREATE TABLE suppliers (
+    supplier_id SERIAL PRIMARY KEY,
+    supplier_name VARCHAR(255),
+    address address
+);
+
+INSERT INTO suppliers (supplier_name, address) VALUES ('Acme Corp', ('123 Main St', 'Anytown', '12345'));
+
+SELECT (address).city FROM suppliers WHERE supplier_name = 'Acme Corp';
+
+DROP TABLE suppliers;
+DROP TYPE address;
+
+CREATE TABLE test_serial (id SERIAL PRIMARY KEY, name TEXT);
+INSERT INTO test_serial (name) VALUES ('test1'), ('test2');
+SELECT * FROM test_serial;
+SELECT currval('test_serial_id_seq');
+SELECT nextval('test_serial_id_seq');
+SELECT setval('test_serial_id_seq', 100);
+SELECT currval('test_serial_id_seq');
+DROP TABLE test_serial;
+
+CREATE TABLE test_tsvector (id SERIAL PRIMARY KEY, description TEXT, search_vector tsvector);
+UPDATE test_tsvector SET search_vector = to_tsvector('english', description);
+CREATE INDEX test_tsvector_idx ON test_tsvector USING GIN (search_vector);
+SELECT * FROM test_tsvector WHERE search_vector @@ to_tsquery('english', 'laptop');
+DROP TABLE test_tsvector;
+
+CREATE TABLE parent (id SERIAL PRIMARY KEY, name TEXT);
+CREATE TABLE child (id SERIAL PRIMARY KEY, parent_id INT REFERENCES parent(id) ON DELETE CASCADE, name TEXT);
+INSERT INTO parent (name) VALUES ('parent1');
+INSERT INTO child (parent_id, name) VALUES (1, 'child1');
+DELETE FROM parent WHERE id = 1;
+DROP TABLE child;
+DROP TABLE parent;

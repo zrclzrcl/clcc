@@ -1,0 +1,67 @@
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    mood mood
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE employee_department (
+    employee_id INTEGER REFERENCES employees(id),
+    department_id INTEGER REFERENCES departments(id),
+    PRIMARY KEY (employee_id, department_id)
+);
+
+INSERT INTO departments (name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+INSERT INTO employees (name, salary, mood) VALUES
+('Alice', 60000.00, 'happy'),
+('Bob', 75000.50, 'ok'),
+('Charlie', 90000.00, 'sad');
+
+INSERT INTO employee_department (employee_id, department_id)
+SELECT e.id, d.id FROM employees e, departments d WHERE e.name = 'Alice' AND d.name = 'Sales';
+
+INSERT INTO employee_department (employee_id, department_id)
+SELECT e.id, d.id FROM employees e, departments d WHERE e.name = 'Bob' AND d.name = 'Marketing';
+
+INSERT INTO employee_department (employee_id, department_id)
+SELECT e.id, d.id FROM employees e, departments d WHERE e.name = 'Charlie' AND d.name = 'Engineering';
+
+UPDATE employees SET salary = 95000.00 WHERE name = 'Bob';
+
+DELETE FROM employees WHERE mood = 'sad';
+
+SELECT * FROM employees WHERE salary > 70000.00;
+
+SELECT d.name, COUNT(e.id) AS employee_count
+FROM departments d
+LEFT JOIN employee_department ed ON d.id = ed.department_id
+LEFT JOIN employees e ON ed.employee_id = e.id
+GROUP BY d.name
+ORDER BY employee_count DESC;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "price": 1200, "memory": "16GB"}'),
+('Mouse', '{"brand": "Logitech", "price": 25}');
+
+SELECT name, details -> 'brand' AS brand FROM products;
+
+CREATE INDEX idx_employees_name ON employees (name);
+
+ALTER TABLE employees ADD COLUMN hire_date DATE;
+
+UPDATE employees SET hire_date = CURRENT_DATE WHERE id = 1;
+
+SELECT * FROM employees ORDER BY name LIMIT 10;

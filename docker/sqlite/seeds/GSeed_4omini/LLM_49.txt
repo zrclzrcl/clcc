@@ -1,0 +1,24 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT COLLATE NOCASE UNIQUE, password TEXT, age INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO users (username, password, age) VALUES ('john_doe', 'password123', 30);
+INSERT INTO users (username, password, age) VALUES ('JANE_DOE', 'securePass456', 28);
+INSERT INTO users (username, password, age) VALUES ('user_special', NULL, 25);
+INSERT INTO users (username, password, age) VALUES (NULL, 'noconflictpass', NULL);
+INSERT INTO users (username, password, age) VALUES ('user1', 'pass1', 21);
+INSERT INTO users (username, password, age) VALUES ('user2', 'pass2', 22);
+
+SELECT username FROM users WHERE age > 20 ORDER BY username COLLATE NOCASE;
+SELECT * FROM users WHERE created_at > date('now', '-1 month') ORDER BY created_at DESC;
+SELECT COUNT(*) AS user_count FROM users WHERE age IS NOT NULL;
+SELECT username, age FROM users WHERE username LIKE '%doe%' COLLATE NOCASE;
+SELECT username FROM users WHERE age BETWEEN 20 AND 30 ORDER BY age ASC;
+
+CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT, price REAL, stock INTEGER);
+INSERT INTO products (name, price, stock) VALUES ('Widget', 19.99, 100);
+INSERT INTO products (name, price, stock) VALUES ('Gadget', 29.99, 200);
+INSERT INTO products (name, price, stock) VALUES ('Thingamajig', 49.99, 150);
+INSERT INTO products (name, price, stock) VALUES ('Doodad', NULL, 50);
+
+SELECT name, price FROM products WHERE stock > 0 ORDER BY price ASC;
+SELECT SUM(price) AS total_value FROM products WHERE stock IS NOT NULL;
+SELECT AVG(price) AS average_price FROM products WHERE price IS NOT NULL;
+SELECT name FROM products WHERE name LIKE 'W%' ESCAPE '\' COLLATE BINARY;

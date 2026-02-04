@@ -1,0 +1,47 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (emp_name, salary) VALUES
+('Alice', 50000.00),
+('Bob', 60000.00),
+('Charlie', 70000.00);
+
+CREATE PROCEDURE `AdjustSalary`(IN empId INT, IN adjustment DECIMAL(10,2))
+BEGIN
+    UPDATE employees SET salary = salary + adjustment WHERE emp_id = empId;
+END;
+
+CALL AdjustSalary(1, 5000.00);
+
+SELECT emp_name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+CREATE VIEW HighSalaryEmployees AS
+SELECT emp_id, emp_name, salary
+FROM employees
+WHERE salary > 65000.00;
+
+SELECT * FROM HighSalaryEmployees;
+
+-- Test JSON functionality
+SELECT JSON_OBJECT('id', emp_id, 'name', emp_name, 'salary', salary) AS employee_json FROM employees WHERE emp_id = 2;
+
+-- Test window functions specific to MySQL
+SELECT
+    emp_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Test REPLACE statement
+REPLACE INTO employees (emp_id, emp_name, salary) VALUES (1, 'Alice Updated', 56000.00);
+
+-- Test ON DUPLICATE KEY UPDATE
+INSERT INTO employees (emp_id, emp_name, salary) VALUES (2, 'Bob Updated', 62000.00)
+ON DUPLICATE KEY UPDATE emp_name = 'Bob Updated', salary = 62000.00;
+
+-- Test with a user-defined variable
+SET @avg_salary := (SELECT AVG(salary) FROM employees);
+SELECT emp_name, salary FROM employees WHERE salary > @avg_salary;

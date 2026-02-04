@@ -1,0 +1,8 @@
+CREATE TABLE t0 (id INT, name VARCHAR(50), active BOOLEAN DEFAULT TRUE, last_updated TIMESTAMP);
+INSERT INTO t0 VALUES (1, 'Test', TRUE, CURRENT_TIMESTAMP);
+INSERT INTO t0 VALUES (2, '', FALSE, NULL);
+SELECT * FROM t0 WHERE active IS TRUE AND name = '';
+SELECT COUNT(*) FROM t0 WHERE id > 0;
+WITH cte AS (SELECT id FROM t0 WHERE active) SELECT * FROM cte;
+SELECT id, RANK() OVER (ORDER BY last_updated DESC) AS rank FROM t0;
+CREATE INDEX idx_last_updated ON t0(last_updated);

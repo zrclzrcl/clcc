@@ -1,0 +1,106 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO department (name, location) VALUES ('Sales', 'New York');
+INSERT INTO department (name, location) VALUES ('Marketing', 'London');
+INSERT INTO department (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employee (name, salary, department) VALUES ('Alice', 60000.00, 'Sales');
+INSERT INTO employee (name, salary, department) VALUES ('Bob', 75000.00, 'Marketing');
+INSERT INTO employee (name, salary, department) VALUES ('Charlie', 90000.00, 'Engineering');
+INSERT INTO employee (name, salary, department) VALUES ('David', 65000.00, 'Sales');
+INSERT INTO employee (name, salary, department) VALUES ('Eve', 80000.00, 'Marketing');
+INSERT INTO employee (name, salary, department) VALUES ('Fred', 100000.00, 'Engineering');
+
+SELECT * FROM employee WHERE salary > 70000 ORDER BY salary DESC;
+
+SELECT department, AVG(salary) AS average_salary FROM employee GROUP BY department;
+
+UPDATE employee SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employee WHERE id = 4;
+
+SELECT e.name, e.salary, d.name AS department_name, d.location
+FROM employee e
+JOIN department d ON e.department = d.name;
+
+SELECT e.name, e.salary, d.name AS department_name, d.location
+FROM employee e
+LEFT JOIN department d ON e.department = d.name;
+
+CREATE INDEX idx_employee_department ON employee (department);
+
+EXPLAIN SELECT * FROM employee WHERE department = 'Sales';
+
+ALTER TABLE employee ADD COLUMN hire_date DATE;
+
+UPDATE employee SET hire_date = CURRENT_DATE - INTERVAL '1 year' WHERE id = 1;
+UPDATE employee SET hire_date = CURRENT_DATE - INTERVAL '2 years' WHERE id = 2;
+UPDATE employee SET hire_date = CURRENT_DATE - INTERVAL '3 years' WHERE id = 3;
+UPDATE employee SET hire_date = CURRENT_DATE - INTERVAL '1 year' WHERE id = 5;
+UPDATE employee SET hire_date = CURRENT_DATE - INTERVAL '2 years' WHERE id = 6;
+
+SELECT name, AGE(hire_date) FROM employee;
+
+CREATE VIEW high_earners AS
+SELECT name, salary, department
+FROM employee
+WHERE salary > 80000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+SELECT name, salary FROM employee ORDER BY salary DESC LIMIT 3;
+
+SELECT department, MAX(salary) AS max_salary FROM employee GROUP BY department HAVING COUNT(*) > 1;
+
+CREATE TEMP TABLE temp_employee AS SELECT * FROM employee WHERE salary < 70000;
+
+SELECT * FROM temp_employee;
+
+DROP TABLE temp_employee;
+
+SELECT coalesce(name, 'Unknown') FROM employee WHERE id > 10;
+
+SELECT name, salary,
+       CASE
+           WHEN salary > 90000 THEN 'High'
+           WHEN salary > 70000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employee;
+
+PREPARE emp_query AS SELECT name, salary FROM employee WHERE department = $1;
+EXECUTE emp_query ('Sales');
+
+DEALLOCATE emp_query;
+
+SELECT generate_series(1, 10);
+
+CREATE OR REPLACE FUNCTION increment(i integer)
+RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(integer);
+
+CREATE SEQUENCE my_sequence START 1 INCREMENT 1;
+SELECT nextval('my_sequence');
+DROP SEQUENCE my_sequence;
+
+SELECT current_database();

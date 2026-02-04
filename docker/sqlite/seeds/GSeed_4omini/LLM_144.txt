@@ -1,0 +1,14 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age >= 0), email TEXT UNIQUE);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL CHECK(amount >= 0), date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE VIRTUAL TABLE products USING fts5(id TEXT, name TEXT, description TEXT);
+CREATE INDEX idx_user_age ON users(age);
+CREATE INDEX idx_order_date ON orders(date);
+INSERT INTO users VALUES (1, 'Alice', 30, 'alice@example.com'), (2, 'Bob', 25, 'bob@example.com');
+INSERT INTO orders VALUES (1, 1, 150.50, '2023-08-01'), (2, 2, 75.00, '2023-08-05');
+INSERT INTO products VALUES ('p1', 'Milk', 'Dairy product'), ('p2', 'Bread', 'Bakery product');
+PRAGMA foreign_keys = ON;
+PRAGMA optimize;
+UPDATE users SET age = age + 1 WHERE id = 1;
+DELETE FROM orders WHERE amount < 100;
+SELECT * FROM users WHERE age > (SELECT AVG(age) FROM users);
+SELECT * FROM products WHERE name MATCH 'Milk';

@@ -1,0 +1,78 @@
+-- Create a table with various data types to test different scenarios
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(50),
+    value DECIMAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN
+);
+
+-- Insert sample data into the table
+INSERT INTO t1 VALUES
+(1, 'Test1', 123.45, '2023-01-01 12:00:00', true),
+(2, 'Test2', 678.90, '2023-01-02 13:00:00', false);
+
+-- Create a table with a JSON column to test JSON functionality
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+-- Insert sample JSON data into the table
+INSERT INTO t2 VALUES
+(1, '{"name": "Alice", "age": 30, "hobbies": ["reading", "music"]}'),
+(2, '{"name": "Bob", "age": 25, "hobbies": ["sports", "cooking"]}');
+
+-- Create a view with a window function to test complex queries
+CREATE VIEW v1 AS
+WITH cte AS (
+    SELECT id, name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as rn,
+           RANK() OVER (ORDER BY value DESC) as rnk
+    FROM t1
+)
+SELECT 
+    id, 
+    name, 
+    value,
+    rn,
+    rnk
+FROM cte;
+
+-- Create a table using CTAS to test common table expressions and aggregates
+CREATE TABLE t3 AS
+SELECT 
+    status,
+    COUNT(*) as cnt,
+    AVG(value) as avg_value,
+    MAX(created_at) as last_created
+FROM t1
+GROUP BY status;
+
+-- Test JSON extraction and manipulation
+SELECT 
+    id,
+    data ->> 'name' as name,
+    (data -> 'hobbies') #>> '{0}' as first_hobby,
+    json_array_length(data -> 'hobbies') as hobby_count
+FROM t2;
+
+-- Test aggregate functions with grouping and having clauses
+SELECT 
+    status,
+    COUNT(*) as total,
+    SUM(value) as sum_value,
+    CASE WHEN COUNT(*) > 1 THEN 'Multiple' ELSE 'Single' END as status_desc
+FROM t1
+GROUP BY status
+HAVING COUNT(*) >= 2;
+
+-- Test DISTINCT ON to ensure uniqueness based on specific columns
+SELECT 
+    DISTINCT ON (name)
+    id, 
+    name, 
+    value,
+    created_at
+FROM t1
+ORDER BY name DESC;

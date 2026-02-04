@@ -1,0 +1,101 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+ALTER TABLE employees ADD COLUMN department_id INT;
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES ('John', 'Doe', 60000.00, '2022-01-15', 1);
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES ('Jane', 'Smith', 75000.00, '2021-05-20', 2);
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES ('Peter', 'Jones', 90000.00, '2020-11-01', 3);
+
+SELECT * FROM employees;
+
+SELECT first_name, last_name FROM employees WHERE salary > 70000.00;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 1;
+
+DELETE FROM employees WHERE id = 1;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT d.name, COUNT(e.id) FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.name;
+
+CREATE INDEX idx_employee_last_name ON employees (last_name);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (1, '2024-01-05', 150.00);
+INSERT INTO orders (customer_id, order_date, total_amount) VALUES (2, '2024-01-10', 200.00);
+
+SELECT e.first_name, e.last_name, o.order_date, o.total_amount
+FROM employees e
+JOIN orders o ON e.id = o.customer_id;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(10, 2),
+    description JSONB
+);
+
+INSERT INTO products (name, price, description) VALUES ('Laptop', 1200.00, '{"brand": "Dell", "processor": "Intel i7"}');
+
+SELECT name, price, description ->> 'brand' AS brand FROM products;
+
+CREATE TABLE log_table (
+  log_time timestamptz not null default now(),
+  log_message text
+);
+
+INSERT INTO log_table (log_message) VALUES ('System started');
+INSERT INTO log_table (log_message) VALUES ('User logged in');
+
+SELECT * FROM log_table;
+
+CREATE VIEW high_earners AS
+SELECT first_name, last_name
+FROM employees
+WHERE salary > 80000;
+
+SELECT * FROM high_earners;
+
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+CREATE TABLE calculated_values (
+    id SERIAL PRIMARY KEY,
+    base_value INTEGER,
+    calculated_value INTEGER GENERATED ALWAYS AS (base_value * 2) STORED
+);
+
+INSERT INTO calculated_values (base_value) VALUES (10);
+SELECT * FROM calculated_values;
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE TABLE text_search_table (id SERIAL PRIMARY KEY, text_field TEXT);
+INSERT INTO text_search_table (text_field) VALUES ('fuzzy matching is fun');
+SELECT * FROM text_search_table WHERE text_field % 'fuzzzy matching'; -- Using pg_trgm extension

@@ -1,0 +1,37 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('hello'), ('world'), ('DuckDB'), (NULL);
+
+-- Test NULL handling in comparisons and arithmetic
+SELECT i + 1, i IS NULL, i = NULL FROM integers;
+
+-- Test string concatenation and case-insensitive comparison (DuckDB extension)
+SELECT s || '!', s ILIKE 'duck%';
+
+-- Test window functions (DuckDB supports a wide range)
+SELECT i, RANK() OVER (ORDER BY i), ROW_NUMBER() OVER (ORDER BY i) FROM integers;
+
+-- Test LIST and STRUCT types
+CREATE TABLE lists (l INTEGER[]);
+INSERT INTO lists VALUES ([1, 2, 3]), ([4, NULL, 6]);
+SELECT l[1], list_sum(l) FROM lists;
+
+CREATE TABLE structs (s STRUCT(a INTEGER, b VARCHAR));
+INSERT INTO structs VALUES ({a: 1, b: 'x'}), ({a: 2, b: 'y'});
+SELECT s.a, s.b FROM structs;
+
+--Test JSON functionality
+CREATE TABLE jsons (j JSON);
+INSERT INTO jsons VALUES ('{"a": 1, "b": "hello"}'), ('[1, 2, 3]');
+SELECT json_extract_string(j, '$.b') FROM jsons WHERE json_valid(j);
+
+-- Using generate_series for more data
+CREATE TABLE series AS SELECT i FROM generate_series(1, 5);
+SELECT i * i FROM series;
+
+-- Example of using UNNEST (DuckDB extension)
+CREATE TABLE unnest_example (list INTEGER[]);
+INSERT INTO unnest_example VALUES ([1, 2, 3]), ([4, 5]);
+SELECT value FROM unnest_example, UNNEST(list) AS value;

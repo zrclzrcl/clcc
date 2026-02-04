@@ -1,0 +1,49 @@
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value DOUBLE,
+    data BLOB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Test 1', 3.14, 'This is a test blob'),
+('Test 2', 1.618, 'Another blob'),
+('Test 3', NULL, NULL);
+
+-- Test various functions and operators
+SELECT id, name, UPPER(name), value * 2, LENGTH(data) FROM test_table WHERE value > 1 AND name LIKE 'Test%';
+
+-- Test aggregates
+SELECT COUNT(*), AVG(value), MAX(id) FROM test_table;
+
+-- Test window functions
+SELECT id, name, value, ROW_NUMBER() OVER (ORDER BY value DESC) FROM test_table;
+
+-- Test date/time functions
+SELECT created_at, DATE(created_at), STRFTIME('%Y-%m-%d %H:%M:%S', created_at) FROM test_table;
+
+-- Test CASE statements
+SELECT id, name, CASE WHEN value > 2 THEN 'High' WHEN value IS NULL THEN 'Unknown' ELSE 'Low' END AS value_category FROM test_table;
+
+-- Test EXCEPT ALL
+CREATE TABLE temp_table AS SELECT * FROM test_table WHERE id < 3;
+INSERT INTO temp_table (name, value, data) VALUES ('Test 1', 3.14, 'This is a test blob');
+
+SELECT name FROM test_table EXCEPT ALL SELECT name FROM temp_table;
+
+DROP TABLE temp_table;
+
+-- Test JSON functions (DuckDB Specific)
+ALTER TABLE test_table ADD COLUMN json_data JSON;
+UPDATE test_table SET json_data = JSON_OBJECT('key1', id, 'key2', name) WHERE id = 1;
+SELECT json_data FROM test_table WHERE id = 1;
+SELECT json_extract_string(json_data, '$.key2') FROM test_table WHERE id = 1;
+
+-- Test LIST Functions (DuckDB Specific)
+CREATE TABLE list_table (list_col INTEGER[]);
+INSERT INTO list_table VALUES ([1, 2, 3]), ([4, 5, 6]);
+SELECT list_col[1] FROM list_table;
+SELECT list_value FROM list_table, UNNEST(list_col) AS list_value;
+
+DROP TABLE list_table;

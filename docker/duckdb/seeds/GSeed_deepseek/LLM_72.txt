@@ -1,0 +1,57 @@
+BEGIN;
+CREATE TABLE test_main (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    date_col DATE,
+    bool_col BOOLEAN DEFAULT FALSE,
+    num_col NUMERIC(10, 2),
+    text_with_null TEXT
+);
+
+CREATE TABLE test_child (
+    id INTEGER PRIMARY KEY,
+    main_id INTEGER REFERENCES test_main(id) ON DELETE CASCADE,
+    value TEXT
+);
+
+-- Create a table using a CTAS (Common Table Expression)
+CREATE TABLE test_data AS
+SELECT 
+    generate_series(1, 10) as id,
+    'test' || generate_series(1,10) as name,
+    CURRENT_DATE - INTERVAL '1 day' * generate_series(1,10) as date_col,
+    (generate_series(1,10) % 2 = 0) as bool_col,
+    CAST(generate_series(1,10) * 10.5 AS NUMERIC) as num_col
+;
+
+-- Insert data with some NULL values for testing edge cases
+INSERT INTO test_main VALUES
+(1, 'Test1', '2023-01-01', TRUE, 100.50, 'Data'),
+(2, 'Test2', '2023-01-02', FALSE, NULL, NULL),
+(3, 'Test3', NULL, TRUE, -50.75, 'More Data');
+
+-- Insert data into child table
+INSERT INTO test_child VALUES
+(1, 1, 'Child of Test1'),
+(2, 1, 'Another Child'),
+(3, 2, 'Child of Test2');
+
+-- Create indexes to encourage different query paths
+CREATE INDEX idx_date_col ON test_main(date_col);
+CREATE INDEX idx_bool_num ON test_main(bool_col, num_col);
+
+COMMIT;
+
+-- Test queries that can be mutated
+SELECT * FROM test_data ORDER BY id DESC;
+SELECT name, date_col FROM test_main WHERE bool_col = TRUE LIMIT 5;
+SELECT COUNT(*) FROM test_child GROUP BY main_id HAVING COUNT(*) > 1;
+SELECT tm.name, tc.value 
+FROM test_main tm 
+JOIN test_child tc ON tm.id = tc.main_id 
+ORDER BY tm.date_col DESC;
+
+-- Test query with window functions
+SELECT id, name, RANK() OVER (ORDER BY num_col) as rank 
+FROM test_data 
+WHERE num_col IS NOT NULL;

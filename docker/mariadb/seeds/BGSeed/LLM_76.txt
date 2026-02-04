@@ -1,0 +1,45 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_dept FOREIGN KEY (department_id) REFERENCES departments (department_id);
+
+-- MariaDB specific feature: virtual column
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(101) GENERATED ALWAYS AS (concat(first_name, ' ', last_name)) VIRTUAL;
+
+-- MariaDB specific feature: JSON column
+ALTER TABLE departments ADD COLUMN department_info JSON;
+
+INSERT INTO departments (department_name, department_info) VALUES ('Sales', '{"location": "New York", "headcount": 10}');
+
+-- Test index hints (MariaDB specific)
+SELECT * FROM employees USE INDEX (fk_dept) WHERE department_id = 1;
+
+-- Test common table expression (CTE)
+WITH DepartmentHeadcounts AS (
+    SELECT department_id, COUNT(*) AS employee_count
+    FROM employees
+    GROUP BY department_id
+)
+SELECT d.department_name, dh.employee_count
+FROM departments d
+JOIN DepartmentHeadcounts dh ON d.department_id = dh.department_id;
+
+SHOW CREATE TABLE employees;
+SHOW CREATE TABLE departments;

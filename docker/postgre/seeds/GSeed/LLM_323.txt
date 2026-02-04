@@ -1,0 +1,86 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email CITEXT UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount >= 0)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0)
+);
+
+CREATE INDEX idx_username ON users (username);
+CREATE INDEX idx_email ON users (email);
+CREATE INDEX idx_order_user ON orders (user_id);
+
+INSERT INTO users (username, email, password_hash) VALUES
+('john_doe', 'john.doe@example.com', 'hashed_password_1'),
+('jane_smith', 'jane.smith@example.com', 'hashed_password_2');
+
+INSERT INTO products (name, description, price) VALUES
+('Awesome T-Shirt', 'A really awesome t-shirt.', 25.99),
+('Cool Mug', 'A cool mug for your coffee.', 12.50);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 51.48),
+(2, 25.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 25.99),
+(1, 2, 2, 12.50),
+(2, 1, 1, 25.00);
+
+SELECT * FROM users WHERE username = 'john_doe';
+SELECT product_id, name, price FROM products WHERE price > 20.00;
+SELECT o.order_id, u.username, o.total_amount FROM orders o JOIN users u ON o.user_id = u.id;
+
+UPDATE products SET price = 27.99 WHERE name = 'Awesome T-Shirt';
+
+DELETE FROM order_items WHERE quantity = 1;
+
+-- Example using JSONB
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    event_name VARCHAR(255) NOT NULL,
+    event_data JSONB
+);
+
+INSERT INTO events (event_name, event_data) VALUES
+('user_login', '{"user_id": 123, "login_time": "2024-01-01T10:00:00Z"}'),
+('product_view', '{"product_id": 456, "view_count": 5}');
+
+SELECT event_name, event_data -> 'user_id' FROM events WHERE event_name = 'user_login';
+
+-- Example using GENERATE_SERIES
+SELECT generate_series(1, 10);
+
+-- Example using WITH RECURSIVE
+WITH RECURSIVE number_series AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM number_series WHERE n < 5
+)
+SELECT n FROM number_series;

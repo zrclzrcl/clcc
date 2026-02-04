@@ -1,0 +1,179 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2),
+    description TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc')
+);
+
+CREATE INDEX idx_products_name ON products (name);
+
+INSERT INTO products (name, price, description) VALUES
+    ('Laptop', 1200.00, 'High-performance laptop for professionals'),
+    ('Mouse', 25.00, 'Wireless ergonomic mouse'),
+    ('Keyboard', 75.00, 'Mechanical keyboard with RGB lighting'),
+    ('Monitor', 350.00, '27-inch 4K UHD monitor'),
+    ('Webcam', 50.00, '1080p HD webcam with built-in microphone');
+
+SELECT * FROM products WHERE price > 100 ORDER BY price DESC LIMIT 3;
+
+UPDATE products SET price = price * 1.1 WHERE id IN (1, 3);
+
+DELETE FROM products WHERE id = 5;
+
+SELECT COUNT(*) FROM products;
+
+SELECT AVG(price), MAX(price), MIN(price) FROM products;
+
+SELECT name, LENGTH(description) FROM products;
+
+SELECT upper(name), lower(name) FROM products;
+
+SELECT SUBSTRING(description, 1, 50) FROM products;
+
+SELECT name, price FROM products WHERE name LIKE '%top%';
+
+SELECT * FROM products WHERE created_at BETWEEN NOW() - INTERVAL '7 days' AND NOW();
+
+CREATE VIEW cheap_products AS
+SELECT id, name, price FROM products WHERE price < 100;
+
+SELECT * FROM cheap_products;
+
+DROP VIEW cheap_products;
+
+ALTER TABLE products ADD COLUMN quantity INTEGER DEFAULT 1;
+
+UPDATE products SET quantity = 10 WHERE id = 1;
+UPDATE products SET quantity = 50 WHERE id = 2;
+UPDATE products SET quantity = 20 WHERE id = 3;
+UPDATE products SET quantity = 30 WHERE id = 4;
+
+SELECT * FROM products;
+
+SELECT id, name, price, quantity,
+       CASE
+           WHEN quantity > 30 THEN 'High Stock'
+           WHEN quantity > 10 THEN 'Medium Stock'
+           ELSE 'Low Stock'
+       END AS stock_level
+FROM products;
+
+CREATE FUNCTION calculate_total_value(product_id INTEGER)
+RETURNS DECIMAL AS $$
+DECLARE
+    product_price DECIMAL;
+    product_quantity INTEGER;
+    total_value DECIMAL;
+BEGIN
+    SELECT price, quantity INTO product_price, product_quantity
+    FROM products
+    WHERE id = product_id;
+
+    total_value := product_price * product_quantity;
+    RETURN total_value;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, calculate_total_value(id) AS total_value FROM products;
+
+DROP FUNCTION calculate_total_value(INTEGER);
+
+CREATE TABLE product_categories (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(50) NOT NULL
+);
+
+INSERT INTO product_categories (category_name) VALUES
+    ('Electronics'),
+    ('Accessories');
+
+ALTER TABLE products ADD COLUMN category_id INTEGER;
+
+UPDATE products SET category_id = 1 WHERE id IN (1, 4);
+UPDATE products SET category_id = 2 WHERE id IN (2, 3);
+
+ALTER TABLE products ADD CONSTRAINT fk_category
+    FOREIGN KEY (category_id) REFERENCES product_categories(category_id);
+
+SELECT p.name, p.price, pc.category_name
+FROM products p
+JOIN product_categories pc ON p.category_id = pc.category_id;
+
+SELECT category_name, COUNT(p.id) AS product_count
+FROM product_categories pc
+LEFT JOIN products p ON pc.category_id = p.category_id
+GROUP BY category_name;
+
+CREATE TEMPORARY TABLE temp_products AS
+SELECT * FROM products;
+
+SELECT * FROM temp_products;
+
+DROP TABLE temp_products;
+
+EXPLAIN SELECT * FROM products WHERE price > 200;
+
+-- Demonstrate window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM
+    products;
+
+-- Demonstrate common table expressions (CTEs)
+WITH ExpensiveProducts AS (
+    SELECT * FROM products WHERE price > 500
+)
+SELECT * FROM ExpensiveProducts;
+
+-- Demonstrate LISTEN/NOTIFY
+LISTEN my_channel;
+NOTIFY my_channel, 'A new product was added!';
+UNLISTEN my_channel;
+
+-- Try a more complex query with subqueries and aggregates
+SELECT category_name, AVG(product_price) AS avg_price
+FROM (
+    SELECT pc.category_name, p.price AS product_price
+    FROM products p
+    JOIN product_categories pc ON p.category_id = pc.category_id
+    WHERE p.quantity > 5
+) AS subquery
+GROUP BY category_name
+ORDER BY avg_price DESC;
+
+-- Check if a table exists
+SELECT EXISTS (
+    SELECT 1
+    FROM pg_tables
+    WHERE schemaname = 'public'
+    AND tablename = 'products'
+);
+
+-- Trigger Example
+CREATE OR REPLACE FUNCTION check_price_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.price < 0 THEN
+        RAISE EXCEPTION 'Price cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER price_check_trigger
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION check_price_update();
+
+-- Attempt to update with invalid price, this should error if the trigger is working
+-- UPDATE products SET price = -10 WHERE id = 1;
+
+DROP TRIGGER IF EXISTS price_check_trigger ON products;
+DROP FUNCTION IF EXISTS check_price_update();
+
+-- Clean up database objects
+DROP TABLE products;
+DROP TABLE product_categories;

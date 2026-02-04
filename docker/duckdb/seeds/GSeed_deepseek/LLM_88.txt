@@ -1,0 +1,39 @@
+CREATE TABLE test_table (
+    id INTEGER,
+    name TEXT,
+    value NUMERIC,
+    date DATE
+);
+
+INSERT INTO test_table VALUES (1, 'Test', 100.5, '2024-01-01');
+INSERT INTO test_table VALUES (2, NULL, -50.75, '2024-01-02');
+INSERT INTO test_table VALUES (3, 'Another Test', 0, NULL);
+
+SELECT 
+    id,
+    name,
+    value,
+    date,
+    ROW_NUMBER() OVER () AS row_num,
+    CASE 
+        WHEN value > 0 THEN 'Positive'
+        WHEN value < 0 THEN 'Negative'
+        ELSE 'Zero'
+    END AS value_category
+FROM test_table;
+
+WITH avg_value AS (
+    SELECT 
+        id, 
+        name, 
+        AVG(value) OVER (ORDER BY date) AS moving_avg
+    FROM test_table
+)
+SELECT 
+    a.id,
+    a.name,
+    a.moving_avg,
+    t.value
+FROM avg_value a
+JOIN test_table t ON a.id = t.id
+HAVING COUNT(*) > 1;

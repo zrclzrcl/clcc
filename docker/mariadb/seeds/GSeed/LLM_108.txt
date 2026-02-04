@@ -1,0 +1,42 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE test_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data JSON NULL
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Entry 1', 123.45, '{"key1": "value1", "key2": 123}'),
+('Entry 2', 67.89, '{"key3": true, "key4": null}'),
+('Entry 3', 90.12, '{"key5": [1, 2, 3], "key6": {"nested": "value"}}');
+
+CREATE PROCEDURE UpdateValue(IN p_id INT, IN p_new_value DECIMAL(10, 2))
+BEGIN
+    UPDATE test_table SET value = p_new_value WHERE id = p_id;
+END;
+
+CALL UpdateValue(1, 500.00);
+
+CREATE VIEW test_view AS
+SELECT id, name, value FROM test_table WHERE value > 100;
+
+SELECT * FROM test_view;
+
+ALTER TABLE test_table ADD COLUMN new_column VARCHAR(255) AFTER created_at;
+
+UPDATE test_table SET new_column = 'updated' WHERE id IN (1, 2);
+
+DELETE FROM test_table WHERE id = 3;
+
+DROP PROCEDURE IF EXISTS UpdateValue;
+
+DROP VIEW IF EXISTS test_view;
+
+TRUNCATE TABLE test_table;
+
+DROP TABLE IF EXISTS test_table;
+
+SET sql_mode=@old_sql_mode;

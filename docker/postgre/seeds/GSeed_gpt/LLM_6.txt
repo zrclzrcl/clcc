@@ -1,0 +1,61 @@
+CREATE USER test_user WITH PASSWORD 'test_password';
+SET allow_system_table_mods = on;
+
+CREATE TABLE pg_catalog.test_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    data JSONB
+);
+
+ALTER TABLE pg_catalog.test_table ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE pg_catalog.test_table ADD CONSTRAINT unique_name UNIQUE (name);
+
+INSERT INTO pg_catalog.test_table(name, data)
+VALUES ('Test1', '{"key": "value"}');
+
+CREATE INDEX idx_test_data ON pg_catalog.test_table USING GIN (data);
+CREATE TRIGGER trg_after_insert AFTER INSERT ON pg_catalog.test_table
+FOR EACH ROW EXECUTE FUNCTION test_trigger();
+
+CREATE OR REPLACE FUNCTION test_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'New record inserted: %', NEW.name;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+WITH cte_test AS (
+    SELECT id, name FROM pg_catalog.test_table WHERE name LIKE 'Test%'
+)
+SELECT * FROM cte_test;
+
+SELECT 
+    id,
+    name,
+    created_at AT TIME ZONE 'UTC' AS utc_time
+FROM 
+    pg_catalog.test_table
+ORDER BY 
+    created_at DESC LIMIT 5;
+
+REVOKE INSERT ON pg_catalog.test_table FROM test_user;
+GRANT SELECT, INSERT ON pg_catalog.test_table TO test_user;
+
+BEGIN;
+    INSERT INTO pg_catalog.test_table(name, data)
+    VALUES ('TestTransaction', '{"transaction": true}');
+    SAVEPOINT my_savepoint;
+    DELETE FROM pg_catalog.test_table WHERE name = 'TestTransaction';
+    ROLLBACK TO my_savepoint;
+COMMIT;
+
+SET client_min_messages TO error;
+CREATE TABLESPACE test_tablespace LOCATION '/nonexistent/path';
+RESET client_min_messages;
+
+DROP TRIGGER trg_after_insert ON pg_catalog.test_table;
+DROP FUNCTION test_trigger();
+DROP TABLE pg_catalog.test_table;
+REVOKE ALL PRIVILEGES ON SCHEMA pg_catalog FROM test_user;
+DROP USER test_user;

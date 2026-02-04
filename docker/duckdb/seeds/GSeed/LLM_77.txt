@@ -1,0 +1,14 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE TABLE strings AS SELECT i, md5(i::VARCHAR) as str FROM integers;
+CREATE VIEW v1 AS SELECT i, str, length(str) FROM strings WHERE i > 5;
+CREATE TABLE nullable_data (id INTEGER, value VARCHAR);
+INSERT INTO nullable_data VALUES (1, 'test'), (2, NULL), (3, 'another');
+
+SELECT i, str, length FROM v1 JOIN integers ON v1.i = integers.i WHERE integers.i % 2 = 0;
+SELECT id, CASE WHEN value IS NULL THEN 'NULL' ELSE value END FROM nullable_data;
+-- DuckDB specific: using UNNEST and string_split
+SELECT value FROM nullable_data CROSS JOIN UNNEST(string_split(COALESCE(value, ''), 't')) WHERE id = 1;
+-- DuckDB specific: LIST type example
+CREATE TABLE list_table (id INTEGER, values INTEGER[]);
+INSERT INTO list_table VALUES (1, [1, 2, 3]), (2, [4, 5, 6]);
+SELECT id, list_sum(values) FROM list_table;

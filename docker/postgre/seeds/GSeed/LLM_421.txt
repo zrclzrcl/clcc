@@ -1,0 +1,180 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 55000.00, '2023-03-10', 'Sales'),
+('David Lee', 80000.00, '2020-11-01', 'Engineering'),
+('Eve Wilson', 90000.00, '2019-09-25', 'Engineering');
+
+SELECT * FROM employees;
+
+SELECT name, salary FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, SUM(salary) FROM employees GROUP BY department;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department HAVING COUNT(*) > 1;
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Engineering';
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.05 WHERE hire_date < '2022-01-01';
+
+SELECT name, salary, bonus FROM employees;
+
+CREATE VIEW employee_summary AS
+SELECT name, salary, department FROM employees WHERE salary > 70000;
+
+SELECT * FROM employee_summary;
+
+DROP VIEW employee_summary;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INTEGER)
+RETURNS DECIMAL(10,2) AS $$
+BEGIN
+    RETURN (SELECT salary * 0.10 FROM employees WHERE id = emp_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, calculate_bonus(id) FROM employees;
+
+DROP FUNCTION calculate_bonus(INTEGER);
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50)
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER;
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'Engineering';
+
+ALTER TABLE employees ADD CONSTRAINT fk_employees_dept_id FOREIGN KEY (dept_id) REFERENCES departments (dept_id);
+
+SELECT employees.name, departments.dept_name
+FROM employees
+INNER JOIN departments ON employees.dept_id = departments.dept_id;
+
+SELECT employees.name, departments.dept_name
+FROM employees
+LEFT JOIN departments ON employees.dept_id = departments.dept_id;
+
+SELECT employees.name, departments.dept_name
+FROM employees
+RIGHT JOIN departments ON employees.dept_id = departments.dept_id;
+
+SELECT employees.name, departments.dept_name
+FROM employees
+FULL OUTER JOIN departments ON employees.dept_id = departments.dept_id;
+
+SELECT * FROM employees ORDER BY salary DESC NULLS LAST;
+
+SELECT DISTINCT department FROM employees;
+
+SELECT generate_series(1, 10);
+
+SELECT current_timestamp;
+
+SELECT md5('test');
+
+SELECT json_build_object('name', name, 'salary', salary) FROM employees;
+
+CREATE TABLE json_test (data jsonb);
+INSERT INTO json_test (data) VALUES ('{"name": "John Doe", "age": 30}');
+SELECT data ->> 'name' FROM json_test;
+DROP TABLE json_test;
+
+SELECT '2024-01-01'::date + interval '1 year';
+SELECT age(timestamp '2024-10-20', timestamp '2023-10-20');
+
+-- Window functions
+SELECT name, salary, department, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num FROM employees;
+SELECT name, salary, department, RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank_num FROM employees;
+
+-- Common Table Expression (CTE)
+WITH SalesEmployees AS (
+    SELECT * FROM employees WHERE department = 'Sales'
+)
+SELECT AVG(salary) FROM SalesEmployees;
+
+-- Check constraints
+ALTER TABLE employees ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+-- Try to insert invalid salary (should fail)
+INSERT INTO employees (name, salary, hire_date, department) VALUES ('Invalid Employee', -100, '2024-01-01', 'HR');
+
+-- Materialized view
+CREATE MATERIALIZED VIEW mv_employee_counts AS
+SELECT department, COUNT(*) AS employee_count FROM employees GROUP BY department;
+
+REFRESH MATERIALIZED VIEW mv_employee_counts;
+
+SELECT * FROM mv_employee_counts;
+
+DROP MATERIALIZED VIEW mv_employee_counts;
+
+-- Arrays
+ALTER TABLE employees ADD COLUMN skills TEXT[];
+UPDATE employees SET skills = ARRAY['SQL', 'Python'] WHERE id = 1;
+SELECT skills[1] FROM employees WHERE id = 1;
+
+-- Unnest array
+SELECT unnest(skills) FROM employees WHERE id = 1;
+
+-- Temporary Table
+CREATE TEMP TABLE temp_employees AS SELECT * FROM employees WHERE salary > 70000;
+SELECT * FROM temp_employees;
+
+-- Recursive queries (requires a table that contains hierarchical data). Let's create a simple one:
+CREATE TABLE category (
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(255) NOT NULL,
+    parent_id INTEGER REFERENCES category(category_id)
+);
+
+INSERT INTO category (category_name, parent_id) VALUES
+('Electronics', NULL),
+('Computers', 1),
+('Laptops', 2),
+('Desktops', 2),
+('Cameras', 1),
+('Digital Cameras', 5),
+('Film Cameras', 5);
+
+WITH RECURSIVE category_path AS (
+    SELECT category_id, category_name, parent_id, ARRAY[category_name] AS path
+    FROM category
+    WHERE parent_id IS NULL
+
+    UNION ALL
+
+    SELECT c.category_id, c.category_name, c.parent_id, cp.path || c.category_name
+    FROM category c
+    JOIN category_path cp ON c.parent_id = cp.category_id
+)
+SELECT * FROM category_path;
+
+DROP TABLE category;
+DROP TABLE temp_employees;
+
+DROP TABLE employees;
+DROP TABLE departments;

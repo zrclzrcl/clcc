@@ -1,0 +1,81 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    description TEXT,
+    category_id INTEGER
+);
+
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    price DECIMAL(10, 2), -- Price at the time of order
+    PRIMARY KEY (order_id, product_id),
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE customers (
+    id INTEGER PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20)
+);
+
+-- Insert some sample data
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+INSERT INTO products (name, price, description, category_id) VALUES
+('Laptop', 1200.00, 'High-performance laptop', 1),
+('The Lord of the Rings', 25.00, 'A classic fantasy novel', 2),
+('T-Shirt', 15.00, 'Comfortable cotton t-shirt', 3);
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '555-1234'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '555-5678');
+
+INSERT INTO orders (customer_id) VALUES (1), (2);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(1, 2, 2, 25.00),
+(2, 3, 3, 15.00);
+
+-- DuckDB specific functions (try to trigger unique paths)
+SELECT APPROXIMATE COUNT(DISTINCT id) FROM products;
+SELECT QUANTILE(price, 0.5) FROM products;
+SELECT string_split('a,b,c', ',') ;
+SELECT date_diff('day', '2023-01-01', '2023-01-10');
+
+-- Window function example
+SELECT
+    p.name,
+    c.name AS category,
+    p.price,
+    AVG(p.price) OVER (PARTITION BY c.id) AS avg_category_price
+FROM
+    products p
+JOIN
+    categories c ON p.category_id = c.id;
+
+-- Try creating an index
+CREATE INDEX product_name_idx ON products(name);
+
+-- Check constraints
+INSERT INTO products (name, price) VALUES ('Negative Price', -10); -- Should fail
+
+-- TRY NULL value and Default
+INSERT INTO orders (customer_id, order_date) VALUES (1, NULL);

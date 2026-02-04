@@ -1,0 +1,76 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR,
+    discount BOOLEAN
+);
+
+INSERT INTO products (name, price, category, discount) VALUES
+('Laptop', 1200.00, 'Electronics', FALSE),
+('Keyboard', 75.00, 'Electronics', TRUE),
+('Mouse', 25.00, 'Electronics', FALSE),
+('T-Shirt', 20.00, 'Clothing', TRUE),
+('Jeans', 60.00, 'Clothing', FALSE);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE
+);
+
+INSERT INTO orders (customer_id, order_date) VALUES
+(1, '2023-01-15'),
+(2, '2023-02-20'),
+(1, '2023-03-10'),
+(3, '2023-04-05');
+
+CREATE VIEW discounted_products AS
+SELECT name, price FROM products WHERE discount = TRUE;
+
+-- Test aggregate functions
+SELECT category, AVG(price) AS average_price FROM products GROUP BY category;
+
+-- Test window functions (DuckDB Specific syntax)
+SELECT name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;
+
+-- Test string functions and LIKE
+SELECT name FROM products WHERE name LIKE '%top%';
+
+-- Test date functions and BETWEEN
+SELECT order_id FROM orders WHERE order_date BETWEEN '2023-02-01' AND '2023-03-31';
+
+-- Test CASE statements
+SELECT name,
+       CASE
+           WHEN price > 100 THEN 'Expensive'
+           ELSE 'Affordable'
+       END AS price_range
+FROM products;
+
+-- Test EXCEPT ALL and INTERSECT ALL. DuckDB supports these.
+SELECT customer_id FROM orders
+EXCEPT ALL
+SELECT 1;
+
+-- Test JOIN
+SELECT o.order_id, p.name
+FROM orders o
+JOIN products p ON o.customer_id = p.id
+WHERE o.customer_id < 2;
+
+-- Test UNNEST (DuckDB feature)
+SELECT * FROM UNNEST(['a', 'b', 'c']);
+
+--Test percentile_cont (DuckDB specific function)
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY price) FROM products;
+
+-- Test pivot functionality which is also a DuckDB feature. Note we're not providing pivot_col or value_col as this is allowed.
+CREATE TABLE temperature (date DATE, city VARCHAR, temperature INTEGER);
+INSERT INTO temperature VALUES
+('2023-01-01', 'New York', 10),
+('2023-01-01', 'Los Angeles', 25),
+('2023-01-02', 'New York', 12),
+('2023-01-02', 'Los Angeles', 27);
+
+SELECT * FROM temperature PIVOT date USING SUM(temperature) GROUP BY city;

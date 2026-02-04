@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS user(pk INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, email TEXT UNIQUE);
+CREATE TABLE IF NOT EXISTS post(pk INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES user(pk));
+CREATE TABLE IF NOT EXISTS comment(pk INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (post_id) REFERENCES post(pk), FOREIGN KEY (user_id) REFERENCES user(pk));
+CREATE TABLE IF NOT EXISTS like_post(user_id INTEGER, post_id INTEGER, PRIMARY KEY(user_id, post_id), FOREIGN KEY (user_id) REFERENCES user(pk), FOREIGN KEY (post_id) REFERENCES post(pk));
+
+INSERT INTO user (username, password, email) VALUES ('alice', 'password123', 'alice@example.com');
+INSERT INTO user (username, password, email) VALUES ('bob', 'securepass456', 'bob@example.com');
+INSERT INTO post (user_id, content) VALUES (1, 'This is Alice\'s first post!');
+INSERT INTO post (user_id, content) VALUES (2, 'Bob is sharing something interesting.');
+INSERT INTO comment (post_id, user_id, content) VALUES (1, 2, 'Great post Alice!');
+INSERT INTO comment (post_id, user_id, content) VALUES (2, 1, 'Thanks, Bob!');
+
+SELECT * FROM user;
+SELECT p.pk, p.content FROM post p JOIN user u ON p.user_id = u.pk WHERE u.username = 'alice';
+SELECT c.content FROM comment c WHERE c.post_id = 1 AND NOT EXISTS (SELECT * FROM like_post lp WHERE lp.post_id = c.post_id AND lp.user_id = c.user_id);
+SELECT COUNT(*) FROM like_post WHERE post_id = (SELECT pk FROM post WHERE user_id = 1) GROUP BY post_id;

@@ -1,0 +1,11 @@
+-- Initial seed for DuckDB fuzz testing
+CREATE TABLE t1(a INT, b TEXT, c REAL, d BLOB, e TIMESTAMP);
+CREATE TABLE t2(a, b, c) AS SELECT 1, 'test', 3.14; -- Creates table with inferred types
+CREATE VIRTUAL TABLE vt1 USING json('/path/to/file.json'); -- Tests virtual tables
+INSERT INTO t1 VALUES(1, 'hello', 3.14, x'abcd', CURRENT_TIMESTAMP);
+INSERT INTO t2 SELECT * FROM t1 WHERE a > 0; -- Tests INSERT with subquery
+ALTER TABLE t1 ADD COLUMN f BOOLEAN DEFAULT TRUE; -- Tests ALTER TABLE
+PRAGMA memory_limit='1GB'; -- Tests DuckDB-specific pragma
+UPDATE duckdb_tables SET table_type = 'VIRTUAL' WHERE table_name = 'vt1'; -- Updates metadata
+CREATE INDEX idx_t1_a ON t1(a); -- Tests index creation
+SELECT COUNT(*) FROM t1; -- Simple query for coverage

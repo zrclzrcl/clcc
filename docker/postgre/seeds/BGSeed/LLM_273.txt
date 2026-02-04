@@ -1,0 +1,144 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(100),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+    ('Alice', 'Sales', 50000.00),
+    ('Bob', 'Marketing', 60000.00),
+    ('Charlie', 'Sales', 55000.00),
+    ('David', 'Engineering', 70000.00),
+    ('Eve', 'Marketing', 62000.00);
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+SELECT name, salary FROM employees WHERE salary > 55000.00 ORDER BY salary DESC;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 5;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, SUM(salary) FROM employees GROUP BY department;
+
+CREATE VIEW high_earners AS
+SELECT name, department, salary FROM employees WHERE salary > 60000.00;
+
+SELECT * FROM high_earners;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(100) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES
+    ('Sales'),
+    ('Marketing'),
+    ('Engineering'),
+    ('HR');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+SELECT employees.name, departments.dept_name FROM employees JOIN departments ON employees.dept_id = departments.dept_id;
+
+CREATE FUNCTION increment_salary(emp_id INTEGER, increment DECIMAL) RETURNS VOID AS $$
+BEGIN
+    UPDATE employees SET salary = salary + increment WHERE id = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 1000.00);
+
+SELECT * FROM employees WHERE id = 1;
+
+CREATE TYPE employee_type AS (name VARCHAR(100), salary DECIMAL(10, 2));
+
+SELECT (name, salary)::employee_type FROM employees WHERE id = 2;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(10, 2),
+    description TEXT
+);
+
+INSERT INTO products (name, price, description) VALUES
+    ('Laptop', 1200.00, 'High-performance laptop'),
+    ('Mouse', 25.00, 'Wireless mouse'),
+    ('Keyboard', 75.00, 'Ergonomic keyboard');
+
+SELECT name, price FROM products WHERE description LIKE '%mouse%';
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    order_date DATE,
+    customer_id INTEGER
+);
+
+INSERT INTO orders (order_date, customer_id) VALUES
+    ('2024-01-01', 1),
+    ('2024-01-05', 2),
+    ('2024-01-10', 1);
+
+SELECT order_date FROM orders WHERE customer_id = 1;
+
+CREATE MATERIALIZED VIEW monthly_sales AS
+SELECT DATE_TRUNC('month', order_date) AS month, COUNT(*) AS order_count
+FROM orders
+GROUP BY DATE_TRUNC('month', order_date);
+
+REFRESH MATERIALIZED VIEW monthly_sales;
+
+SELECT * FROM monthly_sales;
+
+CREATE TABLE logs (
+  id SERIAL PRIMARY KEY,
+  message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO logs (message) VALUES ('System started');
+SELECT * FROM logs;
+
+ALTER TABLE employees ADD CONSTRAINT salary_positive CHECK (salary > 0);
+INSERT INTO employees (name, department, salary) VALUES ('Bad Salary', 'Bad Dept', -100);
+
+CREATE TABLE json_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_data (data) VALUES ('{"name": "Item 1", "price": 10.00}');
+
+SELECT data ->> 'name' FROM json_data;
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL
+);
+
+INSERT INTO users (username, email) VALUES ('testuser', 'test@example.com');
+
+SELECT * FROM users;
+
+CREATE OR REPLACE FUNCTION safe_divide(numerator NUMERIC, denominator NUMERIC)
+RETURNS NUMERIC AS $$
+BEGIN
+  IF denominator = 0 THEN
+    RETURN NULL;
+  ELSE
+    RETURN numerator / denominator;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT safe_divide(10, 2);
+SELECT safe_divide(10, 0);

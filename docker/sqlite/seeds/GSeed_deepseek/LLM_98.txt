@@ -1,0 +1,66 @@
+-- Initial seed for SQLite database fuzz testing
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    value REAL,
+    status BOOLEAN DEFAULT FALSE,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2(
+    a INT UNIQUE,
+    b TEXT CHECK(length(b) > 5),
+    c BLOB,
+    FOREIGN KEY(a) REFERENCES t1(id)
+);
+
+-- Create indexes for testing query optimization
+CREATE INDEX i1 ON t1(name DESC);
+CREATE INDEX i2 ON t1(value, status);
+CREATE INDEX i3 ON t2(a, b) WHERE status = TRUE;
+
+-- Insert test data with various edge cases
+INSERT INTO t1(name, value, status)
+VALUES 
+    ('test1', 10.5, TRUE),
+    ('test2', NULL, FALSE),
+    ('test3', -100.25, TRUE);
+
+-- Test transaction and rollback functionality
+BEGIN;
+INSERT INTO t2(a, b) VALUES (1, 'abcdef'), (2, 'ghijkl');
+ROLLBACK;
+
+-- Complex queries to test different SQL features
+SELECT 
+    t1.name,
+    t2.b,
+    CASE 
+        WHEN t1.status THEN 'Active'
+        ELSE 'Inactive'
+    END AS status_text
+FROM t1
+JOIN t2 ON t1.id = t2.a
+WHERE t1.value > 0
+GROUP BY t1.name
+HAVING COUNT(*) > 1
+ORDER BY status_text DESC, t1.name ASC
+LIMIT 5 OFFSET 2;
+
+-- Test common table expressions and window functions
+WITH RECURSIVE cte AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM cte WHERE n < 10
+)
+SELECT 
+    n,
+    ROW_NUMBER() OVER (ORDER BY n) AS row_num,
+    RANK() OVER (ORDER BY n DESC) AS rank_desc
+FROM cte;
+
+-- Test virtual table features in SQLite
+CREATE VIRTUAL TABLE ft USING FTS5(
+    content='t1',
+    tokenize = 'porter'
+);

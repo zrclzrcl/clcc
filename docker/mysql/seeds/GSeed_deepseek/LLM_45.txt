@@ -1,0 +1,44 @@
+-- Step 1: Create a table with various data types
+CREATE TABLE t0 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    value DECIMAL(10,2),
+    created_at DATETIME
+);
+
+-- Step 2: Insert sample data including edge cases
+INSERT INTO t0 VALUES 
+    (1, 'Test1', 100.50, NOW()),
+    (2, NULL, NULL, '2023-01-01 00:00:00'),
+    (3, 'EdgeCase', -9999999999.99, '9999-12-31 23:59:59');
+
+-- Step 3: Set session variables for use in prepared statements
+SET @var1 = 1;
+SET @var2 = 'Test%';
+
+-- Step 4: Prepare and execute a parameterized query
+PREPARE stmt FROM 
+    "SELECT id, name, value 
+     FROM t0 
+     WHERE id > ? AND name LIKE ?
+     LIMIT 5";
+EXECUTE stmt USING @var1, @var2;
+DEALLOCATE PREPARE stmt;
+
+-- Step 5: Test SQL_CALC_FOUND_ROWS for row counting
+SELECT SQL_CALC_FOUND_ROWS * FROM t0 WHERE id < 3;
+SELECT FOUND_ROWS();
+
+-- Step 6: Use UNION ALL to combine results from two SELECT statements
+(SELECT id, name FROM t0 WHERE value > 100)
+UNION ALL
+(SELECT id, name FROM t0 WHERE value < 100);
+
+-- Step 7: Retrieve distinct values using DISTINCT keyword
+SELECT DISTINCT name FROM t0;
+
+-- Step 8: Adjust optimizer settings to influence query execution plan
+SET optimizer_switch='index_merge=on';
+
+-- Step 9: Execute a subquery with an aggregate function
+SELECT id FROM t0 WHERE value > (SELECT AVG(value) FROM t0);

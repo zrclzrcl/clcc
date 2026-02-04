@@ -1,0 +1,87 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000.00, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie Brown', 'Engineering', 90000.00, '2023-03-01'),
+('David Lee', 'Sales', 62000.00, '2022-06-10'),
+('Eve Wilson', 'Engineering', 95000.00, '2023-09-01');
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Engineering';
+
+DELETE FROM employees WHERE id = 4;
+
+SELECT AVG(salary) AS average_salary, department FROM employees GROUP BY department;
+
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+
+SELECT e.name, d.location FROM employees e JOIN departments d ON e.department = d.name WHERE d.location = 'London';
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    attributes JSONB
+);
+
+INSERT INTO products (name, description, price, attributes) VALUES
+('Laptop', 'High-performance laptop', 1200.00, '{"brand": "XYZ", "memory": "16GB", "storage": "512GB SSD"}'),
+('Mouse', 'Wireless mouse', 25.00, '{"brand": "ABC", "type": "optical"}');
+
+SELECT name, attributes ->> 'brand' AS brand FROM products;
+
+CREATE INDEX idx_product_name ON products (name);
+CREATE INDEX idx_product_attributes ON products USING GIN (attributes);
+
+WITH SalesEmployees AS (
+    SELECT id, name, salary FROM employees WHERE department = 'Sales'
+)
+SELECT name, salary FROM SalesEmployees WHERE salary > 61000;
+
+CREATE TABLE array_test (
+  id SERIAL PRIMARY KEY,
+  names TEXT[]
+);
+
+INSERT INTO array_test (names) VALUES ('{"Alice", "Bob", "Charlie"}');
+
+SELECT names[1] FROM array_test;
+
+SELECT generate_series(1, 10);
+
+CREATE TABLE ts_test (
+    ts timestamp
+);
+
+INSERT INTO ts_test (ts) VALUES (NOW());
+
+SELECT ts + interval '1 day' from ts_test;
+
+CREATE TABLE null_test (
+    id SERIAL PRIMARY KEY,
+    val integer
+);
+
+INSERT INTO null_test (val) VALUES (1), (NULL), (2);
+
+SELECT count(*) from null_test where val is null;

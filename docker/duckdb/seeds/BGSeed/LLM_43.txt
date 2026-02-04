@@ -1,0 +1,81 @@
+PRAGMA enable_object_cache;
+CREATE TABLE integers AS SELECT i FROM range(1000) AS t(i);
+CREATE TABLE strings AS SELECT uuid() AS s FROM range(1000);
+CREATE TABLE dates AS SELECT date('2023-01-01') + i AS d FROM range(100);
+CREATE TABLE timestamps AS SELECT now() + i * interval '1 second' AS ts FROM range(100);
+
+-- Test data types and basic operations
+CREATE TABLE test_data (
+    id INTEGER PRIMARY KEY,
+    int_val INTEGER,
+    float_val DOUBLE,
+    string_val VARCHAR,
+    date_val DATE,
+    timestamp_val TIMESTAMP,
+    bool_val BOOLEAN,
+    list_val INTEGER[],
+    struct_val STRUCT(a INTEGER, b VARCHAR),
+    uuid_val UUID
+);
+
+INSERT INTO test_data (id, int_val, float_val, string_val, date_val, timestamp_val, bool_val, list_val, struct_val, uuid_val)
+SELECT i, i * 2, i / 3.0, strings.s, dates.d, timestamps.ts, i % 2 = 0, list_value(i, i+1), struct(i, strings.s), uuid()
+FROM integers JOIN strings ON integers.i = strings.rowid JOIN dates ON integers.i % 100 = dates.rowid JOIN timestamps ON integers.i % 100 = timestamps.rowid
+WHERE i < 10;
+
+
+SELECT * FROM test_data WHERE int_val > 5 AND float_val < 5;
+SELECT string_val, UPPER(string_val), LENGTH(string_val) FROM test_data LIMIT 5;
+SELECT date_val, DATE_TRUNC('month', date_val) FROM test_data LIMIT 5;
+SELECT timestamp_val, TIMESTAMP_ADD(timestamp_val, INTERVAL '1 day') FROM test_data LIMIT 5;
+
+-- Test window functions
+SELECT
+    id,
+    int_val,
+    ROW_NUMBER() OVER (ORDER BY int_val) AS row_num,
+    RANK() OVER (ORDER BY int_val) AS rank_num,
+    DENSE_RANK() OVER (ORDER BY int_val) AS dense_rank_num,
+    LAG(int_val, 1, 0) OVER (ORDER BY int_val) AS prev_int_val
+FROM test_data;
+
+-- Test aggregate functions
+SELECT
+    AVG(int_val),
+    SUM(float_val),
+    COUNT(*),
+    MAX(date_val),
+    MIN(timestamp_val)
+FROM test_data;
+
+-- Test string functions specific to DuckDB
+SELECT string_val, string_split(string_val, '-') FROM test_data WHERE id = 1;
+SELECT string_val, regexp_extract(string_val, '[a-z]+') FROM test_data WHERE id = 2;
+
+-- Test JSON functions
+CREATE TABLE json_data (json_val JSON);
+INSERT INTO json_data VALUES ('{"name": "John", "age": 30, "city": "New York"}');
+SELECT json_extract_string(json_val, '$.name') FROM json_data;
+
+-- Test List and Struct functions
+
+SELECT list_val, list_contains(list_val, 2) FROM test_data WHERE id = 0;
+SELECT struct_val, struct_extract(struct_val, 'a') FROM test_data WHERE id = 0;
+
+-- Test date/time functions
+SELECT date_diff('day', '2023-01-01', '2023-01-10');
+SELECT date_part('year', '2023-05-15');
+
+-- Test UNNEST
+SELECT i FROM test_data, UNNEST(list_val) AS t(i) WHERE id = 0;
+
+-- Test Create View
+CREATE VIEW small_test_data AS SELECT id, int_val FROM test_data WHERE int_val < 10;
+SELECT * FROM small_test_data;
+
+-- Test temporary tables
+CREATE TEMPORARY TABLE temp_table AS SELECT id FROM test_data LIMIT 2;
+SELECT * FROM temp_table;
+
+-- Test vacuum
+VACUUM;

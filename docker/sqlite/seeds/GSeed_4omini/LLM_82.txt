@@ -1,0 +1,10 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age > 0));
+INSERT INTO users(name, age) VALUES ('Alice', 30), ('Bob', 25), ('Charlie', 0);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders(user_id, amount) VALUES (1, 100.50), (2, -50.00), (3, 200.75);
+SELECT u.name, SUM(o.amount) FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id HAVING SUM(o.amount) IS NULL OR SUM(o.amount) < 0;
+CREATE INDEX idx_user_name ON users(name);
+SELECT count(*) FROM orders WHERE amount < 0;
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, price REAL CHECK(price >= 0));
+INSERT INTO products(price) VALUES (20.00), (15.50), (25.00);
+SELECT p.product_id, (SELECT COUNT(*) FROM orders WHERE orders.user_id = 1) AS user_order_count FROM products p WHERE p.price > (SELECT AVG(price) FROM products);

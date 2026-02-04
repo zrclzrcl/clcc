@@ -1,0 +1,123 @@
+SET client_min_messages TO 'warning';
+
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS projects;
+DROP TYPE IF EXISTS mood;
+DROP FUNCTION IF EXISTS add_them;
+DROP AGGREGATE IF EXISTS myavg (numeric);
+
+RESET client_min_messages;
+
+-- Create tables
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+CREATE TABLE employees (
+    emp_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE,
+    job_id VARCHAR(20),
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    dept_id INTEGER REFERENCES departments(dept_id)
+);
+
+CREATE TABLE projects (
+    project_id SERIAL PRIMARY KEY,
+    project_name VARCHAR(100) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    budget DECIMAL(12, 2)
+);
+
+-- Insert data into departments
+INSERT INTO departments (dept_name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'Los Angeles'),
+    ('Engineering', 'San Francisco'),
+    ('Human Resources', 'Chicago');
+
+-- Insert data into employees
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, dept_id) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '2022-01-15', 'SALES_REP', 60000.00, 1),
+    ('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 'MKT_MGR', 80000.00, 2),
+    ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 'ENG_LEAD', 90000.00, 3),
+    ('Mary', 'Brown', 'mary.brown@example.com', '2022-09-01', 'HR_SPEC', 55000.00, 4);
+
+-- Insert data into projects
+INSERT INTO projects (project_name, start_date, end_date, budget) VALUES
+    ('Project Alpha', '2023-01-01', '2023-12-31', 100000.00),
+    ('Project Beta', '2023-06-01', '2024-05-31', 150000.00);
+
+-- Queries with different clauses
+SELECT * FROM employees WHERE salary > 70000 ORDER BY last_name;
+SELECT dept_name, location FROM departments WHERE location LIKE '%York%';
+SELECT AVG(salary) FROM employees WHERE dept_id = 1;
+SELECT COUNT(*) FROM employees;
+SELECT MAX(salary), MIN(salary) FROM employees;
+SELECT dept_id, COUNT(*) FROM employees GROUP BY dept_id;
+SELECT e.first_name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+SELECT e.first_name, d.dept_name FROM employees e LEFT JOIN departments d ON e.dept_id = d.dept_id;
+UPDATE employees SET salary = salary * 1.1 WHERE dept_id = 3;
+DELETE FROM employees WHERE emp_id = 4;
+
+-- Using window functions
+SELECT emp_id, salary, AVG(salary) OVER () FROM employees;
+
+-- Using common table expressions (CTEs)
+WITH AvgSalaries AS (
+    SELECT dept_id, AVG(salary) AS avg_salary FROM employees GROUP BY dept_id
+)
+SELECT e.first_name, a.avg_salary FROM employees e JOIN AvgSalaries a ON e.dept_id = a.dept_id WHERE e.salary > a.avg_salary;
+
+-- Using subqueries
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Using aggregate functions with HAVING clause
+SELECT dept_id, AVG(salary) FROM employees GROUP BY dept_id HAVING AVG(salary) > 60000;
+
+-- Using UNION, INTERSECT, EXCEPT
+SELECT first_name FROM employees WHERE dept_id = 1
+UNION
+SELECT first_name FROM employees WHERE dept_id = 2;
+
+-- Create user-defined type and function
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE FUNCTION add_them(integer, integer) RETURNS integer
+    AS 'select $1 + $2;'
+    LANGUAGE SQL
+    IMMUTABLE
+    RETURNS NULL ON NULL INPUT;
+
+-- Create aggregate
+CREATE AGGREGATE myavg (numeric)
+(
+    sfunc = numeric_avg_accum,
+    stype = numeric[],
+    finalfunc = numeric_avg,
+    initcond = '{0,0}'
+);
+
+-- Using generated columns
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(101) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED;
+
+-- Using foreign data wrapper (requires setup, but include basic syntax)
+-- CREATE SERVER my_foreign_server FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host 'remote_host', dbname 'remote_db');
+-- CREATE USER MAPPING FOR CURRENT_USER SERVER my_foreign_server OPTIONS (user 'remote_user', password 'remote_password');
+-- CREATE FOREIGN TABLE remote_table (id integer, data text) SERVER my_foreign_server OPTIONS (schema_name 'public', table_name 'my_table');
+-- SELECT * FROM remote_table;
+
+--Cleanup
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TABLE projects;
+DROP TYPE mood;
+DROP FUNCTION add_them;
+DROP AGGREGATE myavg (numeric);

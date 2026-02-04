@@ -1,0 +1,24 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE posts(id INTEGER PRIMARY KEY, title TEXT, content TEXT, user_id INTEGER, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE comments(id INTEGER PRIMARY KEY, post_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(post_id) REFERENCES posts(id));
+
+INSERT INTO users(name, email) VALUES('Alice', 'alice@example.com');
+INSERT INTO users(name, email) VALUES('Bob', 'bob@example.com');
+
+INSERT INTO posts(title, content, user_id) VALUES('First Post', 'This is the content of the first post', 1);
+INSERT INTO posts(title, content, user_id) VALUES('Second Post', 'This is the content of the second post', 2);
+
+INSERT INTO comments(post_id, content) VALUES(1, 'Great post!');
+INSERT INTO comments(post_id, content) VALUES(1, 'Thanks for sharing!');
+INSERT INTO comments(post_id, content) VALUES(2, 'Very informative!');
+
+SELECT p.title, COUNT(c.id) as num_comments 
+FROM posts p 
+LEFT JOIN comments c ON p.id = c.post_id 
+GROUP BY p.id 
+HAVING num_comments > 0;
+
+SELECT u.name, 
+       (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as num_posts, 
+       (SELECT COUNT(*) FROM comments WHERE post_id IN (SELECT id FROM posts WHERE user_id = u.id)) as num_comments
+FROM users u;

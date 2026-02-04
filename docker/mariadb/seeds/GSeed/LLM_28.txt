@@ -1,0 +1,76 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_ALL_TABLES';
+-- Test MariaDB-specific features like virtual columns and sequences
+CREATE TABLE test_virtual (
+    id INT PRIMARY KEY,
+    val INT,
+    v_col INT AS (val * 2) VIRTUAL
+);
+
+INSERT INTO test_virtual (id, val) VALUES (1, 5), (2, 10);
+
+SELECT * FROM test_virtual;
+
+CREATE SEQUENCE my_seq START WITH 1 INCREMENT BY 2;
+
+CREATE TABLE test_sequence (
+    id INT PRIMARY KEY,
+    seq_val INT DEFAULT NEXT VALUE FOR my_seq
+);
+
+INSERT INTO test_sequence (id) VALUES (1), (2), (3);
+
+SELECT * FROM test_sequence;
+
+-- Test partitioning with different methods
+CREATE TABLE test_partition (
+    id INT,
+    dt DATETIME
+)
+PARTITION BY RANGE ( YEAR(dt) ) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION pfuture VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO test_partition VALUES (1, '2020-01-01'), (2, '2021-05-05'), (3, '2022-12-31');
+
+SELECT * FROM test_partition PARTITION (p2021);
+
+-- Test JSON functions and storage
+CREATE TABLE test_json (
+    id INT PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO test_json VALUES (1, '{"name": "John", "age": 30, "city": "New York"}');
+INSERT INTO test_json VALUES (2, '{"name": "Jane", "age": 25, "city": "London"}');
+
+SELECT id, JSON_EXTRACT(data, '$.name'), JSON_UNQUOTE(JSON_EXTRACT(data, '$.city')) FROM test_json;
+
+-- Test Dynamic Columns
+CREATE TABLE test_dynamic_col (id INT, attrs BLOB);
+INSERT INTO test_dynamic_col VALUES (1, COLUMN_CREATE('name', 'Alice', 'age', 30));
+SELECT id, COLUMN_GET(attrs, 'name' AS CHAR) AS name, COLUMN_GET(attrs, 'age' AS SIGNED) AS age FROM test_dynamic_col;
+
+-- Test window functions
+CREATE TABLE test_window (
+    category VARCHAR(50),
+    value INT
+);
+
+INSERT INTO test_window VALUES
+('A', 10), ('A', 15), ('B', 20), ('B', 25), ('C', 30);
+
+SELECT
+    category,
+    value,
+    ROW_NUMBER() OVER (PARTITION BY category ORDER BY value) AS row_num,
+    SUM(value) OVER (PARTITION BY category) AS category_total
+FROM test_window;
+
+-- Clean up
+DROP TABLE IF EXISTS test_virtual, test_sequence, test_partition, test_json, test_dynamic_col, test_window;
+DROP SEQUENCE IF EXISTS my_seq;
+
+SET sql_mode=@old_sql_mode;

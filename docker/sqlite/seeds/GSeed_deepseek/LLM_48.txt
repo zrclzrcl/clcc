@@ -1,0 +1,29 @@
+PRAGMA encoding=UTF16le;
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    data BLOB,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_name ON test_table(name);
+CREATE UNIQUE INDEX idx_value ON test_table(value);
+INSERT INTO test_table (name, value, data) VALUES 
+('Test1', 100.5, randomblob(1024)),
+('Test2', NULL, NULL),
+('Test3', -99.99, x'deadbeef');
+SELECT id, name, value, hex(data), created_at FROM test_table ORDER BY name DESC LIMIT 2 OFFSET 1;
+WITH cte AS (
+    SELECT name, COUNT(*) as cnt FROM test_table GROUP BY name
+)
+SELECT * FROM cte WHERE cnt > 1;
+SELECT 
+    id,
+    name,
+    value,
+    created_at,
+    ROW_NUMBER() OVER (ORDER BY created_at) as row_num,
+    RANK() OVER (ORDER BY value DESC) as rank_val
+FROM test_table;
+SELECT DISTINCT name FROM test_table;
+EXPLAIN QUERY PLAN SELECT * FROM test_table WHERE name = 'Test1';

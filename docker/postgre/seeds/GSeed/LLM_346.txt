@@ -1,0 +1,126 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE USER test_user WITH PASSWORD 'password';
+CREATE DATABASE test_db WITH OWNER test_user TABLESPACE test_tablespace;
+\c test_db test_user
+
+CREATE SCHEMA test_schema;
+SET search_path TO test_schema;
+
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+    ('John Doe', 60000.00, '2022-01-15', 'Sales'),
+    ('Jane Smith', 75000.00, '2021-05-20', 'Marketing'),
+    ('Peter Jones', 90000.00, '2020-11-01', 'Engineering'),
+    ('Mary Brown', 55000.00, '2023-03-10', 'Sales');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary, hire_date
+FROM employees
+WHERE department = 'Sales';
+
+CREATE FUNCTION get_employee_count(dept VARCHAR(50))
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees WHERE department = dept);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Sales');
+
+CREATE TYPE employment_status AS ENUM ('Full-time', 'Part-time', 'Contract');
+
+ALTER TABLE employees ADD COLUMN status employment_status;
+
+UPDATE employees SET status = 'Full-time';
+
+SELECT * FROM employees;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+SELECT * FROM employee_summary;
+
+PREPARE employee_query AS
+SELECT * FROM employees WHERE salary > $1;
+
+EXECUTE employee_query(70000.00);
+
+DEALLOCATE employee_query;
+
+CREATE SEQUENCE serial_number_seq START WITH 100 INCREMENT BY 1;
+
+SELECT nextval('serial_number_seq');
+
+CREATE RULE employee_insert AS ON INSERT TO employees DO INSTEAD (
+    SELECT 1
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES ('Test User', 50000, '2024-01-01', 'HR');
+
+DROP RULE employee_insert ON employees;
+
+CREATE TRIGGER update_hire_date
+BEFORE UPDATE OF hire_date ON employees
+FOR EACH ROW
+EXECUTE FUNCTION raise_exception('Cannot update hire date');
+
+CREATE OR REPLACE FUNCTION raise_exception(text) RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION '%', TG_ARGV[0];
+END;
+$$ LANGUAGE plpgsql;
+
+UPDATE employees SET hire_date = '2024-02-01' WHERE name = 'John Doe';
+
+DROP TRIGGER update_hire_date ON employees;
+DROP FUNCTION raise_exception(text);
+
+CREATE DOMAIN positive_salary AS DECIMAL(10,2) CHECK (VALUE > 0);
+ALTER TABLE employees ALTER COLUMN salary TYPE positive_salary;
+
+CREATE TEXT SEARCH CONFIGURATION test_config (COPY = english);
+ALTER TEXT SEARCH CONFIGURATION test_config ADD MAPPING FOR word, asciiword, hword_asciipart WITH simple;
+SELECT to_tsvector('test_config', 'The quick brown fox.');
+
+DROP TEXT SEARCH CONFIGURATION test_config;
+
+DROP TABLE employees;
+DROP TABLE departments;
+DROP VIEW sales_employees;
+DROP FUNCTION get_employee_count(VARCHAR(50));
+DROP TYPE employment_status;
+DROP MATERIALIZED VIEW employee_summary;
+DROP SEQUENCE serial_number_seq;
+DROP DOMAIN positive_salary;
+DROP SCHEMA test_schema;
+
+\c postgres postgres
+DROP DATABASE test_db;
+DROP USER test_user;
+DROP TABLESPACE test_tablespace;

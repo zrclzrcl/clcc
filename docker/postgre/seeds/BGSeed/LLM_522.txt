@@ -1,0 +1,83 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+
+CREATE ROLE test_role;
+
+CREATE SCHEMA test_schema;
+
+CREATE TYPE test_enum AS ENUM ('value1', 'value2', 'value3');
+
+CREATE DOMAIN test_domain AS INTEGER CHECK (VALUE > 0);
+
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    enum_value test_enum,
+    domain_value test_domain
+);
+
+CREATE INDEX test_name_idx ON test_table (name);
+
+ALTER TABLE test_table ADD COLUMN ts tsvector;
+UPDATE test_table SET ts = to_tsvector('english', name);
+CREATE INDEX test_ts_idx ON test_table USING GIN (ts);
+
+CREATE FUNCTION test_function(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+    BEGIN
+        RETURN a + b;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE VIEW test_view AS
+SELECT id, name, value FROM test_table WHERE value > 10;
+
+CREATE MATERIALIZED VIEW test_materialized_view AS
+SELECT id, name, value FROM test_table WHERE value < 10 WITH DATA;
+
+CREATE SEQUENCE test_sequence START 101;
+
+CREATE RULE test_rule AS ON INSERT TO test_table DO INSTEAD
+    INSERT INTO test_table (name, value, enum_value, domain_value) VALUES (NEW.name, NEW.value, NEW.enum_value, NEW.domain_value);
+
+CREATE TRIGGER test_trigger
+BEFORE INSERT ON test_table
+FOR EACH ROW
+EXECUTE FUNCTION test_function(NEW.value, 1);
+
+CREATE COLLATION test_collation (locale = 'en_US.UTF-8');
+
+-- Partitioned table example
+CREATE TABLE measurement (
+    logdate date NOT NULL,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2024m01 PARTITION OF measurement
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+INSERT INTO measurement (logdate, peaktemp, unitsales) VALUES ('2024-01-05', 10, 100);
+
+-- Foreign data wrapper example (requires postgres_fdw extension)
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+CREATE SERVER foreign_server
+    FOREIGN DATA WRAPPER postgres_fdw
+    OPTIONS (host 'localhost', port '5432', dbname 'testdb');
+CREATE USER MAPPING FOR CURRENT_USER
+    SERVER foreign_server
+    OPTIONS (user 'testuser', password 'testpassword');
+CREATE FOREIGN TABLE foreign_table (
+    id integer,
+    name varchar(255)
+) SERVER foreign_server
+    OPTIONS (schema_name 'public', table_name 'remote_table');
+
+SELECT * FROM foreign_table;
+
+-- Test advisory lock
+SELECT pg_advisory_lock(12345);
+SELECT pg_advisory_unlock(12345);
+
+-- Test comments
+COMMENT ON TABLE test_table IS 'This is a test table.';
+COMMENT ON COLUMN test_table.name IS 'This is the name column.';

@@ -1,0 +1,20 @@
+-- Create tables with various data types including NULLs and edge values
+CREATE TABLE t1(a INT, b VARCHAR(50), c DATE);
+CREATE TABLE t2(d BOOLEAN, e BIGINT);
+
+-- Insert data with edge cases and NULL values
+INSERT INTO t1 VALUES (0, 'a', '2023-01-01'), (-1, NULL, '2024-02-29'), (NULL, 'test', '1970-01-01');
+INSERT INTO t2 VALUES (TRUE, 9223372036854775807), (FALSE, -9223372036854775808);
+
+-- Use CTEs to test complex queries
+WITH cte1 AS (
+    SELECT a, b FROM t1 WHERE a > 0
+)
+SELECT * FROM cte1;
+
+-- Include window functions for analytical features
+SELECT a, ROW_NUMBER() OVER (ORDER BY a) as rn FROM t1;
+
+-- Mix in UNION operations with varying conditions
+SELECT d FROM t2 WHERE e > 0 UNION SELECT d FROM t2 WHERE e < 0;
+SELECT d FROM t2 UNION ALL SELECT d FROM t2 ORDER BY d DESC;

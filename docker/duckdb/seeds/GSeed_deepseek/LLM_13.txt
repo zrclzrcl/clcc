@@ -1,0 +1,40 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status BOOLEAN CHECK(status IN (0, 1)),
+    data BLOB,
+    UNIQUE(name)
+);
+
+CREATE INDEX idx_t1_name ON t1(name);
+CREATE INDEX idx_t1_status_value ON t1(status, value);
+
+INSERT INTO t1 VALUES(
+    1,
+    'test1',
+    100.5,
+    CURRENT_TIMESTAMP,
+    TRUE,
+    X'deadbeef'
+);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    t1_id INTEGER REFERENCES t1(id),
+    count INTEGER DEFAULT 0
+);
+
+INSERT INTO t2 VALUES(1, 1, 10);
+
+CREATE VIEW v1 AS SELECT name, value FROM t1 WHERE status = TRUE;
+
+WITH cte AS (
+    SELECT 
+        name, 
+        value,
+        RANK() OVER (ORDER BY value DESC) as rank
+    FROM t1
+)
+SELECT * FROM cte;

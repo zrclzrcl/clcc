@@ -1,0 +1,62 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    data JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_name (name),
+    FULLTEXT INDEX idx_data (data)
+) ENGINE=InnoDB PARTITION BY HASH(id);
+
+INSERT INTO t1 (name, data) VALUES ('test1', '{"key":"value"}');
+INSERT INTO t1 (name, data) VALUES ('test2', '{"array":[1,2,3]}');
+
+SET @debug_mode = 1;
+SET @@global.max_connections = 500;
+SET @@session.sql_log_bin = OFF;
+
+ANALYZE TABLE t1;
+
+CREATE PROCEDURE calc_avg(in_num INT)
+BEGIN
+    DECLARE total INT DEFAULT 0;
+    SET total = in_num * 2;
+    SELECT total AS result;
+END;
+
+DELIMITER $$
+
+CREATE FUNCTION get_version() RETURNS VARCHAR(50)
+DETERMINISTIC
+BEGIN
+    RETURN VERSION();
+END$$
+
+DELIMITER ;
+
+CREATE TRIGGER trg_after_insert AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO logs (action, table_name) VALUES ('INSERT', 't1');
+END;
+
+SET GLOBAL optimizer_switch = 'index_merge=on';
+
+CREATE EVENT e_hourly_task
+ON SCHEDULE EVERY 1 HOUR
+DO
+    UPDATE t1 SET updated_at = CURRENT_TIMESTAMP WHERE id < 10;
+
+CREATE TABLE geolocation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    location POINT SRID 4326 NOT NULL,
+    SPATIAL INDEX (location)
+);
+
+INSERT INTO geolocation (location) VALUES (ST_GeomFromText('POINT(37.785 -122.40)', 4326));
+
+CREATE TABLE repl_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data TEXT
+);
+SET GLOBAL binlog_format = 'ROW';
+SET GLOBAL max_replicas = 5;

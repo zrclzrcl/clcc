@@ -1,0 +1,21 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE posts(id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE comments(id INTEGER PRIMARY KEY, post_id INTEGER, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(post_id) REFERENCES posts(id), FOREIGN KEY(user_id) REFERENCES users(id));
+
+INSERT INTO users(username, password) VALUES('testUser', 'password123');
+INSERT INTO users(username, password) VALUES('anotherUser', 'secret456');
+INSERT INTO posts(user_id, content) VALUES(1, 'This is a test post.');
+INSERT INTO posts(user_id, content) VALUES(2, 'Another post for testing.');
+INSERT INTO comments(post_id, user_id, content) VALUES(1, 2, 'This is a comment on the test post.');
+INSERT INTO comments(post_id, user_id, content) VALUES(2, 1, 'This is a comment on another post.');
+
+SELECT COUNT(*) FROM posts WHERE user_id = 1;
+SELECT username, COUNT(*) FROM users LEFT JOIN posts ON users.id = posts.user_id GROUP BY username;
+SELECT content FROM posts WHERE content LIKE '%test%' ORDER BY created_at DESC;
+SELECT DISTINCT username FROM users WHERE username GLOB 't*';
+SELECT user_id, COUNT(*) AS total_comments FROM comments GROUP BY user_id HAVING total_comments > 1;
+DELETE FROM comments WHERE id = (SELECT MAX(id) FROM comments);
+UPDATE posts SET content = 'Updated post content' WHERE id = 1;
+
+CREATE INDEX idx_users_username ON users(username);
+VACUUM;

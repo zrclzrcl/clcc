@@ -1,0 +1,65 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    value DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive'),
+    metadata JSON,
+    location POINT,
+    UNIQUE KEY unique_name (name)
+);
+
+INSERT INTO test_table(name, value, created_at, status, metadata, location) 
+VALUES
+    ('test_record_1', 100.5, '2023-01-01 00:00:00', 'active', '{"key": "value"}', ST_GeomFromText('POINT(1 1)')),
+    ('test_record_2', NULL, '2023-01-02 00:00:00', 'inactive', NULL, ST_GeomFromText('POINT(2 2)'));
+
+UPDATE test_table SET value = 200.75 WHERE name = 'test_record_1';
+
+SELECT 
+    id,
+    name,
+    value,
+    created_at,
+    status,
+    metadata->>'$.key' AS extracted_value,
+    ST_AsText(location) AS location_text,
+    COUNT(*) OVER (PARTITION BY status) as status_count
+FROM test_table
+WHERE 
+    value > 100 AND 
+    created_at >= '2023-01-01' AND 
+    status = 'active'
+GROUP BY status, id
+HAVING COUNT(*) > 1
+ORDER BY created_at DESC;
+
+CREATE TABLE another_table (
+    id INT PRIMARY KEY,
+    related_id INT,
+    data TEXT,
+    FOREIGN KEY (related_id) REFERENCES test_table(id)
+);
+
+INSERT INTO another_table(id, related_id, data) 
+VALUES
+    (1, 1, 'some_string'),
+    (2, 2, REPEAT('a', 255));
+
+SELECT t.name, a.data 
+FROM test_table t 
+JOIN another_table a ON t.id = a.related_id 
+WHERE t.status = 'active';
+
+SELECT JSON_ARRAY_APPEND(t.metadata, '$.new_key', 'new_value') AS updated_metadata 
+FROM test_table t 
+WHERE t.id = 1;
+
+DROP TABLE IF EXISTS yet_another_table;
+CREATE TABLE yet_another_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(255),
+    created_at DATETIME
+);
+INSERT INTO yet_another_table(id, name, created_at)
+SELECT id, name, created_at FROM test_table WHERE status = 'active';

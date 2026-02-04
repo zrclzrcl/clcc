@@ -1,0 +1,71 @@
+\echo Initial seed for PostgreSQL 18 RC1 fuzz testing
+\set ON_ERROR_STOP true
+
+-- DDL Statements
+CREATE TABLE example_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX CONCURRENTLY idx_example_table_name ON example_table (name);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+CREATE DOMAIN posint AS integer CHECK (VALUE > 0);
+
+CREATE TABLE quantity_example (
+    qty posint
+);
+
+CREATE SEQUENCE my_sequence START 101;
+
+-- DML Statements
+INSERT INTO example_table (name, value) VALUES ('Test Entry 1', 10);
+INSERT INTO example_table (name, value) VALUES ('Test Entry 2', 20);
+INSERT INTO example_table (name, value) VALUES ('Test Entry 3', NULL);
+
+UPDATE example_table SET value = 30 WHERE name = 'Test Entry 1';
+
+DELETE FROM example_table WHERE value IS NULL;
+
+-- Select Statements
+SELECT * FROM example_table;
+SELECT name, value FROM example_table WHERE value > 15;
+SELECT COUNT(*) FROM example_table;
+SELECT AVG(value) FROM example_table;
+SELECT current_database();
+SELECT version();
+SELECT pg_backend_pid();
+
+-- Control Statements / Utility statements
+VACUUM ANALYZE example_table;
+EXPLAIN SELECT * FROM example_table WHERE name LIKE 'Test%';
+
+-- Statements involving sequences and types
+INSERT INTO quantity_example (qty) VALUES (nextval('my_sequence'));
+INSERT INTO person (name, current_mood) VALUES ('Alice', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Bob', 'sad');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+-- More DDL Statements
+ALTER TABLE example_table ADD COLUMN description TEXT;
+ALTER TABLE example_table ALTER COLUMN value TYPE BIGINT;
+
+-- More DML Statement
+UPDATE example_table SET description = 'Initial description' WHERE id = 1;
+
+-- Cleanup (optional, but good practice) - removes table after all commands have been executed
+-- DROP TABLE IF EXISTS example_table;
+-- DROP TABLE IF EXISTS person;
+-- DROP TABLE IF EXISTS quantity_example;
+-- DROP TYPE IF EXISTS mood;
+-- DROP DOMAIN IF EXISTS posint;
+-- DROP SEQUENCE IF EXISTS my_sequence;

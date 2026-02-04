@@ -1,0 +1,79 @@
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    value INTEGER,
+    data TEXT
+);
+
+CREATE INDEX idx_fuzz_test_table_name ON fuzz_test_table (name);
+
+CREATE TABLE fuzz_part_table (
+    logdate date not null,
+    region text not null,
+    details text
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE fuzz_part_table_y2024m01 PARTITION OF fuzz_part_table
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+CREATE TABLE fuzz_part_table_y2024m02 PARTITION OF fuzz_part_table
+    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('test1', 10, 'Some data');
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('test2', 20, 'More data');
+INSERT INTO fuzz_test_table (name, value, data) VALUES ('test3', 30, 'Even more data');
+
+SELECT * FROM fuzz_test_table WHERE value > 15;
+SELECT name, value FROM fuzz_test_table ORDER BY value DESC LIMIT 2;
+UPDATE fuzz_test_table SET value = value + 5 WHERE name LIKE 'test%';
+DELETE FROM fuzz_test_table WHERE id = 1;
+
+CREATE VIEW fuzz_test_view AS SELECT name, value FROM fuzz_test_table WHERE value > 20;
+
+SELECT * FROM fuzz_test_view;
+
+DROP VIEW fuzz_test_view;
+
+EXPLAIN SELECT * FROM fuzz_test_table WHERE name = 'test2';
+
+CREATE FUNCTION fuzz_test_function(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT fuzz_test_function(5, 10);
+
+DROP FUNCTION fuzz_test_function(INTEGER, INTEGER);
+
+COPY fuzz_test_table TO '/tmp/fuzz_test_table.csv' WITH CSV HEADER;
+COPY fuzz_test_table FROM '/tmp/fuzz_test_table.csv' WITH CSV HEADER;
+
+LISTEN fuzz_test_channel;
+NOTIFY fuzz_test_channel, 'Test Notification';
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+SELECT pg_stat_statements_reset();
+SELECT * FROM pg_stat_statements;
+
+SELECT pg_backend_pid();
+SELECT pg_cancel_backend(pg_backend_pid());
+
+-- Example of using a more complex feature: JSONB
+ALTER TABLE fuzz_test_table ADD COLUMN json_data JSONB;
+UPDATE fuzz_test_table SET json_data = '{"key1": "value1", "key2": 123}' WHERE name = 'test2';
+SELECT json_data -> 'key1' FROM fuzz_test_table WHERE name = 'test2';
+
+-- Example of using a window function
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value DESC) FROM fuzz_test_table;
+
+-- Example of using a common table expression (CTE)
+WITH RankedTable AS (
+    SELECT name, value, RANK() OVER (ORDER BY value DESC) as rank_value
+    FROM fuzz_test_table
+)
+SELECT name, value FROM RankedTable WHERE rank_value = 1;
+
+DROP TABLE fuzz_test_table;
+DROP TABLE fuzz_part_table;

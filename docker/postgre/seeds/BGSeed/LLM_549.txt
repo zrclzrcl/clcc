@@ -1,0 +1,145 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+    ('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+    ('Bob Johnson', 75000.50, '2021-05-20', 'Marketing'),
+    ('Charlie Brown', 50000.00, '2023-03-01', 'Sales'),
+    ('David Lee', 90000.75, '2020-11-10', 'Engineering'),
+    ('Eve Wilson', 65000.25, '2022-09-01', 'Marketing');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT * FROM employees WHERE salary > 60000 ORDER BY salary DESC;
+
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+SELECT name, EXTRACT(YEAR FROM hire_date) AS hire_year FROM employees;
+
+SELECT MIN(salary), MAX(salary), AVG(salary) FROM employees;
+
+SELECT COUNT(*) FROM employees WHERE department = 'Engineering';
+
+CREATE VIEW sales_employees AS SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees WHERE salary > 55000;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10,2);
+
+UPDATE employees SET bonus = salary * 0.05 WHERE department = 'Marketing';
+
+SELECT name, salary, bonus FROM employees WHERE bonus IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INTEGER)
+RETURNS DECIMAL(10,2) AS $$
+BEGIN
+    RETURN (SELECT salary * 0.1 FROM employees WHERE id = emp_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, calculate_bonus(id) AS calculated_bonus FROM employees;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+INSERT INTO departments (dept_name) VALUES ('HR'), ('Finance'), ('IT');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = 1 WHERE department = 'Sales';
+UPDATE employees SET dept_id = 2 WHERE department = 'Marketing';
+UPDATE employees SET dept_id = 3 WHERE department = 'Engineering';
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE MATERIALIZED VIEW high_earners AS
+SELECT id, name, salary, department
+FROM employees
+WHERE salary > 70000;
+
+REFRESH MATERIALIZED VIEW high_earners;
+
+SELECT * FROM high_earners;
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Using common table expression (CTE)
+WITH DepartmentAverages AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.salary, d.avg_salary
+FROM employees e
+JOIN DepartmentAverages d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Example with generated series
+SELECT generate_series(1, 10);
+
+-- Example using UNNEST with an array
+SELECT UNNEST(ARRAY['apple', 'banana', 'cherry']);
+
+-- Using jsonb functions
+CREATE TABLE json_example (
+    id SERIAL PRIMARY KEY,
+    data jsonb
+);
+
+INSERT INTO json_example (data) VALUES
+('{"name": "John Doe", "age": 30, "city": "New York"}'),
+('{"name": "Jane Smith", "age": 25, "city": "Los Angeles"}');
+
+SELECT data ->> 'name' AS name FROM json_example;
+
+-- Example with ranges
+CREATE TABLE availability (
+    item_id INT,
+    available tsrange
+);
+
+INSERT INTO availability (item_id, available) VALUES
+(1, '[2024-01-01 00:00:00, 2024-01-10 00:00:00]');
+
+SELECT * FROM availability WHERE available @> '2024-01-05 00:00:00'::timestamp;
+
+-- trigger example
+CREATE OR REPLACE FUNCTION prevent_negative_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.salary < 0 THEN
+    RAISE EXCEPTION 'Salary cannot be negative';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_salary_before_insert
+BEFORE INSERT OR UPDATE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION prevent_negative_salary();
+
+-- Trying to insert a row with negative salary (this should trigger the exception)
+-- INSERT INTO employees (name, salary, hire_date, department) VALUES ('Test User', -100, '2024-01-01', 'Test');
+
+-- more complex jsonb query
+SELECT data ->> 'name', data -> 'address' ->> 'street'
+FROM json_example;

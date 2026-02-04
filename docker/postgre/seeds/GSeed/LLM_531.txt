@@ -1,0 +1,101 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employee (name, salary, hire_date) VALUES
+('Alice', 60000.00, '2022-01-15'),
+('Bob', 75000.50, '2021-05-20'),
+('Charlie', 55000.75, '2023-03-10');
+
+SELECT * FROM employee;
+
+SELECT name, salary FROM employee WHERE salary > 60000;
+
+UPDATE employee SET salary = salary * 1.10 WHERE id = 1;
+
+DELETE FROM employee WHERE id = 3;
+
+SELECT COUNT(*) FROM employee;
+
+SELECT AVG(salary) FROM employee;
+
+SELECT MAX(salary) FROM employee;
+
+SELECT MIN(salary) FROM employee;
+
+SELECT SUM(salary) FROM employee;
+
+SELECT name, EXTRACT(YEAR FROM hire_date) AS hire_year FROM employee;
+
+SELECT name, hire_date + INTERVAL '1 year' AS next_year_anniversary FROM employee;
+
+CREATE INDEX idx_employee_name ON employee (name);
+
+EXPLAIN SELECT * FROM employee WHERE name = 'Bob';
+
+DROP INDEX idx_employee_name;
+
+ALTER TABLE employee ADD COLUMN department VARCHAR(50);
+
+UPDATE employee SET department = 'Sales' WHERE id = 1;
+UPDATE employee SET department = 'Marketing' WHERE id = 2;
+
+SELECT department, COUNT(*) FROM employee GROUP BY department;
+
+SELECT department, AVG(salary) FROM employee GROUP BY department HAVING AVG(salary) > 65000;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employee WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+-- PostgreSQL Specific Features
+
+SELECT version();
+
+SELECT current_database();
+
+SELECT inet_client_addr();
+
+SELECT pg_sleep(1);
+
+SELECT gen_random_uuid();
+
+SELECT pg_backend_pid();
+
+SELECT pg_cancel_backend(pg_backend_pid());
+
+SELECT pg_terminate_backend(pg_backend_pid());
+
+CREATE FUNCTION add_one(i integer) RETURNS integer AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_one(5);
+
+DROP FUNCTION add_one(integer);
+
+CREATE TABLE test_jsonb (id SERIAL PRIMARY KEY, data JSONB);
+
+INSERT INTO test_jsonb (data) VALUES ('{"name": "John", "age": 30}');
+INSERT INTO test_jsonb (data) VALUES ('{"name": "Jane", "age": 25, "city": "New York"}');
+
+SELECT data -> 'name' FROM test_jsonb;
+
+SELECT data ->> 'age' FROM test_jsonb;
+
+SELECT * FROM test_jsonb WHERE (data ->> 'age')::int > 27;
+
+UPDATE test_jsonb SET data = jsonb_set(data, '{city}', '"Los Angeles"') WHERE id = 1;
+
+SELECT * from test_jsonb;
+
+DROP TABLE test_jsonb;
+DROP TABLE employee;

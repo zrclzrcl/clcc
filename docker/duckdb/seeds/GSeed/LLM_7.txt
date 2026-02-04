@@ -1,0 +1,45 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    department VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 50000.00, '2022-01-15'),
+('Bob', 'Marketing', 60000.00, '2021-05-20'),
+('Charlie', 'Engineering', 75000.00, '2023-03-10');
+
+-- DuckDB specific: Using APPROXIMATE keyword for aggregations
+SELECT department, APPROXIMATE COUNT(*) FROM employees GROUP BY department;
+
+-- Testing window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Trying a complex query with joins and aggregations
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR
+);
+
+INSERT INTO departments VALUES (1, 'Sales'), (2, 'Marketing'), (3, 'Engineering');
+
+SELECT e.name, d.dept_name, e.salary
+FROM employees e
+JOIN departments d ON e.department = d.dept_name
+WHERE e.salary > (SELECT AVG(salary) FROM employees)
+ORDER BY e.salary DESC;
+
+-- Test DuckDB JSON functions
+ALTER TABLE employees ADD COLUMN metadata JSON;
+UPDATE employees SET metadata = JSON('{"performance_rating": 4.5, "skills": ["SQL", "Python"]}');
+SELECT name, JSON_EXTRACT_STRING(metadata, '$.skills[0]') AS first_skill FROM employees;
+
+-- DuckDB specific: using UNNEST for array explosion
+CREATE TABLE teams (team_id INTEGER, members VARCHAR[]);
+INSERT INTO teams VALUES (1, ['Alice', 'Bob', 'Charlie']);
+SELECT team_id, member FROM teams, UNNEST(members) AS member;
+
+-- Clean up temporary table.
+DROP TABLE departments;

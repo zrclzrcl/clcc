@@ -1,0 +1,104 @@
+-- MariaDB Initial Seed for Fuzzing
+
+-- Test various data types and constraints
+CREATE TABLE test_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10, 2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(20),
+    varchar_col VARCHAR(255),
+    text_col TEXT,
+    blob_col BLOB,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3'),
+    json_col JSON,
+    not_null_int INT NOT NULL DEFAULT 0,
+    unique_varchar VARCHAR(255) UNIQUE
+);
+
+-- Insert some diverse data
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, text_col, blob_col, enum_col, set_col, json_col, unique_varchar) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-27', '2023-10-27 10:30:00', '10:30:00', 2023, 'test', 'test varchar', 'long text', 'blob data', 'value2', 'option1,option3', '{"key": "value"}', 'unique1'),
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -3.14, -2.71828, -12345.67, '2022-01-01', '2022-01-01 00:00:00', '00:00:00', 1970, 'another', 'another varchar', 'another long text', 'another blob data', 'value1', 'option2', '{"key": "another value"}', 'unique2'),
+(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'unique3');
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN input_val INT)
+BEGIN
+    SELECT * FROM test_types WHERE id = input_val;
+END //
+DELIMITER ;
+
+-- Test functions
+DELIMITER //
+CREATE FUNCTION test_function (input_val INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN input_val * 2;
+END //
+DELIMITER ;
+
+-- Test views
+CREATE VIEW test_view AS
+SELECT id, varchar_col FROM test_types WHERE normal_int > 0;
+
+-- Test triggers
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(255),
+    row_id INT,
+    action VARCHAR(20),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER test_types_after_insert
+AFTER INSERT ON test_types
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (table_name, row_id, action) VALUES ('test_types', NEW.id, 'insert');
+END //
+DELIMITER ;
+
+-- Insert to trigger the trigger.
+INSERT INTO test_types (varchar_col) VALUES ('trigger_test');
+
+-- Test MariaDB-specific features (JSON functions)
+SELECT JSON_EXTRACT(json_col, '$.key') FROM test_types;
+
+-- Test dynamic columns
+CREATE TABLE dynamic_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    attrs BLOB
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+INSERT INTO dynamic_test SET attrs=COLUMN_CREATE('name', 'John', 'age', 30, 'city', 'New York');
+SELECT id, COLUMN_GET(attrs, 'name' AS CHAR) AS name, COLUMN_GET(attrs, 'age' AS SIGNED) AS age FROM dynamic_test;
+
+-- Test sequences
+CREATE SEQUENCE my_sequence START WITH 1 INCREMENT BY 1;
+SELECT NEXT VALUE FOR my_sequence;
+SELECT LAST_VALUE(my_sequence);
+
+-- Cleanup (important for repeated fuzzing)
+DROP PROCEDURE IF EXISTS test_procedure;
+DROP FUNCTION IF EXISTS test_function;
+DROP VIEW IF EXISTS test_view;
+DROP TRIGGER IF EXISTS test_types_after_insert;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS test_types;
+DROP TABLE IF EXISTS dynamic_test;
+DROP SEQUENCE IF EXISTS my_sequence;

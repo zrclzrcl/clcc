@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS t0;
+CREATE TABLE t0 (
+    id INT,
+    value FLOAT,
+    name VARCHAR(100),
+    created_at DATE,
+    is_active BOOLEAN
+);
+INSERT INTO t0 VALUES 
+    (-2147483648, -inf, '', '1970-01-01', NULL),  -- Min int, negative infinity, empty string, earliest date, null boolean
+    (2147483647, inf, 'test', '2038-01-19', TRUE);  -- Max int, positive infinity, normal string, future date, true boolean
+
+SELECT id FROM t0 WHERE value = -inf;  -- Test negative infinity
+SELECT name FROM t0 WHERE created_at < '1970-01-01';  -- Test early date
+SELECT COUNT(*) FROM t0 WHERE is_active IS NULL;  -- Test null boolean
+SELECT MIN(id), MAX(value) FROM t0;  -- Aggregate functions
+SELECT DISTINCT name FROM t0;  -- Test distinct values

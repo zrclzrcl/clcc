@@ -1,0 +1,57 @@
+-- Create a temporary table with various data types and constraints
+CREATE TEMPORARY TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    tags TEXT[]
+);
+
+-- Create indexes on different columns using various methods
+CREATE INDEX idx_id ON test_table (id);
+CREATE INDEX idx_name_hash ON test_table USING hash (name);
+CREATE INDEX idx_created_at ON test_table (created_at DESC);
+CREATE INDEX idx_is_active ON test_table (is_active) WHERE is_active = true;
+CREATE INDEX idx_tags_gin ON test_table USING gin(tags);
+
+-- Insert sample data into the table
+INSERT INTO test_table (name, description, tags)
+VALUES
+('Item 1', 'First item', '{tag1, tag2}'),
+('Item 2', 'Second item', '{tag3}'),
+('Item 3', 'Third item', '{tag1, tag4}');
+
+-- Create a temporary log table for tracking changes
+CREATE TEMPORARY TABLE log_table (
+    log_id SERIAL PRIMARY KEY,
+    action TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_name TEXT
+);
+
+-- Define a function to log actions into the log_table
+CREATE OR REPLACE FUNCTION log_action()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO log_table (action, user_name)
+        VALUES ('Inserted', CURRENT_USER);
+    ELSIF TG_OP = 'UPDATE' THEN
+        INSERT INTO log_table (action, user_name)
+        VALUES ('Updated', CURRENT_USER);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers to log insert and update operations on test_table
+CREATE TRIGGER trigger_log_insert
+AFTER INSERT ON test_table
+FOR EACH ROW
+EXECUTE FUNCTION log_action();
+
+CREATE TRIGGER trigger_log_update
+AFTER UPDATE ON test_table
+FOR EACH ROW
+EXECUTE FUNCTION log_action();

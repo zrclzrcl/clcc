@@ -1,0 +1,44 @@
+-- Create tables with constraints
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    value DOUBLE
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    t1_id INT REFERENCES t1(id),
+    score DOUBLE
+);
+
+-- Insert test data into t1, including NULL and edge values
+INSERT INTO t1 VALUES (1, 'Test', 100.5);
+INSERT INTO t1 VALUES (2, NULL, -999999.999999);
+
+-- Populate t2 using data from t1
+INSERT INTO t2 SELECT id + 100, id, value FROM t1;
+
+-- Delete records where value is less than the average score in t2 for corresponding t1_id
+DELETE FROM t1 WHERE value < (SELECT AVG(score) FROM t2 WHERE t1_id = t1.id);
+
+-- Retrieve data with a join and window function to rank scores
+SELECT 
+    t1.name, 
+    t2.score,
+    RANK() OVER (ORDER BY t2.score DESC) AS rank 
+FROM t1 
+JOIN t2 ON t1.id = t2.t1_id;
+
+-- Insert an edge case value into t1
+INSERT INTO t1 VALUES (3, 'Edge Case', 9223372036854775807);
+
+-- Select distinct names with specific conditions and ordering
+SELECT DISTINCT name 
+FROM t1 
+WHERE id IN (
+    SELECT t1_id 
+    FROM t2 
+    WHERE score > 50
+)
+ORDER BY name 
+LIMIT 5 OFFSET 2;

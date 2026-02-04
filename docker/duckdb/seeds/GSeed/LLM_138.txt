@@ -1,0 +1,67 @@
+CREATE TABLE test_numeric (
+    id INTEGER PRIMARY KEY,
+    tiny TINYINT,
+    small SMALLINT,
+    med INTEGER,
+    big BIGINT,
+    huge HUGEINT,
+    floater FLOAT,
+    doubler DOUBLE,
+    realer REAL
+);
+
+INSERT INTO test_numeric (tiny, small, med, big, huge, floater, doubler, realer) VALUES
+    (127, 32767, 2147483647, 9223372036854775807, 170141183460469231731687303715884105727, 3.4028235e38, 1.7976931348623157e308, 3.4028235e38),
+    (-128, -32768, -2147483648, -9223372036854775808, -170141183460469231731687303715884105728, -3.4028235e38, -1.7976931348623157e308, -3.4028235e38),
+    (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+CREATE TABLE test_string (
+    id INTEGER PRIMARY KEY,
+    vchar VARCHAR(20),
+    text_col TEXT
+);
+
+INSERT INTO test_string (vchar, text_col) VALUES
+    ('short string', 'This is a longer string'),
+    ('Unicode 🌍', 'Unicode support is important 🌍'),
+    (NULL, NULL);
+
+CREATE TABLE test_date (
+    id INTEGER PRIMARY KEY,
+    date_col DATE,
+    time_col TIME,
+    datetime_col DATETIME
+);
+
+INSERT INTO test_date (date_col, time_col, datetime_col) VALUES
+    ('2024-01-01', '12:34:56', '2024-01-01 12:34:56'),
+    ('1970-01-01', '00:00:00', '1970-01-01 00:00:00'),
+    (NULL, NULL, NULL);
+
+SELECT * FROM test_numeric WHERE big > 0 AND tiny IS NOT NULL ORDER BY med DESC LIMIT 10;
+
+SELECT vchar, LENGTH(text_col) FROM test_string WHERE vchar LIKE 'U%' OR text_col LIKE '%🌍%';
+
+SELECT date_col, time_col, STRFTIME('%Y', date_col) AS year FROM test_date WHERE date_col BETWEEN '2023-01-01' AND '2024-12-31';
+
+CREATE VIEW numeric_summary AS SELECT AVG(tiny), MAX(big) FROM test_numeric;
+
+SELECT * FROM numeric_summary;
+
+CREATE TABLE test_interval (
+  id INTEGER PRIMARY KEY,
+  interval_col INTERVAL
+);
+
+INSERT INTO test_interval (interval_col) VALUES ('1 year');
+INSERT INTO test_interval (interval_col) VALUES ('2 months');
+INSERT INTO test_interval (interval_col) VALUES ('3 days');
+INSERT INTO test_interval (interval_col) VALUES ('4 hours');
+INSERT INTO test_interval (interval_col) VALUES ('5 minutes');
+INSERT INTO test_interval (interval_col) VALUES ('6 seconds');
+
+SELECT * FROM test_interval;
+
+SELECT SUM(interval_col) FROM test_interval;
+
+SELECT date_col + INTERVAL '1 day' from test_date;

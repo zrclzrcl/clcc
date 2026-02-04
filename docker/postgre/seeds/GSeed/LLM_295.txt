@@ -1,0 +1,90 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE,
+    data JSONB
+);
+
+CREATE INDEX idx_employee_name ON employee (name);
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+ALTER TABLE employee ADD CONSTRAINT fk_department FOREIGN KEY (department) REFERENCES department (name);
+
+INSERT INTO department (name, location) VALUES ('Sales', 'New York');
+INSERT INTO department (name, location) VALUES ('Marketing', 'London');
+INSERT INTO department (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employee (name, salary, department, hire_date, data) VALUES ('Alice Smith', 60000.00, 'Sales', '2022-01-15', '{"age": 30, "city": "New York"}');
+INSERT INTO employee (name, salary, department, hire_date, data) VALUES ('Bob Johnson', 75000.00, 'Marketing', '2021-05-20', '{"age": 35, "city": "London"}');
+INSERT INTO employee (name, salary, department, hire_date, data) VALUES ('Charlie Brown', 90000.00, 'Engineering', '2020-11-01', '{"age": 40, "city": "San Francisco"}');
+INSERT INTO employee (name, salary, department, hire_date, data) VALUES ('David Lee', 80000.00, 'Engineering', '2023-03-10', '{"age": 28, "city": "San Francisco"}');
+
+CREATE VIEW employee_salary AS
+SELECT name, salary FROM employee WHERE salary > 70000;
+
+SELECT * FROM employee_salary;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employee WHERE id = 4;
+
+SELECT AVG(salary) OVER (PARTITION BY department) FROM employee;
+
+CREATE FUNCTION calculate_bonus(emp_id INTEGER, bonus_percentage DECIMAL) RETURNS DECIMAL AS $$
+BEGIN
+    RETURN (SELECT salary FROM employee WHERE id = emp_id) * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(1, 0.10);
+
+CREATE TEXT SEARCH DICTIONARY english_stemmer (
+    TEMPLATE = snowball,
+    Language = english
+);
+
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200),
+    body TEXT,
+    tsv tsvector
+);
+
+CREATE INDEX idx_articles_tsv ON articles USING GIN (tsv);
+
+UPDATE articles SET tsv = to_tsvector('english', title || ' ' || body);
+
+SELECT * FROM articles WHERE tsv @@ to_tsquery('english', 'search & engine');
+
+CREATE RULE employee_insert AS ON INSERT TO employee DO INSTEAD NOTHING;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE products ADD COLUMN category VARCHAR(50);
+
+INSERT INTO products (name, description, price, category) VALUES ('Laptop', 'High-performance laptop', 1200.00, 'Electronics');
+INSERT INTO products (name, description, price, category) VALUES ('Mouse', 'Wireless mouse', 25.00, 'Electronics');
+
+SELECT * FROM products WHERE price > 100;
+
+SELECT category, AVG(price) FROM products GROUP BY category;
+
+DROP FUNCTION IF EXISTS calculate_bonus(INTEGER, DECIMAL);
+DROP VIEW IF EXISTS employee_salary;
+DROP TABLE IF EXISTS articles;
+DROP TABLE IF EXISTS employee;
+DROP TABLE IF EXISTS department;
+DROP TABLE IF EXISTS products;

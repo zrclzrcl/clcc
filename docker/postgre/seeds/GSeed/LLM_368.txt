@@ -1,0 +1,154 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'Powerful laptop for work and play', 1200.00),
+('Mouse', 'Wireless mouse with ergonomic design', 25.50),
+('Keyboard', 'Mechanical keyboard with RGB lighting', 100.00);
+
+CREATE INDEX idx_products_name ON products (name);
+CREATE INDEX idx_products_price ON products (price);
+
+SELECT * FROM products WHERE price > 50 ORDER BY price DESC LIMIT 10;
+SELECT name, price FROM products WHERE name LIKE '%Keyboard%';
+
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+
+DELETE FROM products WHERE id = 3;
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE products ADD COLUMN user_id INTEGER REFERENCES users(id);
+
+INSERT INTO users (username, email, password) VALUES
+('john_doe', 'john.doe@example.com', 'password123'),
+('jane_smith', 'jane.smith@example.com', 'secure_pass');
+
+UPDATE products SET user_id = 1 WHERE id = 1;
+UPDATE products SET user_id = 2 WHERE id = 2;
+
+SELECT products.name, products.price, users.username
+FROM products
+INNER JOIN users ON products.user_id = users.id;
+
+CREATE VIEW product_view AS
+SELECT name, price FROM products WHERE price > 100;
+
+SELECT * FROM product_view;
+
+CREATE FUNCTION discount_price(price DECIMAL, discount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, discount_price(price, 0.1) AS discounted_price FROM products;
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    total_amount DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO orders (user_id, total_amount) VALUES
+(1, 1200.00),
+(2, 25.50);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 1200.00),
+(2, 2, 1, 25.50);
+
+SELECT orders.id, users.username, SUM(order_items.quantity * order_items.price) AS total_amount
+FROM orders
+INNER JOIN users ON orders.user_id = users.id
+INNER JOIN order_items ON orders.id = order_items.order_id
+GROUP BY orders.id, users.username;
+
+-- JSON type example
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"color": "silver", "weight": "2.5 lbs"}' WHERE id = 1;
+SELECT name, details ->> 'color' AS color FROM products;
+
+-- Triggers example
+CREATE OR REPLACE FUNCTION update_products_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.created_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_products_modtime BEFORE UPDATE ON products FOR EACH ROW EXECUTE PROCEDURE update_products_timestamp();
+
+UPDATE products SET name = 'New Laptop Name' WHERE id = 1;
+
+-- Materialized View
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT AVG(price) AS avg_price, COUNT(*) AS product_count FROM products;
+REFRESH MATERIALIZED VIEW product_summary;
+SELECT * FROM product_summary;
+
+-- Window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM
+    products;
+
+-- CTE
+WITH ExpensiveProducts AS (
+    SELECT name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT * FROM ExpensiveProducts;
+
+-- Generate Series example
+SELECT generate_series(1, 10);
+
+-- Create unique index
+CREATE UNIQUE INDEX idx_username ON users (username);
+
+-- Foreign key constraint
+ALTER TABLE orders ADD CONSTRAINT fk_orders_user_id FOREIGN KEY (user_id) REFERENCES users(id);
+
+-- CHECK Constraint
+ALTER TABLE products ADD CONSTRAINT price_positive CHECK (price > 0);
+
+-- Exclusion constraint, requires extension
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE TABLE reservations (
+  room text,
+  during tsrange
+);
+ALTER TABLE reservations ADD CONSTRAINT ex_during EXCLUDE USING gist (room WITH =, during WITH &&);
+
+-- Inheritance
+CREATE TABLE products_physical (
+  weight int
+) INHERITS (products);
+INSERT INTO products_physical (name, description, price, weight) VALUES ('Physical Widget', 'A physical widget', 50.00, 1);
+SELECT * FROM products WHERE id > 3;
+SELECT * FROM products_physical;

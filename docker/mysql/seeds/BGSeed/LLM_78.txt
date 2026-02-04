@@ -1,0 +1,68 @@
+CREATE TABLE `user_actions` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `action_type` ENUM('login', 'logout', 'purchase', 'view') NOT NULL,
+  `action_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `details` JSON NULL
+) ENGINE=InnoDB;
+
+INSERT INTO `user_actions` (`user_id`, `action_type`, `details`) VALUES
+(1, 'login', '{"ip": "192.168.1.1", "browser": "Chrome"}'),
+(1, 'purchase', '{"item_id": 123, "amount": 99.99}'),
+(2, 'view', '{"page": "/products/123"}');
+
+CREATE PROCEDURE `record_user_action`(IN `user_id` INT, IN `action_type` VARCHAR(20), IN `details` JSON)
+BEGIN
+  INSERT INTO `user_actions` (`user_id`, `action_type`, `details`) VALUES (`user_id`, `action_type`, `details`);
+END;
+
+CREATE VIEW `recent_logins` AS
+SELECT `user_id`, `action_time`, `details`
+FROM `user_actions`
+WHERE `action_type` = 'login'
+ORDER BY `action_time` DESC
+LIMIT 10;
+
+ALTER TABLE `user_actions` ADD INDEX `idx_user_id` (`user_id`);
+ALTER TABLE `user_actions` ADD FULLTEXT INDEX `idx_details` (`details`);
+
+SELECT * FROM `user_actions` WHERE JSON_EXTRACT(`details`, '$.item_id') = '123';
+SELECT * FROM `user_actions` WHERE `details` LIKE '%Chrome%';
+
+-- Using SPATIAL data type and functions
+CREATE TABLE `locations` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255),
+  `location` POINT SRID 0
+) ENGINE=InnoDB;
+
+INSERT INTO `locations` (`name`, `location`) VALUES ('Point A', ST_GeomFromText('POINT(10 10)'));
+INSERT INTO `locations` (`name`, `location`) VALUES ('Point B', ST_GeomFromText('POINT(20 20)'));
+
+SELECT `name`, ST_AsText(`location`) FROM `locations`;
+SELECT ST_Distance_Sphere(POINT(10 10), POINT(20 20));
+
+-- Using window function
+SELECT user_id, action_type, action_time,
+       ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY action_time DESC) as row_num
+FROM user_actions;
+
+SHOW CREATE PROCEDURE `record_user_action`;
+SHOW CREATE VIEW `recent_logins`;
+
+EXPLAIN SELECT * FROM `user_actions` WHERE `user_id` = 1;
+
+SET @sql_mode = @@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test temporal data types
+CREATE TABLE `event_schedule` (
+  `event_id` INT PRIMARY KEY,
+  `start_datetime` DATETIME,
+  `end_datetime` DATETIME,
+  `event_date` DATE,
+  `event_time` TIME
+);
+
+INSERT INTO `event_schedule` VALUES (1, '2024-10-27 10:00:00', '2024-10-27 12:00:00', '2024-10-27', '10:00:00');
+SELECT * FROM `event_schedule` WHERE `start_datetime` > NOW();

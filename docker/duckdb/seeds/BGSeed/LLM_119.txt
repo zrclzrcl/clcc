@@ -1,0 +1,36 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(255),
+    price DECIMAL(10, 2),
+    category VARCHAR(50)
+);
+
+INSERT INTO products (product_id, product_name, price, category) VALUES
+(1, 'Laptop', 1200.00, 'Electronics'),
+(2, 'Keyboard', 75.00, 'Electronics'),
+(3, 'T-shirt', 25.00, 'Clothing'),
+(4, 'Jeans', 60.00, 'Clothing');
+
+-- DuckDB specific feature: APPROX_COUNT_DISTINCT
+SELECT category, APPROX_COUNT_DISTINCT(product_name) AS distinct_products
+FROM products
+GROUP BY category;
+
+-- Demonstrate window function and common table expression
+WITH DiscountedProducts AS (
+    SELECT
+        product_name,
+        price,
+        price * 0.9 AS discounted_price
+    FROM products
+    WHERE category = 'Electronics'
+)
+SELECT
+    product_name,
+    price,
+    discounted_price,
+    RANK() OVER (ORDER BY discounted_price ASC) AS price_rank
+FROM DiscountedProducts;
+
+-- Demonstrates List aggregation function (DuckDB specific)
+SELECT category, list(product_name) FROM products GROUP BY category;

@@ -1,0 +1,111 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type ENUM('deposit', 'withdrawal', 'transfer') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO accounts (name, balance) VALUES
+('Alice', 100.00),
+('Bob', 50.00),
+('Charlie', 25.00);
+
+INSERT INTO transactions (account_id, amount, transaction_type) VALUES
+(1, 50.00, 'deposit'),
+(2, 20.00, 'deposit'),
+(3, 10.00, 'deposit');
+
+-- Example of a stored procedure (MySQL specific)
+DELIMITER //
+CREATE PROCEDURE transfer_funds(
+    IN from_account_id INT,
+    IN to_account_id INT,
+    IN transfer_amount DECIMAL(10, 2)
+)
+BEGIN
+    START TRANSACTION;
+    UPDATE accounts SET balance = balance - transfer_amount WHERE id = from_account_id AND balance >= transfer_amount;
+    UPDATE accounts SET balance = balance + transfer_amount WHERE id = to_account_id;
+    INSERT INTO transactions (account_id, amount, transaction_type) VALUES
+    (from_account_id, -transfer_amount, 'transfer'),
+    (to_account_id, transfer_amount, 'transfer');
+
+    IF ROW_COUNT() = 0 THEN
+      ROLLBACK;
+    ELSE
+      COMMIT;
+    END IF;
+END //
+DELIMITER ;
+
+CALL transfer_funds(1, 2, 25.00);
+
+-- Example of a user-defined function (MySQL specific)
+DELIMITER //
+CREATE FUNCTION calculate_interest(amount DECIMAL(10,2), interest_rate DECIMAL(5,2))
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+  DECLARE interest DECIMAL(10,2);
+  SET interest = amount * interest_rate;
+  RETURN interest;
+END //
+DELIMITER ;
+
+SELECT calculate_interest(100.00, 0.05);
+
+-- Test different collation
+CREATE TABLE `t2` (
+  `id` int NOT NULL,
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO t2 (id, name) VALUES (1, 'test');
+
+-- Test JSON functionality (MySQL 5.7+)
+ALTER TABLE accounts ADD COLUMN details JSON;
+UPDATE accounts SET details = JSON_OBJECT('address', '123 Main St', 'phone', '555-1212') WHERE id = 1;
+SELECT id, details->'$.address' AS address FROM accounts WHERE id = 1;
+
+-- Test Window Functions (MySQL 8.0+)
+SELECT
+    account_id,
+    amount,
+    transaction_type,
+    ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY created_at) AS row_num
+FROM
+    transactions;
+
+-- Test Common Table Expressions (CTEs)
+WITH AccountBalances AS (
+    SELECT account_id, SUM(amount) AS total_amount
+    FROM transactions
+    GROUP BY account_id
+)
+SELECT a.name, b.total_amount
+FROM accounts a
+JOIN AccountBalances b ON a.id = b.account_id;
+
+-- Test spatial data types (requires spatial extensions)
+CREATE TABLE locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 0
+);
+
+INSERT INTO locations (name, location) VALUES ('Office', ST_GeomFromText('POINT(30 10)'));
+
+-- Optimizer Hints
+SELECT /*+ NO_RANGE_OPTIMIZATION(accounts PRIMARY) */ * FROM accounts WHERE id > 0;
+
+SHOW WARNINGS;

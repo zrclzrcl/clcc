@@ -1,0 +1,10 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE VIEW ev AS SELECT * FROM integers;
+CREATE MACRO tiny_func(x) AS (x + 1);
+CREATE SEQUENCE my_sequence START 1 INCREMENT 2;
+SELECT next value for my_sequence;
+COPY integers TO 'integers.csv' (HEADER, DELIMITER ',');
+IMPORT DATABASE 'integers.csv';
+PRAGMA enable_http_access;
+INSTALL spatial;
+LOAD spatial;

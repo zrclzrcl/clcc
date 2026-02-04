@@ -1,0 +1,40 @@
+DROP TABLE IF EXISTS test_table;
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    value DOUBLE,
+    data BLOB
+);
+
+-- Insert some initial data
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10.5, 'This is Alice''s data'),
+('Bob', 20.0, 'This is Bob''s data'),
+('Charlie', NULL, NULL);
+
+-- Perform some queries
+SELECT * FROM test_table WHERE value > 15;
+SELECT name, AVG(value) FROM test_table GROUP BY name;
+SELECT COUNT(*) FROM test_table WHERE data IS NOT NULL;
+
+-- Try some DuckDB specific features (APPROXIMATE COUNT DISTINCT)
+SELECT APPROXIMATE COUNT(DISTINCT name) FROM test_table;
+
+-- Using UNNEST with a range
+SELECT i FROM UNNEST(range(1, 5)) AS t(i);
+
+-- Test JSON functionality (fairly common, but important)
+SELECT JSON(['a', 'b', 'c']);
+SELECT JSON_EXTRACT('{"a": 1, "b": 2}', '$.a');
+
+-- Test UUID generation (DuckDB Specific)
+SELECT UUID();
+
+-- Test DuckDB's LIKE operator with ESCAPE
+SELECT * FROM test_table WHERE name LIKE '%l!%%' ESCAPE '!';
+
+-- Insert into and query a table using a STRUCT type
+DROP TABLE IF EXISTS struct_test;
+CREATE TABLE struct_test (s STRUCT(i INTEGER, v VARCHAR));
+INSERT INTO struct_test VALUES ({i: 1, v: 'hello'});
+SELECT s.i, s.v FROM struct_test;

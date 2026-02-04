@@ -1,0 +1,114 @@
+-- Initial seed for PostgreSQL REL_18_RC1
+
+-- Create a simple table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+-- Insert some data
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 50000.00, '2023-03-10', 'IT'),
+('David Lee', 80000.00, '2020-11-01', 'Finance');
+
+-- Update salary
+UPDATE employees SET salary = 65000.00 WHERE name = 'Alice Smith';
+
+-- Delete an employee
+DELETE FROM employees WHERE name = 'Charlie Brown';
+
+-- Select all employees
+SELECT * FROM employees;
+
+-- Select employees with salary greater than 60000
+SELECT name, salary FROM employees WHERE salary > 60000.00;
+
+-- Order employees by hire date
+SELECT name, hire_date FROM employees ORDER BY hire_date;
+
+-- Group employees by department and count
+SELECT department, COUNT(*) FROM employees GROUP BY department;
+
+-- Join with a department table (create it first)
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (department_name) VALUES
+('Sales'), ('Marketing'), ('IT'), ('Finance'), ('HR');
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(department_id);
+
+UPDATE employees SET department_id = (SELECT department_id FROM departments WHERE department_name = employees.department) WHERE department IS NOT NULL;
+
+SELECT employees.name, departments.department_name
+FROM employees
+INNER JOIN departments ON employees.department_id = departments.department_id;
+
+-- Limit and offset
+SELECT name FROM employees ORDER BY id LIMIT 2 OFFSET 1;
+
+-- Create an index
+CREATE INDEX idx_employee_name ON employees (name);
+
+-- Drop the index
+DROP INDEX idx_employee_name;
+
+-- Explain a query
+EXPLAIN SELECT * FROM employees WHERE salary > 70000;
+
+-- Alter table - add a column
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+-- Insert a JSON value
+ALTER TABLE employees ADD COLUMN details JSONB;
+UPDATE employees SET details = '{"age": 30, "city": "New York"}'::jsonb WHERE name = 'Alice Smith';
+SELECT name, details -> 'age' FROM employees;
+
+-- Array operations
+ALTER TABLE employees ADD COLUMN skills TEXT[];
+UPDATE employees SET skills = ARRAY['SQL', 'Python'] WHERE name = 'Bob Johnson';
+SELECT name, skills[1] FROM employees;
+
+-- WITH RECURSIVE (simple example, adjust to be more relevant)
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, 0 AS level
+    FROM employees
+    WHERE department = 'Sales'  -- Root of the hierarchy
+
+    UNION ALL
+
+    SELECT e.id, e.name, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department = eh.name -- Nonsensical, just to illustrate syntax.  Would be manager_id = eh.id in a real example
+)
+SELECT * FROM employee_hierarchy;
+
+-- Create extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- UUID example
+ALTER TABLE employees ADD COLUMN uuid_id UUID DEFAULT gen_random_uuid();
+
+-- ENUM example
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+ALTER TABLE employees ADD COLUMN current_mood mood;
+UPDATE employees SET current_mood = 'happy' WHERE name = 'Alice Smith';
+SELECT name, current_mood FROM employees;
+
+-- Check constraint
+ALTER TABLE employees ADD CONSTRAINT salary_positive CHECK (salary > 0);
+
+-- Try to violate the constraint
+-- INSERT INTO employees (name, salary, hire_date, department) VALUES ('Negative Salary', -100, '2024-01-01', 'HR'); -- This should error
+
+-- Clean up (DROP statements)
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TYPE mood; -- Drop enum type

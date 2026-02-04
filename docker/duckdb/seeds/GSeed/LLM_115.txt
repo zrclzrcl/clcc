@@ -1,0 +1,44 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO strings VALUES ('hello'), ('world'), (NULL), ('');
+
+-- Test window functions
+SELECT
+    i,
+    RANK() OVER (ORDER BY i),
+    DENSE_RANK() OVER (ORDER BY i),
+    ROW_NUMBER() OVER (ORDER BY i)
+FROM
+    integers;
+
+-- Test string functions
+SELECT
+    s,
+    UPPER(s),
+    LOWER(s),
+    LENGTH(s)
+FROM
+    strings;
+
+-- Test date functions (DuckDB specific)
+SELECT current_date(), date('2023-10-27'), date_trunc('day', current_date());
+
+-- Test aggregate functions with filter (DuckDB specific)
+SELECT sum(i) FILTER (WHERE i > 1) FROM integers;
+
+-- Test unnesting lists (DuckDB specific)
+SELECT unnest([1, 2, 3]);
+
+-- Test JSON functions (DuckDB specific)
+SELECT json_object('key', 'value');
+
+-- Test complex query with joins and aggregations
+SELECT s, AVG(i) FROM integers JOIN strings ON LENGTH(s) = i GROUP BY s;

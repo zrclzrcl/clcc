@@ -1,0 +1,24 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, age INTEGER);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product TEXT, amount DECIMAL, order_date DATETIME);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE VIRTUAL TABLE products USING fts5(product_name, product_description);
+INSERT INTO users(name, email, age) VALUES('Alice', 'alice@example.com', 30);
+INSERT INTO users(name, email, age) VALUES('Bob', 'bob@example.com', 25);
+INSERT INTO orders(user_id, product, amount, order_date) VALUES(1, 'Laptop', 999.99, '2023-10-01 10:00:00');
+INSERT INTO orders(user_id, product, amount, order_date) VALUES(2, 'Smartphone', 599.99, '2023-10-02 15:30:00');
+INSERT INTO products(product_name, product_description) VALUES('Laptop', 'High-performance laptop');
+INSERT INTO products(product_name, product_description) VALUES('Smartphone', 'Latest model smartphone');
+SELECT * FROM users WHERE age > 20;
+SELECT user_id, COUNT(*) as order_count FROM orders GROUP BY user_id HAVING order_count > 1;
+SELECT p.product_name, COUNT(o.order_id) as order_count 
+FROM products p 
+LEFT JOIN orders o ON p.product_name = o.product 
+GROUP BY p.product_name 
+ORDER BY order_count DESC;
+SELECT * FROM users u 
+JOIN orders o ON u.id = o.user_id 
+WHERE o.amount > 500 AND u.age < 35;
+PRAGMA foreign_keys = ON;
+SELECT * FROM sqlite_stat1;
+PRAGMA optimize;

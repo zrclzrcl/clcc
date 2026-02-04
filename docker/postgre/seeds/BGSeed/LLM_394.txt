@@ -1,0 +1,130 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('John Doe', 'Sales', 60000.00, '2022-01-15'),
+('Jane Smith', 'Marketing', 75000.00, '2021-05-20'),
+('Peter Jones', 'Engineering', 90000.00, '2020-11-01');
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+SELECT * FROM employees WHERE salary > 70000.00;
+
+UPDATE employees SET salary = 80000.00 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 1;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Sales';
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 80000.00;
+
+SELECT * FROM high_earners;
+
+CREATE FUNCTION get_employee_count(dept_name VARCHAR)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees WHERE department = dept_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Engineering');
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100),
+    operation VARCHAR(50),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc')
+);
+
+CREATE TRIGGER log_employee_changes
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE audit_log_procedure();
+
+CREATE OR REPLACE FUNCTION audit_log_procedure()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'INSERT');
+        RETURN NEW;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, 'DELETE');
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES ('New Employee', 'Sales', 50000, '2024-01-01');
+UPDATE employees SET salary = 65000 WHERE name = 'New Employee';
+DELETE FROM employees WHERE name = 'New Employee';
+
+SELECT * FROM audit_log;
+
+-- Test WITH ORDINALITY
+SELECT * FROM generate_series(1, 5) WITH ORDINALITY AS t(num, ord);
+
+-- Test JSONB functionality
+CREATE TABLE json_test (id SERIAL PRIMARY KEY, data JSONB);
+INSERT INTO json_test (data) VALUES ('{"name": "Example", "value": 123}');
+SELECT data -> 'name' FROM json_test;
+SELECT data ->> 'name' FROM json_test;
+
+-- Test window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) FROM employees;
+
+-- Test Common Table Expressions (CTEs)
+WITH high_salaries AS (SELECT * FROM employees WHERE salary > 70000) SELECT * FROM high_salaries;
+
+-- Test Array types
+CREATE TABLE array_test (id SERIAL PRIMARY KEY, names TEXT[]);
+INSERT INTO array_test (names) VALUES (ARRAY['Alice', 'Bob', 'Charlie']);
+SELECT names[1] FROM array_test;
+
+-- Test UUID type
+CREATE TABLE uuid_test (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT);
+INSERT INTO uuid_test (name) VALUES ('Test UUID');
+SELECT * FROM uuid_test;
+
+-- Test ENUM type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE enum_test (id SERIAL PRIMARY KEY, current_mood mood);
+INSERT INTO enum_test (current_mood) VALUES ('happy');
+SELECT * FROM enum_test;
+
+-- Clean up
+DROP TABLE employees;
+DROP TABLE departments;
+DROP VIEW high_earners;
+DROP FUNCTION get_employee_count(VARCHAR);
+DROP TABLE audit_log;
+DROP FUNCTION audit_log_procedure();
+DROP TABLE json_test;
+DROP TABLE array_test;
+DROP TABLE uuid_test;
+DROP TABLE enum_test;
+DROP TYPE mood;

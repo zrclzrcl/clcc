@@ -1,0 +1,41 @@
+CREATE TABLE accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_number VARCHAR(255) UNIQUE NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    transaction_type ENUM('deposit', 'withdrawal', 'transfer') NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO accounts (account_number, balance) VALUES ('1234567890', 1000.00);
+INSERT INTO accounts (account_number, balance) VALUES ('0987654321', 500.00);
+INSERT INTO accounts (account_number, balance) VALUES ('1122334455', -100.00);
+
+INSERT INTO transactions (account_id, transaction_type, amount) VALUES (1, 'deposit', 200.00);
+INSERT INTO transactions (account_id, transaction_type, amount) VALUES (1, 'withdrawal', 50.00);
+INSERT INTO transactions (account_id, transaction_type, amount) VALUES (2, 'deposit', 100.00);
+INSERT INTO transactions (account_id, transaction_type, amount) VALUES (3, 'withdrawal', 150.00);
+
+SELECT * FROM accounts WHERE balance < 0;
+
+SELECT account_number, balance FROM accounts ORDER BY balance DESC LIMIT 1;
+
+SELECT AVG(balance) FROM accounts;
+
+-- MariaDB specific function example
+SELECT account_number, balance FROM accounts WHERE SOUNDEX(account_number) = SOUNDEX('1234567891');
+
+-- Example of using window function which might be different from other database
+SELECT
+    account_number,
+    balance,
+    RANK() OVER (ORDER BY balance DESC) as balance_rank
+FROM
+    accounts;

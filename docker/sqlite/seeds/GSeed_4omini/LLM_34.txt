@@ -1,0 +1,19 @@
+CREATE TABLE students(id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER CHECK(age >= 0), enrollment_date DATE);
+CREATE TABLE courses(id INTEGER PRIMARY KEY, title TEXT NOT NULL, credits INTEGER CHECK(credits > 0));
+CREATE TABLE enrollments(student_id INTEGER, course_id INTEGER, grade INTEGER CHECK(grade >= 0 AND grade <= 100), 
+FOREIGN KEY(student_id) REFERENCES students(id), 
+FOREIGN KEY(course_id) REFERENCES courses(id));
+CREATE INDEX idx_students_name ON students(name);
+CREATE INDEX idx_courses_title ON courses(title);
+INSERT INTO students(name, age, enrollment_date) VALUES('Alice', 20, '2023-08-21');
+INSERT INTO students(name, age, enrollment_date) VALUES('Bob', 22, '2023-09-01');
+INSERT INTO courses(title, credits) VALUES('Mathematics', 3);
+INSERT INTO courses(title, credits) VALUES('Physics', 4);
+INSERT INTO enrollments(student_id, course_id, grade) VALUES(1, 1, 95);
+INSERT INTO enrollments(student_id, course_id, grade) VALUES(1, 2, 88);
+INSERT INTO enrollments(student_id, course_id, grade) VALUES(2, 1, 76);
+INSERT INTO enrollments(student_id, course_id, grade) VALUES(2, 2, 89);
+DROP TABLE IF EXISTS audit_log;
+CREATE TABLE audit_log(id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT, table_name TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp);
+ANALYZE sqlite_master;

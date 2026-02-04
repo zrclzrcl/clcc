@@ -1,0 +1,62 @@
+-- Create a table with different data types to test various scenarios
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    value REAL,
+    timestamp TIMESTAMP,
+    is_active BOOLEAN,
+    data BLOB,
+    amount DECIMAL(10, 2)
+);
+
+-- Insert sample data including edge cases and special values
+INSERT INTO test_table VALUES 
+    (0, '', 0.0, '1970-01-01 00:00:00', false, x'0000', 0.00),
+    (1, 'test', NULL, CURRENT_TIMESTAMP, true, x'FF', 12345678.90),
+    (-2147483648, 'minimum integer', -999999.999, '2023-12-31 23:59:59', false, x'ABCD', 99999999.99);
+
+-- Create indexes to test query optimization and execution paths
+CREATE INDEX idx_name ON test_table(name);
+CREATE UNIQUE INDEX idx_value_unique ON test_table(value);
+
+-- Create a view that references the table and includes a WHERE clause
+CREATE VIEW v_test AS 
+    SELECT id, name, value, timestamp FROM test_table WHERE is_active = true;
+
+-- Create a trigger to test procedural logic execution
+CREATE TRIGGER trig_after_insert AFTER INSERT ON test_table
+BEGIN
+    UPDATE test_table SET data = x'0102' WHERE id = new.id;
+END;
+
+-- Test window functions and complex queries
+WITH cte AS (
+    SELECT 
+        id, 
+        name, 
+        RANK() OVER (ORDER BY value DESC) as rank_value,
+        DENSE_RANK() OVER (PARTITION BY is_active ORDER BY timestamp ASC) as dense_rank
+    FROM test_table
+)
+SELECT * FROM cte;
+
+-- Create a stored procedure to test procedural code execution
+CREATE PROCEDURE sp_test()
+BEGIN
+    -- Test basic operations within a procedure
+    INSERT INTO test_table VALUES 
+        (4, 'procedure test', 123.45, CURRENT_TIMESTAMP, true, x'0F', 98765432.10);
+    
+    -- Test conditional logic
+    IF (SELECT COUNT(*) FROM test_table WHERE id = 4) > 0 THEN
+        UPDATE test_table SET name = 'updated by procedure' WHERE id = 4;
+    END IF;
+END;
+
+-- Test union operations to combine results from multiple SELECT statements
+(SELECT id, name FROM test_table WHERE is_active = true)
+UNION
+(SELECT id + 100 as id_offset, name || '_copy' as name FROM test_table WHERE is_active = false);
+
+-- Test administrative commands specific to DuckDB
+VACUUM;

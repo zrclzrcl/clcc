@@ -1,0 +1,133 @@
+CREATE TABLE employees (
+    emp_no INT PRIMARY KEY,
+    birth_date DATE NOT NULL,
+    first_name VARCHAR(14) NOT NULL,
+    last_name VARCHAR(16) NOT NULL,
+    gender ENUM ('M', 'F') NOT NULL,
+    hire_date DATE NOT NULL
+);
+
+CREATE TABLE departments (
+    dept_no CHAR(4) PRIMARY KEY,
+    dept_name VARCHAR(40) NOT NULL UNIQUE
+);
+
+CREATE TABLE dept_emp (
+    emp_no INT NOT NULL,
+    dept_no CHAR(4) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, dept_no)
+);
+
+CREATE TABLE dept_manager (
+    dept_no CHAR(4) NOT NULL,
+    emp_no INT NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    FOREIGN KEY (dept_no) REFERENCES departments (dept_no) ON DELETE CASCADE,
+    PRIMARY KEY (dept_no, emp_no)
+);
+
+CREATE TABLE salaries (
+    emp_no INT NOT NULL,
+    salary INT NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, from_date)
+);
+
+CREATE TABLE titles (
+    emp_no INT NOT NULL,
+    title VARCHAR(50) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no) ON DELETE CASCADE,
+    PRIMARY KEY (emp_no, title, from_date)
+);
+
+-- Insert some initial data (small subset)
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES
+(10001, '1953-09-02', 'Georgi', 'Facello', 'M', '1986-06-26'),
+(10002, '1964-06-02', 'Bezalel', 'Simmel', 'F', '1985-11-21'),
+(10003, '1959-12-03', 'Parto', 'Bamford', 'M', '1986-08-28');
+
+INSERT INTO departments (dept_no, dept_name) VALUES
+('d001', 'Marketing'),
+('d002', 'Finance');
+
+INSERT INTO dept_emp (emp_no, dept_no, from_date, to_date) VALUES
+(10001, 'd001', '1986-06-26', '9999-01-01'),
+(10002, 'd002', '1985-11-21', '9999-01-01');
+
+INSERT INTO dept_manager (dept_no, emp_no, from_date, to_date) VALUES
+('d001', 10001, '1986-06-26', '9999-01-01');
+
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES
+(10001, 60117, '1986-06-26', '1987-06-26'),
+(10001, 62102, '1987-06-26', '1988-06-25');
+
+INSERT INTO titles (emp_no, title, from_date, to_date) VALUES
+(10001, 'Senior Engineer', '1986-06-26', '9999-01-01');
+
+-- Test some MariaDB specific features
+SET @json_data = '{"name": "John Doe", "age": 30, "city": "New York"}';
+SELECT JSON_EXTRACT(@json_data, '$.name');
+
+CREATE OR REPLACE VIEW employee_summary AS
+SELECT e.emp_no, e.first_name, e.last_name, d.dept_name
+FROM employees e
+JOIN dept_emp de ON e.emp_no = de.emp_no
+JOIN departments d ON de.dept_no = d.dept_no;
+
+SELECT * FROM employee_summary LIMIT 10;
+
+-- Create a spatial index
+CREATE TABLE spatial_data (id INT, geom GEOMETRY);
+INSERT INTO spatial_data (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)')), (2, ST_GeomFromText('POINT(2 2)'));
+CREATE SPATIAL INDEX sp_index ON spatial_data (geom);
+
+-- Test sequences
+CREATE SEQUENCE seq_example START WITH 1 INCREMENT BY 1 MAXVALUE 100 CYCLE;
+SELECT SEQ_NEXTVAL(seq_example);
+SELECT SEQ_CURRVAL(seq_example);
+
+-- Test stored procedure with error handling
+DELIMITER //
+CREATE PROCEDURE test_procedure (IN emp_id INT)
+BEGIN
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    SELECT 'An error occurred, rollback done.';
+  END;
+
+  START TRANSACTION;
+
+  UPDATE salaries SET salary = salary * 1.1 WHERE emp_no = emp_id;
+
+  IF (SELECT COUNT(*) FROM employees WHERE emp_no = emp_id) = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Employee not found';
+  END IF;
+
+  COMMIT;
+  SELECT 'Procedure completed successfully';
+
+END //
+DELIMITER ;
+
+CALL test_procedure(10001);
+
+-- Example of using window functions.
+SELECT
+    emp_no,
+    salary,
+    AVG(salary) OVER (PARTITION BY emp_no) as avg_salary
+FROM
+    salaries
+WHERE emp_no IN (10001, 10002)
+LIMIT 10;

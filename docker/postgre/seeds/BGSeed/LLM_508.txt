@@ -1,0 +1,90 @@
+-- Initial seed for PostgreSQL REL_18_RC1 fuzz testing
+
+-- Step 1 & 2: Basic table creation and data manipulation
+
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employee (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 50000.00, 'Sales', '2023-03-10');
+
+-- Step 2: More complex queries with joins and aggregations
+
+CREATE TABLE department (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(50)
+);
+
+INSERT INTO department (dept_name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+ALTER TABLE employee ADD COLUMN dept_id INTEGER REFERENCES department(dept_id);
+
+UPDATE employee SET dept_id = (SELECT dept_id FROM department WHERE dept_name = employee.department);
+
+SELECT e.name, e.salary, d.dept_name, d.location
+FROM employee e
+JOIN department d ON e.dept_id = d.dept_id
+WHERE e.salary > 55000.00;
+
+SELECT department, AVG(salary) AS average_salary
+FROM employee
+GROUP BY department
+HAVING AVG(salary) > 58000.00;
+
+-- Step 3: PostgreSQL-specific features (using generate_series, window functions and common table expressions)
+
+SELECT generate_series(1, 10);
+
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employee;
+
+WITH SalesEmployees AS (
+    SELECT name, salary
+    FROM employee
+    WHERE department = 'Sales'
+)
+SELECT name, salary
+FROM SalesEmployees
+WHERE salary > 55000;
+
+-- Step 3: Add some constraints and indexes
+ALTER TABLE employee ADD CONSTRAINT check_salary CHECK (salary > 0);
+CREATE INDEX idx_employee_department ON employee (department);
+
+-- Step 3: Use some operators/functions that could be interesting
+SELECT name, substring(name from 1 for 3) FROM employee;
+SELECT name, salary FROM employee WHERE name LIKE 'A%';
+SELECT name, coalesce(department, 'Unknown') FROM employee;
+
+-- Step 4: Add more complex statement for triggering bugs in parser/optimizer
+
+CREATE TABLE test_table (
+  id SERIAL PRIMARY KEY,
+  data JSONB
+);
+
+INSERT INTO test_table (data) VALUES
+('{"name": "test1", "value": 10}'),
+('{"name": "test2", "value": 20}');
+
+SELECT data ->> 'name' FROM test_table WHERE (data ->> 'value')::int > 15;
+
+-- Clean up
+
+DROP TABLE employee;
+DROP TABLE department;
+DROP TABLE test_table;

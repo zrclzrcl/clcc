@@ -1,0 +1,75 @@
+-- Create tables with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    value REAL CHECK (value >= 0),
+    data BLOB,
+    status BOOLEAN DEFAULT FALSE UNIQUE
+);
+
+-- Indexes to test different indexing scenarios
+CREATE INDEX idx_name ON test_table(name);
+CREATE UNIQUE INDEX idx_status_value ON test_table(status, value);
+
+-- Table without rowid for testing specific SQLite storage
+CREATE TABLE WITHOUT ROWID test_no_rowid (
+    id INTEGER PRIMARY KEY,
+    content TEXT
+);
+
+-- Virtual table using FTS5 for full-text search functionality
+CREATE VIRTUAL TABLE fts_content USING FTS5(
+    doc_id INTEGER PRIMARY KEY,
+    content TEXT
+);
+
+-- Insert sample data into tables
+BEGIN;
+INSERT INTO test_table (name, value, data) VALUES ('Test1', 100.5, X'DEADBEEF');
+INSERT INTO test_no_rowid (id, content) VALUES (1, 'Sample content without rowid');
+COMMIT;
+
+-- Complex queries to test different execution paths
+SELECT t.name, nr.content 
+FROM test_table t 
+JOIN test_no_rowid nr ON t.id = nr.id 
+WHERE t.status = TRUE;
+
+SELECT COUNT(*) AS total_records FROM test_table 
+WHERE value > 50 AND data LIKE X'%%BEEF';
+
+-- SQLite-specific PRAGMA and ANALYZE statements
+PRAGMA synchronous = OFF;
+ANALYZE sqlite_master;
+
+-- Trigger to test procedural SQL
+CREATE TRIGGER after_update_trigger
+AFTER UPDATE ON test_table
+FOR EACH ROW
+WHEN NEW.status != OLD.status
+BEGIN
+    INSERT INTO log_table (change_type, record_id)
+    VALUES ('status_change', NEW.id);
+END;
+
+-- View creation for testing encapsulated queries
+CREATE VIEW v_test_summary AS
+SELECT name, status, value 
+FROM test_table 
+WHERE status = TRUE;
+
+-- Test edge cases with large values and boundary conditions
+INSERT INTO test_table (name, value) VALUES (
+    REPEAT('A', 1024),
+    9.999999999999999e+307 -- Maximum floating-point value
+);
+
+-- Test JSON functionality if available
+SELECT json_extract(data, '$.key') FROM test_table 
+WHERE data LIKE '%{"key": "value"}%';
+
+-- Vacuum to test database maintenance operations
+VACUUM;
+
+-- Cleanup statements for idempotent execution
+DROP TABLE IF EXISTS log_table;

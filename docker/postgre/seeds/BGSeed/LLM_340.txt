@@ -1,0 +1,88 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+CREATE TABLESPACE test_tablespace2 OWNER CURRENT_USER LOCATION '/tmp/test_tablespace2';
+CREATE TABLESPACE test_tablespace3 OWNER CURRENT_USER CONNECTION LIMIT 10 LOCATION '/tmp/test_tablespace3';
+ALTER TABLESPACE test_tablespace RENAME TO test_tablespace_new;
+ALTER TABLESPACE test_tablespace_new OWNER TO CURRENT_USER;
+ALTER TABLESPACE test_tablespace_new SET (seq_page_cost = 1.5);
+ALTER TABLESPACE test_tablespace_new RESET seq_page_cost;
+DROP TABLESPACE test_tablespace_new;
+DROP TABLESPACE test_tablespace2;
+DROP TABLESPACE test_tablespace3;
+CREATE SCHEMA test_schema;
+CREATE SCHEMA AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS test_schema;
+ALTER SCHEMA test_schema RENAME TO test_schema_new;
+ALTER SCHEMA test_schema_new OWNER TO CURRENT_USER;
+ALTER SCHEMA test_schema_new SET (seq_page_cost = 1.5);
+ALTER SCHEMA test_schema_new RESET seq_page_cost;
+DROP SCHEMA test_schema_new;
+CREATE TABLE test_table (id SERIAL PRIMARY KEY, name VARCHAR(50));
+CREATE TABLE test_table2 (id SERIAL PRIMARY KEY, value INTEGER) TABLESPACE pg_default;
+CREATE TABLE test_table3 (id SERIAL PRIMARY KEY, data JSONB);
+CREATE INDEX test_index ON test_table (name);
+CREATE UNIQUE INDEX test_unique_index ON test_table2 (value);
+CREATE INDEX CONCURRENTLY test_concurrent_index ON test_table3 ((data ->> 'field'));
+ALTER TABLE test_table ADD COLUMN description TEXT;
+ALTER TABLE test_table ALTER COLUMN name TYPE VARCHAR(100);
+ALTER TABLE test_table RENAME COLUMN name TO full_name;
+ALTER TABLE test_table ADD CONSTRAINT check_id CHECK (id > 0);
+ALTER TABLE test_table RENAME CONSTRAINT check_id TO positive_id;
+ALTER TABLE test_table DROP CONSTRAINT positive_id;
+ALTER TABLE test_table OWNER TO CURRENT_USER;
+ALTER TABLE test_table SET TABLESPACE pg_default;
+INSERT INTO test_table (full_name, description) VALUES ('Test Name', 'Test Description');
+INSERT INTO test_table2 (value) VALUES (10), (20), (30);
+INSERT INTO test_table3 (data) VALUES ('{"field": "value1"}'), ('{"field": "value2"}');
+UPDATE test_table SET description = 'Updated Description' WHERE id = 1;
+UPDATE test_table2 SET value = value * 2;
+UPDATE test_table3 SET data = jsonb_set(data, '{field}', '"new_value"') WHERE data ->> 'field' = 'value1';
+DELETE FROM test_table WHERE id = 1;
+DELETE FROM test_table2 WHERE value > 50;
+DELETE FROM test_table3 WHERE data ->> 'field' = 'value2';
+SELECT * FROM test_table;
+SELECT id, full_name FROM test_table WHERE description LIKE '%Description%';
+SELECT value, pg_typeof(value) FROM test_table2 WHERE value > 20;
+SELECT data ->> 'field' AS field_value FROM test_table3;
+SELECT COUNT(*) FROM test_table;
+SELECT AVG(value) FROM test_table2;
+SELECT MAX(id), MIN(id) FROM test_table;
+CREATE VIEW test_view AS SELECT id, full_name FROM test_table WHERE id > 0;
+SELECT * FROM test_view;
+DROP VIEW test_view;
+DROP INDEX test_index;
+DROP INDEX test_unique_index;
+DROP INDEX CONCURRENTLY test_concurrent_index;
+DROP TABLE test_table;
+DROP TABLE test_table2;
+DROP TABLE test_table3;
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+  RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+SELECT add_numbers(5, 10);
+DROP FUNCTION add_numbers(INTEGER, INTEGER);
+CREATE TYPE composite_type AS (
+  field1 INTEGER,
+  field2 TEXT
+);
+CREATE TABLE composite_table (
+  id SERIAL PRIMARY KEY,
+  data composite_type
+);
+INSERT INTO composite_table (data) VALUES ((1, 'test'));
+SELECT (data).field1, (data).field2 FROM composite_table;
+DROP TABLE composite_table;
+DROP TYPE composite_type;
+CREATE SEQUENCE test_sequence START 1 INCREMENT 1;
+SELECT nextval('test_sequence');
+DROP SEQUENCE test_sequence;
+CREATE TEXT SEARCH CONFIGURATION test_config (COPY = english);
+ALTER TEXT SEARCH CONFIGURATION test_config
+  ADD MAPPING FOR word, asciiword, hword_asciipart WITH english_stem;
+DROP TEXT SEARCH CONFIGURATION test_config;
+CREATE DOMAIN posint AS INTEGER CHECK (VALUE > 0);
+CREATE TABLE domain_test (a posint);
+INSERT INTO domain_test VALUES (1);
+DROP TABLE domain_test;
+DROP DOMAIN posint;

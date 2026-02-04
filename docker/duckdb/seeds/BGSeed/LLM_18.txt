@@ -1,0 +1,55 @@
+CREATE TABLE items (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    description TEXT
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE
+);
+
+CREATE TABLE order_items (
+    order_id INTEGER,
+    item_id INTEGER,
+    quantity INTEGER,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
+INSERT INTO items (name, price, description) VALUES ('Laptop', 1200.00, 'High-performance laptop');
+INSERT INTO items (name, price, description) VALUES ('Mouse', 25.00, 'Wireless mouse');
+INSERT INTO orders (customer_id, order_date) VALUES (1, '2023-10-26');
+INSERT INTO order_items (order_id, item_id, quantity) VALUES (1, 1, 1);
+INSERT INTO order_items (order_id, item_id, quantity) VALUES (1, 2, 2);
+
+CREATE VIEW item_summary AS
+SELECT name, price FROM items WHERE price > 50;
+
+CREATE SEQUENCE order_sequence START 2;
+
+CREATE MACRO increment_price(item_name, amount) AS (
+  UPDATE items SET price = price + amount WHERE name = item_name
+);
+
+SELECT increment_price('Laptop', 100);
+
+-- Test unnesting and list aggregation
+SELECT list(item_id) FROM order_items GROUP BY order_id;
+SELECT UNNEST([1, 2, 3]);
+
+-- Attempt to create a duplicate index (should fail gracefully)
+CREATE INDEX IF NOT EXISTS items_name ON items(name);
+
+-- Virtual table using pragma, demonstrating duckdb specific functionality
+PRAGMA create_fts_index('items', 'name', 'description');
+
+-- Demonstrate date manipulation functions
+SELECT DATE('now');
+SELECT DATE('2023-10-27', '+1 day');
+
+-- Demonstrate string functions
+SELECT UPPER('hello');
+SELECT SUBSTRING('DuckDB', 1, 4);

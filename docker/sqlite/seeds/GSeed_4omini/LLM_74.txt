@@ -1,0 +1,24 @@
+BEGIN;
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE);
+INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com');
+INSERT INTO users (name, email) VALUES ('Bob', 'bob@example.com');
+INSERT INTO users (name, email) VALUES ('Charlie', 'charlie@example.com');
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders (user_id, amount) VALUES (1, 100.50);
+INSERT INTO orders (user_id, amount) VALUES (2, 200.75);
+INSERT INTO orders (user_id, amount) VALUES (3, 150.00);
+INSERT INTO orders (user_id, amount) VALUES (1, 50.25);
+
+WITH UserTotal AS (
+    SELECT user_id, SUM(amount) AS total_spent FROM orders GROUP BY user_id
+)
+SELECT u.name, ut.total_spent 
+FROM users u 
+JOIN UserTotal ut ON u.id = ut.user_id 
+WHERE ut.total_spent > (SELECT AVG(total_spent) FROM UserTotal);
+
+COMMIT;
+
+SELECT * FROM sqlite_master WHERE type='table' AND name='orders';
+SELECT id, name FROM users WHERE email LIKE '%@example.com';

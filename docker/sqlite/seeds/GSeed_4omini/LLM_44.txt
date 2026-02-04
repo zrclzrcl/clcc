@@ -1,0 +1,12 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, product_name TEXT, order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, name TEXT, price REAL CHECK(price > 0), stock INTEGER DEFAULT 0);
+INSERT INTO users(name, email) VALUES ('Alice', 'alice@example.com'), ('Bob', 'bob@example.com');
+INSERT INTO products(name, price, stock) VALUES ('Widget', 19.99, 100), ('Gadget', 29.99, 50);
+WITH RECURSIVE seq(n) AS (VALUES(1) UNION ALL SELECT n + 1 FROM seq WHERE n < 5) 
+INSERT INTO orders(user_id, product_name) SELECT (SELECT id FROM users ORDER BY RANDOM() LIMIT 1), printf('Product-%d', n) FROM seq;
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_orders_user ON orders(user_id);
+SELECT u.name, COUNT(o.order_id) as order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id;
+UPDATE products SET stock = stock - 1 WHERE product_id = (SELECT product_id FROM products ORDER BY RANDOM() LIMIT 1) AND stock > 0;
+DELETE FROM orders WHERE order_date < DATE('now', '-30 days');

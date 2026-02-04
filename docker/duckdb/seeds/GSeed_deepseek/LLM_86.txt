@@ -1,0 +1,58 @@
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1(
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    value DECIMAL(10,2),
+    created_at TIMESTAMP
+);
+INSERT INTO t1 VALUES
+(1, 'Alice', 100.50, NULL),
+(2, 'Bob', 200.75, '2023-01-01 12:00:00'),
+(3, 'Charlie', 300.00, '2023-01-02 13:45:00');
+
+CREATE TABLE t2(
+    id INT,
+    t1_id INT REFERENCES t1(id),
+    data TEXT,
+    last_updated DATE
+);
+INSERT INTO t2 VALUES
+(1, 1, NULL, '2023-01-01'),
+(2, 2, 'test', '2023-01-02'),
+(3, 3, 'data', '2023-01-03');
+
+SELECT 
+    t1.id,
+    t1.name,
+    t2.data,
+    COALESCE(t2.last_updated, '1970-01-01') AS last_updated
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.t1_id
+ORDER BY t1.id;
+
+WITH ranked_values AS (
+    SELECT 
+        id,
+        name,
+        value,
+        ROW_NUMBER() OVER (ORDER BY value DESC) AS rank
+    FROM t1
+)
+SELECT * FROM ranked_values WHERE rank <= 3;
+
+SELECT 
+    t1.name,
+    COUNT(t2.id) AS count_t2_records,
+    SUM(t1.value) AS total_value
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.t1_id
+GROUP BY t1.name
+HAVING COUNT(t2.id) > 0;
+
+SELECT 
+    x, y 
+FROM (
+    SELECT a AS x, sum(b) AS y FROM t1 GROUP BY a UNION SELECT 98 AS x, 99 AS y
+) AS w
+WHERE y >= 20
+ORDER BY +x;

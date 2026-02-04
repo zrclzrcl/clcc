@@ -1,0 +1,197 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employee (name, department, salary) VALUES
+('Alice Smith', 'Sales', 60000.00),
+('Bob Johnson', 'Marketing', 75000.00),
+('Charlie Brown', 'Sales', 62000.00),
+('David Lee', 'Engineering', 90000.00),
+('Eve Wilson', 'Marketing', 78000.00),
+('Fred Garcia', 'Engineering', 95000.00);
+
+CREATE INDEX idx_employee_department ON employee (department);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employee
+GROUP BY department
+HAVING AVG(salary) > 70000
+ORDER BY average_salary DESC;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employee WHERE id = 3;
+
+CREATE VIEW high_earners AS
+SELECT name, department, salary
+FROM employee
+WHERE salary > 80000;
+
+SELECT * FROM high_earners;
+
+CREATE MATERIALIZED VIEW materialized_high_earners AS
+SELECT name, department, salary
+FROM employee
+WHERE salary > 80000;
+
+REFRESH MATERIALIZED VIEW materialized_high_earners;
+
+SELECT * FROM materialized_high_earners;
+
+CREATE OR REPLACE FUNCTION increment_salary(emp_id INTEGER, increment DECIMAL)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE employee SET salary = salary + increment WHERE id = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000);
+
+SELECT * FROM employee WHERE id = 1;
+
+CREATE TABLE log_table (
+    id SERIAL PRIMARY KEY,
+    log_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TRIGGER employee_salary_change
+AFTER UPDATE OF salary ON employee
+FOR EACH ROW
+EXECUTE FUNCTION log_salary_change();
+
+CREATE OR REPLACE FUNCTION log_salary_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO log_table (log_message)
+    VALUES (format('Salary changed from %s to %s for employee ID %s', OLD.salary, NEW.salary, OLD.id));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+UPDATE employee SET salary = 70000 WHERE id = 1;
+
+SELECT * FROM log_table;
+
+PREPARE salary_query (INTEGER) AS
+SELECT name, salary FROM employee WHERE id = $1;
+
+EXECUTE salary_query(2);
+
+DEALLOCATE salary_query;
+
+CREATE TYPE address AS (
+    street VARCHAR(100),
+    city VARCHAR(50),
+    zip_code VARCHAR(10)
+);
+
+ALTER TABLE employee ADD COLUMN home_address address;
+
+UPDATE employee SET home_address = ROW('123 Main St', 'Anytown', '12345')::address WHERE id = 1;
+
+SELECT (home_address).city FROM employee WHERE id = 1;
+
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK (VALUE ~ '^\d{5}(-\d{4})?$');
+
+ALTER TABLE employee ALTER COLUMN home_address TYPE address;
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ
+);
+
+CREATE FUNCTION update_product_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_products_updated_at
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION update_product_timestamp();
+
+INSERT INTO products (name, description, price) VALUES ('Widget', 'A useful widget', 19.99);
+UPDATE products SET price = 20.99 WHERE name = 'Widget';
+
+SELECT * FROM products;
+
+CREATE SEQUENCE serial_number_seq START 1000;
+
+CREATE TABLE serial_numbers (
+    id SERIAL PRIMARY KEY,
+    serial_number INTEGER DEFAULT nextval('serial_number_seq')
+);
+
+INSERT INTO serial_numbers DEFAULT VALUES;
+INSERT INTO serial_numbers DEFAULT VALUES;
+
+SELECT * FROM serial_numbers;
+
+SELECT nextval('serial_number_seq');
+
+CREATE TABLE parent (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE child (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES parent(id) ON DELETE CASCADE,
+    name VARCHAR(50)
+);
+
+INSERT INTO parent (name) VALUES ('Parent 1');
+INSERT INTO child (parent_id, name) VALUES (1, 'Child 1');
+
+DELETE FROM parent WHERE id = 1;
+
+SELECT * FROM child;
+
+CREATE UNLOGGED TABLE unlogged_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT
+);
+
+INSERT INTO unlogged_table (data) VALUES ('Some data');
+
+SELECT * FROM unlogged_table;
+
+CREATE TABLE measurements (
+  logdate date,
+  peaktemp int,
+  unitsales int
+);
+
+INSERT INTO measurements VALUES
+  ('2024-01-01', 10, 100),
+  ('2024-01-01', 20, 200),
+  ('2024-01-02', 20, 300),
+  ('2024-01-02', 30, 400);
+
+SELECT logdate, avg(peaktemp), sum(unitsales)
+    FROM measurements
+    WHERE logdate BETWEEN '2024-01-01' AND '2024-01-02'
+    GROUP BY logdate;
+
+CREATE COLLATION german ( locale = 'de_DE.UTF-8' );
+
+CREATE TABLE collated_strings (
+  id SERIAL PRIMARY KEY,
+  string_value VARCHAR(50) COLLATE german
+);
+
+INSERT INTO collated_strings (string_value) VALUES ('äöü');
+
+SELECT string_value FROM collated_strings ORDER BY string_value;

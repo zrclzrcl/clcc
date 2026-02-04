@@ -1,0 +1,25 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT UNIQUE, age INTEGER);
+INSERT INTO users(name, email, age) VALUES('Alice', 'alice@example.com', 30), 
+                                             ('Bob', 'bob@example.com', 25), 
+                                             ('Charlie', 'charlie@example.com', 35);
+
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, order_date TEXT, amount REAL);
+INSERT INTO orders(user_id, order_date, amount) VALUES(1, '2023-10-01', 250.00), 
+                                                         (2, '2023-10-02', 150.00), 
+                                                         (1, '2023-10-03', 350.00);
+
+CREATE VIEW user_order_summary AS 
+SELECT u.name, COUNT(o.order_id) AS order_count, SUM(o.amount) AS total_spent 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id;
+
+SELECT * FROM user_order_summary WHERE order_count > 1 ORDER BY total_spent DESC;
+SELECT * FROM users WHERE age BETWEEN 20 AND 40 ORDER BY name ASC;
+SELECT u.name, u.email, o.amount FROM users u INNER JOIN orders o ON u.id = o.user_id WHERE u.name LIKE 'A%';
+UPDATE users SET age = age + 1 WHERE email LIKE '%@example.com';
+DELETE FROM orders WHERE order_date < '2023-10-02';
+SELECT u.name, COALESCE(o.total_spent, 0) as total_spent 
+FROM users u 
+LEFT JOIN (SELECT user_id, SUM(amount) as total_spent FROM orders GROUP BY user_id) o 
+ON u.id = o.user_id;

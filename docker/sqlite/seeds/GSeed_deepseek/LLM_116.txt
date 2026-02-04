@@ -1,0 +1,11 @@
+CREATE TABLE t1(a NULL, b NOT NULL DEFAULT 'default_value', c INTEGER UNIQUE, d TEXT CHECK(d != 'invalid'), e BLOB);
+INSERT INTO t1 VALUES(NULL, 'required', 42, 'valid_string', x'0102');
+ALTER TABLE t1 ADD COLUMN f REAL;
+ALTER TABLE t1 ADD COLUMN g NUMERIC DEFAULT -123.45;
+SELECT a, typeof(a), b, typeof(b), c, typeof(c), d, typeof(d), e, typeof(e) FROM t1;
+VACUUM;
+PRAGMA synchronous = OFF;
+PRAGMA foreign_keys = ON;
+CREATE TABLE t2(h INTEGER PRIMARY KEY AUTOINCREMENT, i REFERENCES t1(c));
+INSERT INTO t2 VALUES(1, 42);
+SELECT * FROM t1 JOIN t2 ON t1.c = t2.i ORDER BY t2.h DESC;

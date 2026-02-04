@@ -1,0 +1,80 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    manager_id INT,
+    location_id INT
+);
+
+CREATE TABLE jobs (
+    job_id INT PRIMARY KEY AUTO_INCREMENT,
+    job_title VARCHAR(50) NOT NULL,
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES jobs(job_id);
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+ALTER TABLE departments ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+ALTER TABLE employees ADD FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES
+('Software Engineer', 60000.00, 120000.00),
+('Data Analyst', 50000.00, 100000.00),
+('Project Manager', 70000.00, 140000.00);
+
+INSERT INTO departments (department_name, manager_id, location_id) VALUES
+('Engineering', NULL, 1),
+('Analytics', NULL, 2),
+('Management', NULL, 3);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-01', 1, 80000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-02-15', 2, 70000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2022-03-01', 3, 90000.00, 3);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+ANALYZE TABLE employees, departments, jobs;
+
+SET GLOBAL optimizer_switch = 'mrr_cost_based=off';
+
+SELECT SLEEP(0.1);
+
+-- Test mariadb specific syntax: Window functions with IGNORE NULLS
+SELECT employee_id, first_name, salary,
+       DENSE_RANK() OVER (ORDER BY salary DESC IGNORE NULLS) as salary_rank
+FROM employees;
+
+-- Test mariadb specific syntax: JSON functions
+SELECT JSON_OBJECT('id', employee_id, 'name', first_name) AS employee_json FROM employees LIMIT 1;
+
+-- Test spatial function: requires spatial data types.  For this, we create a table.
+CREATE TABLE spatial_test (id INT PRIMARY KEY, geom POINT);
+INSERT INTO spatial_test (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+SELECT ST_Distance_Sphere(POINT(0,0), geom) FROM spatial_test;
+
+-- Using a Stored Procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeeCount()
+BEGIN
+    SELECT COUNT(*) FROM employees;
+END //
+DELIMITER ;
+
+CALL GetEmployeeCount();
+
+DROP PROCEDURE GetEmployeeCount;

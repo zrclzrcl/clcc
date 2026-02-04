@@ -1,0 +1,178 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    department VARCHAR(100),
+    salary DECIMAL(10, 2)
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary) VALUES
+('Alice', 'Sales', 60000.00),
+('Bob', 'Marketing', 75000.00),
+('Charlie', 'Engineering', 90000.00),
+('David', 'Sales', 65000.00),
+('Eve', 'Marketing', 80000.00);
+
+SELECT * FROM employees;
+
+SELECT * FROM departments;
+
+SELECT employees.name, employees.salary, departments.location
+FROM employees
+INNER JOIN departments ON employees.department = departments.name;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Engineering';
+
+SELECT * FROM employees;
+
+DELETE FROM employees WHERE id = 4;
+
+SELECT * FROM employees;
+
+CREATE INDEX idx_department ON employees (department);
+
+EXPLAIN SELECT * FROM employees WHERE department = 'Marketing';
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100),
+    operation VARCHAR(100),
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'DELETE');
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'UPDATE');
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation) VALUES ('employees', 'INSERT');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE log_employee_changes();
+
+INSERT INTO employees (name, department, salary) VALUES ('Frank', 'Engineering', 95000.00);
+
+UPDATE employees SET salary = 100000 WHERE name = 'Charlie';
+
+DELETE FROM employees WHERE name = 'Alice';
+
+SELECT * FROM audit_log;
+
+-- Using WITH RECURSIVE clause
+CREATE TABLE category (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    parent_id INTEGER REFERENCES category(id)
+);
+
+INSERT INTO category (name, parent_id) VALUES
+('Electronics', NULL),
+('Computers', 1),
+('Laptops', 2),
+('Desktops', 2),
+('Phones', 1);
+
+WITH RECURSIVE category_tree AS (
+    SELECT id, name, parent_id, 1 AS level
+    FROM category
+    WHERE parent_id IS NULL
+    UNION ALL
+    SELECT c.id, c.name, c.parent_id, ct.level + 1
+    FROM category c
+    JOIN category_tree ct ON c.parent_id = ct.id
+)
+SELECT * FROM category_tree;
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Test jsonb functionality
+ALTER TABLE employees ADD COLUMN details jsonb;
+UPDATE employees SET details = '{"age": 30, "city": "New York"}'::jsonb WHERE name = 'Bob';
+SELECT name, details ->> 'city' as city FROM employees WHERE details ? 'city';
+
+-- Test foreign data wrapper
+CREATE EXTENSION IF NOT EXISTS file_fdw;
+CREATE SERVER IF NOT EXISTS file_server
+FOREIGN DATA WRAPPER file_fdw;
+-- The following statement might fail, depending on the actual files on the system, but it at least attempts to use foreign data wrappers.
+-- CREATE FOREIGN TABLE test_foreign_table (line text) SERVER file_server OPTIONS (filename '/tmp/test.txt', format 'text');
+-- SELECT * FROM test_foreign_table;
+
+-- Testing triggers on views.
+CREATE TABLE base_table (id int PRIMARY KEY, value text);
+CREATE VIEW view_table AS SELECT id, value FROM base_table;
+CREATE OR REPLACE FUNCTION view_insert_trigger() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO base_table (id, value) VALUES (NEW.id, NEW.value);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER view_insert INSTEAD OF INSERT ON view_table FOR EACH ROW EXECUTE PROCEDURE view_insert_trigger();
+
+INSERT INTO view_table (id, value) VALUES (1, 'test');
+SELECT * FROM base_table;
+
+-- Test GENERATED ALWAYS AS.
+CREATE TABLE gen_test (a int, b int GENERATED ALWAYS AS (a * 2) STORED);
+INSERT INTO gen_test(a) VALUES (1);
+SELECT * FROM gen_test;
+
+-- Test partitioning with default partition
+CREATE TABLE part_test (a int, b text) PARTITION BY RANGE (a);
+CREATE TABLE part_test_1 PARTITION OF part_test FOR VALUES FROM (1) TO (10);
+CREATE TABLE part_test_default PARTITION OF part_test DEFAULT;
+INSERT INTO part_test (a,b) VALUES (1, 'one'), (11, 'eleven'), (5, 'five');
+SELECT * FROM part_test;
+
+-- Test range functions
+SELECT * FROM generate_series(1, 5);
+SELECT * FROM generate_series(1, 5, 2);
+SELECT * FROM generate_series(now(), now() + interval '5 days', interval '1 day');
+
+-- Cleanup (DROP statements)
+DROP TABLE IF EXISTS gen_test;
+DROP TABLE IF EXISTS part_test;
+DROP TABLE IF EXISTS base_table CASCADE;
+DROP VIEW IF EXISTS view_table;
+DROP FUNCTION IF EXISTS view_insert_trigger();
+DROP TRIGGER IF EXISTS employee_audit ON employees;
+DROP FUNCTION IF EXISTS log_employee_changes();
+DROP VIEW IF EXISTS high_earners;
+DROP INDEX IF EXISTS idx_department;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS category;
+-- DROP FOREIGN TABLE IF EXISTS test_foreign_table;
+DROP SERVER IF EXISTS file_server CASCADE;
+DROP EXTENSION IF EXISTS file_fdw;

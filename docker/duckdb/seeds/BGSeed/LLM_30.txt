@@ -1,0 +1,73 @@
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Mouse', 25.00, 'Electronics'),
+('Keyboard', 75.00, 'Electronics'),
+('Desk', 300.00, 'Furniture'),
+('Chair', 150.00, 'Furniture');
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    customer_name VARCHAR,
+    city VARCHAR
+);
+
+INSERT INTO customers (customer_name, city) VALUES
+('Alice', 'New York'),
+('Bob', 'Los Angeles'),
+('Charlie', 'Chicago');
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    order_date DATE,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO orders (customer_id, product_id, quantity, order_date) VALUES
+(1, 1, 1, '2023-01-15'),
+(2, 2, 2, '2023-02-20'),
+(3, 3, 1, '2023-03-10'),
+(1, 4, 1, '2023-04-01'),
+(2, 5, 2, '2023-05-05');
+
+-- DuckDB specific feature: Install and load an extension
+INSTALL pragma_query_header;
+LOAD pragma_query_header;
+PRAGMA enable_profiling = 'json';
+SELECT product_name FROM products WHERE price > 100;
+--Virtual Table Extension
+INSTALL httpfs;
+LOAD httpfs;
+SELECT read_csv_auto('https://raw.githubusercontent.com/float-company/duckdb-lab/main/data/products.csv');
+
+-- Attempt an aggregate query with a window function
+SELECT
+    category,
+    AVG(price) OVER (PARTITION BY category) AS avg_category_price,
+    product_name
+FROM products;
+
+--Try json function
+SELECT JSON {'name': 'John', 'age': 30};
+SELECT JSON_EXTRACT('{"a": 1, "b": 2}', '$.a');
+
+-- Test case-insensitive comparison with COLLATE keyword
+SELECT product_name FROM products WHERE product_name COLLATE NOCASE = 'laptop';
+
+-- Test unnest and list type functionality
+CREATE TABLE list_table (
+    id INTEGER,
+    list_data INTEGER[]
+);
+INSERT INTO list_table VALUES (1, list(1, 2, 3)), (2, list(4, 5));
+SELECT id, UNNEST(list_data) FROM list_table;

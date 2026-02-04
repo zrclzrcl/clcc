@@ -1,0 +1,55 @@
+-- Create a table with various constraints including primary key, not null, check, and unique
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK(age >= 0),
+    UNIQUE(name)
+);
+
+-- Insert initial data into t1 with edge cases (minimum valid values)
+INSERT INTO t1 VALUES(1, 'Alice', 0), (2, 'Bob', 18), (3, 'Charlie', 100);
+
+-- Update a row to test constraint boundaries
+UPDATE t1 SET age = -1 WHERE id = 1; -- This should fail due to CHECK constraint
+
+-- Delete operation to test data removal and foreign key handling
+DELETE FROM t1 WHERE id = 2;
+
+-- Create a table with a foreign key reference to t1
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    ref_id INTEGER REFERENCES t1(id) ON DELETE CASCADE,
+    description TEXT
+);
+
+-- Insert data into t2 referencing existing and non-existing rows in t1
+INSERT INTO t2 VALUES(1, 1, 'Reference Alice'), (2, 4, 'Non-existent reference');
+
+-- Create an index on t2 to test query optimization paths
+CREATE INDEX idx_t2_ref_id ON t2(ref_id);
+
+-- Create a trigger that logs updates to t1 into t2
+CREATE TRIGGER after_update_t1 AFTER UPDATE ON t1
+BEGIN
+    INSERT INTO t2 VALUES(NULL, NEW.id, 'Updated entry from t1');
+END;
+
+-- Test the trigger by updating a row in t1
+UPDATE t1 SET name = 'Alicia' WHERE id = 1;
+
+-- Create a view combining data from t1 and t2 to test virtual tables
+CREATE VIEW v_combined AS
+SELECT t1.id, t1.name, t2.description FROM t1 LEFT JOIN t2 ON t1.id = t2.ref_id;
+
+-- Test the view by selecting data
+SELECT * FROM v_combined;
+
+-- Create a table using WITHOUT ROWID for testing specific SQLite features
+CREATE TABLE t3(a INTEGER PRIMARY KEY) WITHOUT ROWID;
+INSERT INTO t3 VALUES(5);
+
+-- Clean up objects if necessary (uncomment as needed)
+-- DROP TRIGGER after_update_t1;
+-- DROP VIEW v_combined;
+-- DROP INDEX idx_t2_ref_id;
+-- DROP TABLE t3, t2, t1;

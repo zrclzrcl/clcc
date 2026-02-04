@@ -1,0 +1,75 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 42), (2, 99), (3, -10);
+
+CREATE TABLE strings (
+    id INTEGER PRIMARY KEY,
+    text VARCHAR
+);
+
+INSERT INTO strings (id, text) VALUES (1, 'hello'), (2, 'world'), (3, 'duckdb');
+
+-- Test window functions
+SELECT
+    id,
+    value,
+    ROW_NUMBER() OVER (ORDER BY value) as row_num
+FROM integers;
+
+-- Test string functions specific to DuckDB (e.g., regexp_extract)
+SELECT regexp_extract('hello_world', 'hello_(.*)', 1);
+
+-- Test array functions
+CREATE TABLE arrays (
+    id INTEGER PRIMARY KEY,
+    arr INTEGER[]
+);
+
+INSERT INTO arrays (id, arr) VALUES (1, ARRAY[1, 2, 3]), (2, ARRAY[4, 5, 6]);
+
+SELECT arr[1] FROM arrays; -- Access element at index 1
+
+-- Test unnesting
+SELECT value FROM arrays, UNNEST(arr) AS value;
+
+-- Test date functions and arithmetic
+CREATE TABLE dates (
+    id INTEGER PRIMARY KEY,
+    date_val DATE
+);
+
+INSERT INTO dates (id, date_val) VALUES (1, '2023-10-26'), (2, '2023-10-27');
+
+SELECT date_val + INTERVAL '1 day' FROM dates;
+
+-- Test JSON functions
+CREATE TABLE jsons (
+    id INTEGER PRIMARY KEY,
+    json_val JSON
+);
+
+INSERT INTO jsons (id, json_val) VALUES (1, '{"name": "John", "age": 30}'), (2, '{"name": "Jane", "age": 25}');
+
+SELECT json_val -> 'name' FROM jsons;
+
+-- Test aggregations and group by
+SELECT SUM(value) FROM integers;
+
+SELECT text, COUNT(*) FROM strings GROUP BY text;
+
+-- Test views
+CREATE VIEW integer_view AS SELECT id, value FROM integers WHERE value > 0;
+
+SELECT * FROM integer_view;
+
+-- Test pivot functionality (DuckDB specific)
+CREATE TABLE sales (day DATE, fruit VARCHAR, sales INTEGER);
+INSERT INTO sales VALUES
+  ('2023-01-01', 'apple', 10),
+  ('2023-01-01', 'banana', 12),
+  ('2023-01-02', 'apple', 13),
+  ('2023-01-02', 'banana', 14);
+SELECT * FROM sales PIVOT (SUM(sales) FOR fruit IN ('apple', 'banana'));

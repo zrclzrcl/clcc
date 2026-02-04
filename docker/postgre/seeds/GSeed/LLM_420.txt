@@ -1,0 +1,132 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employee (name, age, salary, hire_date, department) VALUES
+('Alice Smith', 30, 60000.00, '2020-01-15', 'Marketing'),
+('Bob Johnson', 35, 75000.00, '2019-05-20', 'Sales'),
+('Charlie Brown', 28, 55000.00, '2021-03-10', 'IT'),
+('David Lee', 40, 90000.00, '2018-09-01', 'Management'),
+('Eve Wilson', 32, 65000.00, '2020-07-01', 'HR');
+
+CREATE INDEX idx_employee_name ON employee (name);
+CREATE INDEX idx_employee_department ON employee (department);
+
+SELECT * FROM employee WHERE age > 30 AND salary < 80000.00;
+
+UPDATE employee SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employee WHERE id = 3;
+
+SELECT AVG(salary) FROM employee;
+SELECT MAX(salary) FROM employee;
+SELECT MIN(salary) FROM employee;
+SELECT COUNT(*) FROM employee;
+SELECT SUM(salary) FROM employee WHERE department = 'Marketing';
+
+SELECT department, AVG(salary) FROM employee GROUP BY department;
+
+SELECT department, COUNT(*) FROM employee GROUP BY department HAVING COUNT(*) > 1;
+
+ALTER TABLE employee ADD COLUMN bonus DECIMAL(10, 2);
+UPDATE employee SET bonus = salary * 0.05;
+
+CREATE VIEW employee_view AS SELECT name, department FROM employee;
+
+SELECT * FROM employee_view WHERE department = 'IT';
+
+DROP VIEW employee_view;
+
+CREATE TABLE department (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) NOT NULL
+);
+
+INSERT INTO department (dept_name) VALUES ('Marketing'), ('Sales'), ('IT'), ('HR'), ('Finance');
+
+ALTER TABLE employee ADD COLUMN dept_id INTEGER REFERENCES department(dept_id);
+
+UPDATE employee SET dept_id = 1 WHERE department = 'Marketing';
+UPDATE employee SET dept_id = 2 WHERE department = 'Sales';
+UPDATE employee SET dept_id = 3 WHERE department = 'IT';
+UPDATE employee SET dept_id = 4 WHERE department = 'HR';
+UPDATE employee SET dept_id = 5 WHERE department NOT IN ('Marketing', 'Sales', 'IT', 'HR');
+
+SELECT employee.name, department.dept_name FROM employee INNER JOIN department ON employee.dept_id = department.dept_id;
+SELECT employee.name, department.dept_name FROM employee LEFT JOIN department ON employee.dept_id = department.dept_id;
+SELECT employee.name, department.dept_name FROM employee RIGHT JOIN department ON employee.dept_id = department.dept_id;
+
+CREATE MATERIALIZED VIEW materialized_employee_data AS
+SELECT * FROM employee;
+
+REFRESH MATERIALIZED VIEW materialized_employee_data;
+
+DROP MATERIALIZED VIEW materialized_employee_data;
+
+CREATE OR REPLACE FUNCTION get_employee_count(dept_name VARCHAR)
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (SELECT COUNT(*) FROM employee e INNER JOIN department d ON e.dept_id = d.dept_id WHERE d.dept_name = dept_name);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count('Sales');
+
+DROP FUNCTION get_employee_count(VARCHAR);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00),
+('Monitor', 300.00);
+
+SELECT * FROM products ORDER BY price DESC;
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person VALUES ('Moe', 'happy');
+INSERT INTO person VALUES ('Larry', 'sad');
+INSERT INTO person VALUES ('Curly', 'ok');
+SELECT * FROM person;
+
+SELECT product_name, price FROM products WHERE price BETWEEN 50 AND 500;
+SELECT product_name, price FROM products WHERE product_name LIKE 'M%';
+SELECT product_name, price FROM products WHERE product_name ILIKE 'm%';
+SELECT product_name, price FROM products WHERE product_name SIMILAR TO '%(Laptop|Monitor)%';
+SELECT EXISTS (SELECT 1 FROM products WHERE product_name = 'Laptop');
+
+CREATE TABLE json_data (
+    id SERIAL PRIMARY KEY,
+    data JSONB
+);
+
+INSERT INTO json_data (data) VALUES
+('{"name": "John Doe", "age": 30, "city": "New York"}'),
+('{"name": "Jane Smith", "age": 25, "city": "Los Angeles"}');
+
+SELECT data ->> 'name' FROM json_data;
+SELECT data -> 'age' FROM json_data;
+SELECT data FROM json_data WHERE data @> '{"age": 30}';
+
+CREATE TABLE tsvector_data (
+    id SERIAL PRIMARY KEY,
+    text_data TEXT,
+    tsvector_data TSVECTOR
+);
+INSERT INTO tsvector_data (text_data) VALUES ('The quick brown fox jumps over the lazy dog.');
+UPDATE tsvector_data SET tsvector_data = to_tsvector(text_data);
+SELECT * FROM tsvector_data WHERE tsvector_data @@ to_tsquery('fox & dog');

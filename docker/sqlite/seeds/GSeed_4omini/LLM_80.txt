@@ -1,0 +1,12 @@
+CREATE TABLE Employees (Id INTEGER PRIMARY KEY, Name TEXT NOT NULL, Salary REAL, HireDate TEXT);
+INSERT INTO Employees (Name, Salary, HireDate) VALUES ('Alice', 75000, '2020-01-15');
+INSERT INTO Employees (Name, Salary, HireDate) VALUES ('Bob', 60000, '2019-03-22');
+INSERT INTO Employees (Name, Salary, HireDate) VALUES ('Charlie', NULL, '2021-07-30');
+INSERT INTO Employees (Name, Salary, HireDate) VALUES ('Diana', 90000, '2018-05-01');
+INSERT INTO Employees (Name, Salary, HireDate) VALUES ('Eve', 50000, '2022-11-11');
+
+SELECT COUNT(*) FROM Employees WHERE Salary IS NULL;
+SELECT AVG(Salary) FROM Employees;
+SELECT Name FROM Employees WHERE HireDate < '2021-01-01' ORDER BY Salary DESC;
+SELECT Name, Salary FROM Employees ORDER BY Salary DESC LIMIT 3;
+SELECT strftime('%Y', HireDate) AS YearHired, COUNT(*) FROM Employees GROUP BY YearHired;

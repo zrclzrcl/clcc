@@ -1,0 +1,81 @@
+CREATE TABLE IF NOT EXISTS flights (
+    flight_id INTEGER PRIMARY KEY,
+    airline VARCHAR,
+    origin VARCHAR,
+    destination VARCHAR,
+    departure_time TIMESTAMP,
+    arrival_time TIMESTAMP,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE IF NOT EXISTS passengers (
+    passenger_id INTEGER PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    email VARCHAR,
+    phone_number VARCHAR
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+    booking_id INTEGER PRIMARY KEY,
+    flight_id INTEGER,
+    passenger_id INTEGER,
+    booking_date DATE,
+    FOREIGN KEY (flight_id) REFERENCES flights(flight_id),
+    FOREIGN KEY (passenger_id) REFERENCES passengers(passenger_id)
+);
+
+-- Insert some sample data
+INSERT INTO flights (airline, origin, destination, departure_time, arrival_time, price) VALUES
+('United', 'JFK', 'LAX', '2024-01-20 08:00:00', '2024-01-20 11:00:00', 350.00),
+('Delta', 'SFO', 'ORD', '2024-01-21 10:00:00', '2024-01-21 16:00:00', 420.50),
+('American', 'DFW', 'MIA', '2024-01-22 12:00:00', '2024-01-22 15:00:00', 280.75);
+
+INSERT INTO passengers (first_name, last_name, email, phone_number) VALUES
+('Alice', 'Smith', 'alice.smith@example.com', '123-456-7890'),
+('Bob', 'Johnson', 'bob.johnson@example.com', '987-654-3210');
+
+INSERT INTO bookings (flight_id, passenger_id, booking_date) VALUES
+(1, 1, '2024-01-15'),
+(2, 2, '2024-01-16');
+
+-- DuckDB specific feature: APPROXIMATE PERCENTILE
+SELECT airline, APPROXIMATE PERCENTILE(0.5) WITHIN GROUP (ORDER BY price) AS median_price
+FROM flights
+GROUP BY airline;
+
+-- DuckDB specific feature: UNNEST and SEQUENCE
+SELECT i FROM UNNEST(SEQUENCE(1, 5)) AS t(i);
+
+-- Example query using window function
+SELECT flight_id, airline, price,
+       RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM flights;
+
+-- Example query using JOIN
+SELECT f.flight_id, f.airline, p.first_name, p.last_name
+FROM flights f
+JOIN bookings b ON f.flight_id = b.flight_id
+JOIN passengers p ON b.passenger_id = p.passenger_id;
+
+-- Example query with aggregate function and filter
+SELECT origin, AVG(price) AS average_price
+FROM flights
+WHERE departure_time BETWEEN '2024-01-20' AND '2024-01-22'
+GROUP BY origin
+HAVING AVG(price) > 300;
+
+-- Example query using CASE statement
+SELECT flight_id,
+       CASE
+           WHEN price < 300 THEN 'Cheap'
+           WHEN price BETWEEN 300 AND 400 THEN 'Moderate'
+           ELSE 'Expensive'
+       END AS price_category
+FROM flights;
+
+-- Test for string functions
+SELECT lower(airline), upper(origin), substring(email, 1, 5) from flights, passengers;
+
+-- Test date functions
+SELECT DATE_DIFF('day', departure_time, arrival_time) from flights;

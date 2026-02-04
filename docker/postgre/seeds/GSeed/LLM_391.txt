@@ -1,0 +1,68 @@
+CREATE TABLE tbl_a (id serial PRIMARY KEY, a integer, b varchar(20), c timestamp);
+CREATE TABLE tbl_b (id serial PRIMARY KEY, a integer, b varchar(20), c timestamp);
+CREATE TABLE tbl_c (id serial PRIMARY KEY, a integer, b varchar(20), c timestamp);
+INSERT INTO tbl_a (a,b,c) VALUES (1, 'abc', now());
+INSERT INTO tbl_a (a,b,c) VALUES (2, 'def', now() + interval '1 day');
+INSERT INTO tbl_a (a,b,c) VALUES (3, 'ghi', now() + interval '2 days');
+INSERT INTO tbl_b (a,b,c) VALUES (4, 'jkl', now() + interval '3 days');
+INSERT INTO tbl_b (a,b,c) VALUES (5, 'mno', now() + interval '4 days');
+INSERT INTO tbl_b (a,b,c) VALUES (6, 'pqr', now() + interval '5 days');
+INSERT INTO tbl_c (a,b,c) VALUES (7, 'stu', now() + interval '6 days');
+INSERT INTO tbl_c (a,b,c) VALUES (8, 'vwx', now() + interval '7 days');
+INSERT INTO tbl_c (a,b,c) VALUES (9, 'yza', now() + interval '8 days');
+SELECT * FROM tbl_a WHERE a > 1 AND b LIKE 'd%';
+SELECT * FROM tbl_b WHERE c BETWEEN now() + interval '3 days' AND now() + interval '5 days';
+SELECT a, count(*) FROM tbl_c GROUP BY a HAVING count(*) > 0;
+UPDATE tbl_a SET b = 'new_value' WHERE a = 1;
+DELETE FROM tbl_b WHERE id = 5;
+CREATE INDEX idx_a_b ON tbl_a (b);
+CREATE UNIQUE INDEX idx_c_a ON tbl_c (a);
+ALTER TABLE tbl_a ADD COLUMN d boolean DEFAULT TRUE;
+ALTER TABLE tbl_b ALTER COLUMN c TYPE date;
+SELECT pg_backend_pid();
+SELECT version();
+SELECT current_database();
+SELECT inet_client_addr();
+SELECT inet_client_port();
+SELECT inet_server_addr();
+SELECT inet_server_port();
+CREATE VIEW view_a AS SELECT a, b FROM tbl_a WHERE d = TRUE;
+SELECT * FROM view_a;
+DROP VIEW view_a;
+CREATE MATERIALIZED VIEW matview_a AS SELECT a, b FROM tbl_a WHERE d = TRUE;
+SELECT * FROM matview_a;
+REFRESH MATERIALIZED VIEW matview_a;
+DROP MATERIALIZED VIEW matview_a;
+CREATE FUNCTION add_them(integer, integer) RETURNS integer AS 'SELECT $1 + $2;' LANGUAGE SQL IMMUTABLE RETURNS NULL ON NULL INPUT;
+SELECT add_them(5, 6);
+DROP FUNCTION add_them(integer, integer);
+CREATE TABLE tbl_d (id serial PRIMARY KEY, data jsonb);
+INSERT INTO tbl_d (data) VALUES ('{"key1": "value1", "key2": 123}');
+SELECT data -> 'key1' FROM tbl_d;
+CREATE OR REPLACE FUNCTION jsonb_add(a jsonb, b jsonb) RETURNS jsonb AS $$ SELECT a || b $$ LANGUAGE SQL;
+SELECT jsonb_add('{"a": 1}'::jsonb, '{"b": 2}'::jsonb);
+DROP FUNCTION jsonb_add(jsonb, jsonb);
+CREATE TABLE tbl_e (id serial PRIMARY KEY, geom geometry);
+INSERT INTO tbl_e (geom) VALUES (ST_GeomFromText('POINT(1 2)'));
+SELECT ST_AsText(geom) FROM tbl_e;
+CREATE TEXT SEARCH DICTIONARY my_dict (TEMPLATE = snowball, LANGUAGE = english);
+DROP TEXT SEARCH DICTIONARY my_dict;
+CREATE TEXT SEARCH CONFIGURATION my_config (COPY = english);
+DROP TEXT SEARCH CONFIGURATION my_config;
+CREATE TABLE queue_test (
+    id bigserial NOT NULL PRIMARY KEY,
+    data text,
+    priority integer NOT NULL DEFAULT 0,
+    create_date timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE RULE queue_test_insert AS ON INSERT TO queue_test
+DO INSTEAD INSERT INTO queue_test (data, priority) VALUES (NEW.data, NEW.priority);
+DROP RULE queue_test_insert ON queue_test;
+CREATE SEQUENCE seq_test INCREMENT 1 MINVALUE 1 MAXVALUE 9223372036854775807 START 1 CACHE 1;
+SELECT nextval('seq_test');
+DROP SEQUENCE seq_test;
+DROP TABLE tbl_a;
+DROP TABLE tbl_b;
+DROP TABLE tbl_c;
+DROP TABLE tbl_d;
+DROP TABLE tbl_e;

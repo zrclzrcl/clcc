@@ -1,0 +1,91 @@
+CREATE TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age INTEGER,
+    email TEXT UNIQUE
+);
+
+INSERT INTO test_table (name, age, email) VALUES
+('Alice', 30, 'alice@example.com'),
+('Bob', 25, 'bob@example.com'),
+('Charlie', 40, 'charlie@example.com');
+
+SELECT * FROM test_table WHERE age > 25;
+
+UPDATE test_table SET age = 35 WHERE name = 'Alice';
+
+DELETE FROM test_table WHERE id = 2;
+
+CREATE INDEX idx_name ON test_table (name);
+
+CREATE VIEW young_people AS
+SELECT id, name, age FROM test_table WHERE age < 35;
+
+SELECT * FROM young_people;
+
+ALTER TABLE test_table ADD COLUMN address TEXT;
+
+UPDATE test_table SET address = '123 Main St' WHERE name = 'Alice';
+
+SELECT name, address FROM test_table WHERE name = 'Alice';
+
+CREATE FUNCTION get_email(name VARCHAR(50))
+RETURNS TEXT AS $$
+    SELECT email FROM test_table WHERE name = name;
+$$ LANGUAGE SQL IMMUTABLE;
+
+SELECT get_email('Alice');
+
+CREATE TABLE log_table (
+    log_id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    message TEXT
+);
+
+CREATE TRIGGER log_trigger
+AFTER INSERT OR UPDATE OR DELETE ON test_table
+FOR EACH ROW
+EXECUTE FUNCTION log_table_insert();
+
+CREATE OR REPLACE FUNCTION log_table_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO log_table (message) VALUES ('Deleted row with id = ' || OLD.id);
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO log_table (message) VALUES ('Updated row with id = ' || OLD.id);
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO log_table (message) VALUES ('Inserted new row with id = ' || NEW.id);
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+INSERT INTO test_table (name, age, email) VALUES ('David', 28, 'david@example.com');
+UPDATE test_table SET age = 41 where name = 'Charlie';
+DELETE FROM test_table WHERE name = 'Bob';
+SELECT * FROM log_table;
+
+-- Using window functions
+SELECT name, age, ROW_NUMBER() OVER (ORDER BY age DESC) AS row_num FROM test_table;
+
+-- Using common table expressions (CTEs)
+WITH AverageAge AS (
+    SELECT AVG(age) AS avg_age FROM test_table
+)
+SELECT name, age FROM test_table, AverageAge WHERE age > AverageAge.avg_age;
+
+-- Using generate_series function
+SELECT generate_series(1, 5);
+
+-- Using json functions
+SELECT json_build_object('name', name, 'age', age) FROM test_table;
+
+-- Create user and grant privileges
+CREATE ROLE test_user WITH LOGIN PASSWORD 'password';
+GRANT SELECT, INSERT, UPDATE, DELETE ON test_table TO test_user;
+GRANT USAGE, SELECT ON SEQUENCE test_table_id_seq TO test_user;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
+REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+DROP ROLE test_user;

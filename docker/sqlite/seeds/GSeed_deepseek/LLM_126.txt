@@ -1,0 +1,101 @@
+-- This initial seed includes a variety of SQL statements that cover different aspects of SQLite functionality
+-- including table creation, indexes, triggers, transactions, and some edge cases.
+
+CREATE TABLE "test_table" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "value" REAL DEFAULT 0.0,
+    "status" BOOLEAN CHECK (status IN (0, 1)),
+    "last_updated" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a table with special SQLite-specific features
+CREATE TABLE "test_without_rowid" (
+    "id" INTEGER PRIMARY KEY,
+    "data" TEXT
+) WITHOUT ROWID;
+
+-- Create an index on the name column for faster lookups
+CREATE UNIQUE INDEX "idx_unique_name" ON "test_table" ("name");
+
+-- Insert some initial data with edge cases
+INSERT INTO "test_table" VALUES 
+    (1, 'Test Name 1', NULL, 1, '2023-01-01'),
+    (2, 'Test Name 2', 123.456789, 0, CURRENT_TIMESTAMP),
+    (NULL, 'Test Name 3', -999999999, 1, NULL);
+
+-- Create a trigger for testing
+CREATE TRIGGER "after_update_trigger"
+AFTER UPDATE ON "test_table"
+FOR EACH ROW
+BEGIN
+    INSERT INTO "test_without_rowid" VALUES (OLD.id, OLD.name);
+END;
+
+-- Test some SQLite-specific functions and edge cases
+SELECT 
+    id,
+    name,
+    value,
+    status,
+    last_updated,
+    LENGTH(name) AS name_length,
+    ABS(value) AS absolute_value,
+    CASE WHEN status THEN 'Active' ELSE 'Inactive' END AS status_text
+FROM "test_table"
+WHERE id > 0
+ORDER BY last_updated DESC;
+
+-- Test a complex query with CTE (Common Table Expression)
+WITH cte_summarized_data AS (
+    SELECT 
+        name,
+        SUM(value) AS total_value,
+        COUNT(*) AS record_count
+    FROM "test_table"
+    GROUP BY name
+)
+SELECT * FROM cte_summarized_data;
+
+-- Test a virtual table with FTS5 (Full Text Search)
+CREATE VIRTUAL TABLE "fts_table" USING fts5(
+    content='test_table',
+    tokenize = 'porter'
+);
+
+-- Insert data into the FTS table
+INSERT INTO "fts_table" VALUES 
+    ('Test Name 1', 'This is a test document'),
+    ('Test Name 2', 'Another test document with different content');
+
+-- Query the FTS table with ranking
+SELECT 
+    rowid,
+    name,
+    content,
+    rank AS search_rank
+FROM "fts_table"
+WHERE fts_table MATCH 'test'
+ORDER BY rank;
+
+-- Test transactions and savepoints
+BEGIN TRANSACTION;
+    INSERT INTO "test_table" VALUES (4, 'Transaction Test', 100.5, 1, CURRENT_TIMESTAMP);
+    SAVEPOINT sp1;
+        UPDATE "test_table" SET value = -100.5 WHERE id = 4;
+        ROLLBACK TO sp1;
+COMMIT;
+
+-- Create a temporary table for testing
+CREATE TEMPORARY TABLE "temp_test" (
+    "id" INTEGER PRIMARY KEY,
+    "data" TEXT
+);
+
+INSERT INTO "temp_test" VALUES (1, 'Temporary Data');
+SELECT * FROM "temp_test";
+DROP TABLE "temp_test";
+
+-- Test some SQLite-specific pragmas and settings
+PRAGMA journal_mode = wal;
+PRAGMA synchronous = normal;

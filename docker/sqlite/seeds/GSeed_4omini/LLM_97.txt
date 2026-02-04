@@ -1,0 +1,28 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, order_date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users (name, age) VALUES ('Alice', 30);
+INSERT INTO users (name, age) VALUES ('Bob', 25);
+INSERT INTO orders (user_id, amount, order_date) VALUES (1, 100.50, '2023-01-01');
+INSERT INTO orders (user_id, amount, order_date) VALUES (1, 150.75, '2023-02-01');
+INSERT INTO orders (user_id, amount, order_date) VALUES (2, 200.00, '2023-03-01');
+
+SELECT * FROM users WHERE age > 20;
+SELECT AVG(amount) FROM orders WHERE user_id = 1 GROUP BY user_id;
+SELECT COUNT(*) FROM orders WHERE amount > (SELECT AVG(amount) FROM orders);
+
+SELECT name FROM users WHERE LENGTH(name) > 3;
+SELECT SUM(amount) AS total_sales FROM orders GROUP BY user_id HAVING total_sales > 100;
+
+SELECT u.name, o.amount 
+FROM users u 
+JOIN orders o ON u.id = o.user_id 
+WHERE o.order_date BETWEEN '2023-01-01' AND '2023-12-31'
+ORDER BY o.amount DESC;
+
+CREATE VIEW user_orders AS 
+SELECT u.name, COUNT(o.id) AS order_count 
+FROM users u 
+LEFT JOIN orders o ON u.id = o.user_id 
+GROUP BY u.id;
+
+SELECT * FROM user_orders WHERE order_count = (SELECT MAX(order_count) FROM user_orders);

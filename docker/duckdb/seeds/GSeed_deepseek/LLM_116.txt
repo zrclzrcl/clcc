@@ -1,0 +1,66 @@
+-- Create a base table with various data types and constraints
+CREATE TABLE test_table (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value DOUBLE DEFAULT 0.0,
+    status BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data BLOB
+);
+
+-- Insert some sample data
+INSERT INTO test_table (id, name, value, status, created_at) 
+VALUES 
+    (1, 'Test Record 1', 123.45, TRUE, '2023-01-01'),
+    (2, 'Test Record 2', NULL, FALSE, '2023-01-02'),
+    (3, 'Test Record 3', -987.65, TRUE, '2023-01-03');
+
+-- Create a table with generated columns
+CREATE TABLE test_generated (
+    id INTEGER,
+    value DOUBLE,
+    status BOOLEAN GENERATED ALWAYS AS (value > 0) VIRTUAL
+);
+
+-- Insert data into the generated column table
+INSERT INTO test_generated (id, value)
+VALUES 
+    (42, 100.5),
+    (43, -99.9);
+
+-- Create a view for testing complex queries
+CREATE VIEW test_view AS
+SELECT 
+    id,
+    name,
+    status,
+    created_at,
+    CASE WHEN value > 0 THEN 'Positive' ELSE 'Negative' END AS value_category
+FROM test_table;
+
+-- Test window functions and CTEs
+WITH ranked_data AS (
+    SELECT 
+        id, 
+        name, 
+        ROW_NUMBER() OVER (ORDER BY created_at DESC) AS rn,
+        RANK() OVER (PARTITION BY status ORDER BY value) AS rnk
+    FROM test_table
+)
+SELECT * FROM ranked_data WHERE rn <= 5;
+
+-- Test grouping sets and cube operations
+SELECT 
+    status, 
+    SUM(value),
+    COUNT(*) 
+FROM test_table
+GROUP BY CUBE(status);
+
+-- Test EXPLAIN plan for query optimization testing
+EXPLAIN SELECT * FROM test_table WHERE id = 42;
+
+-- Clean up (can be removed or modified based on needs)
+-- DROP TABLE test_table;
+-- DROP TABLE test_generated;
+-- DROP VIEW test_view;

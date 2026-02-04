@@ -1,0 +1,44 @@
+SET GLOBAL innodb_file_per_table=ON;
+CREATE TABLE t1 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data VARCHAR(255)
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    t1_id INT,
+    FOREIGN KEY (t1_id) REFERENCES t1(id) ON DELETE CASCADE,
+    value INT
+);
+
+INSERT INTO t1 (data) VALUES ('test1'), ('test2');
+INSERT INTO t2 (t1_id, value) VALUES (1, 10), (2, 20);
+
+-- MariaDB specific: Test virtual columns
+ALTER TABLE t1 ADD COLUMN data_length INT AS (LENGTH(data));
+
+-- MariaDB specific: Test JSON functionality
+CREATE TABLE t3 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    json_data JSON
+);
+
+INSERT INTO t3 (json_data) VALUES ('{"name": "John", "age": 30}');
+
+SELECT JSON_EXTRACT(json_data, '$.name') FROM t3;
+
+-- Test Common Table Expressions (CTEs)
+WITH RECURSIVE NumberSeries AS (
+  SELECT 1 AS n
+  UNION ALL
+  SELECT n + 1 FROM NumberSeries WHERE n < 5
+)
+SELECT * FROM NumberSeries;
+
+-- Test window functions
+SELECT
+    id,
+    value,
+    ROW_NUMBER() OVER (ORDER BY value) AS row_num
+FROM
+    t2;

@@ -1,0 +1,55 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY AUTO_INCREMENT,
+    address VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    postal_code VARCHAR(20),
+    country VARCHAR(50)
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+ALTER TABLE departments ADD FOREIGN KEY (location_id) REFERENCES locations(location_id);
+
+-- MariaDB Specific: Use of JSON
+ALTER TABLE employees ADD COLUMN metadata JSON;
+
+INSERT INTO locations (address, city, state, postal_code, country) VALUES
+('123 Main St', 'Anytown', 'CA', '91234', 'USA');
+
+INSERT INTO departments (department_name, location_id) VALUES
+('Sales', 1),
+('Marketing', 1);
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id, metadata) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1, '{"title": "Sales Representative", "performance": "High"}'),
+('Jane', 'Smith', '2023-03-20', 75000.00, 2, '{"title": "Marketing Manager", "skills": ["SEO", "PPC"]}');
+
+-- MariaDB Specific: Window function with IGNORE NULLS
+SELECT employee_id, first_name, salary,
+       RANK() OVER (ORDER BY salary DESC IGNORE NULLS) AS salary_rank
+FROM employees;
+
+-- MariaDB specific: RETURNING clause with INSERT
+INSERT INTO departments (department_name,location_id) VALUES ('HR', 1) RETURNING department_id, department_name;
+
+-- Test case-insensitive collation
+SELECT * FROM employees WHERE LOWER(first_name) = 'john';
+
+-- Test fulltext index (requires myisam or innodb with specific configuration)
+CREATE FULLTEXT INDEX idx_employee_name ON employees (first_name, last_name);
+SELECT * FROM employees WHERE MATCH(first_name, last_name) AGAINST ('John' IN BOOLEAN MODE);

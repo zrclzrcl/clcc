@@ -1,0 +1,84 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNLOGGED TABLE audit_log (
+    event_time TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID,
+    event_type VARCHAR(50),
+    details JSONB
+);
+
+CREATE INDEX idx_users_username ON users (username);
+CREATE INDEX idx_products_name ON products (product_name);
+
+INSERT INTO users (username, email, password_hash) VALUES
+('john.doe', 'john.doe@example.com', crypt('password123', gen_salt('bf'))),
+('jane.smith', 'jane.smith@example.com', crypt('securepass', gen_salt('bf'))),
+('peter.jones', 'peter.jones@example.com', crypt('anotherpass', gen_salt('bf')));
+
+INSERT INTO products (product_name, description, price) VALUES
+('Awesome Widget', 'A really cool widget', 19.99),
+('Super Gadget', 'The ultimate gadget', 99.50),
+('Basic Thing', 'A simple thing', 5.00);
+
+UPDATE users SET email = 'john.updated@example.com' WHERE username = 'john.doe';
+
+DELETE FROM products WHERE product_name = 'Basic Thing';
+
+SELECT * FROM users WHERE username LIKE 'j%';
+
+SELECT product_name, price FROM products ORDER BY price DESC LIMIT 2;
+
+SELECT COUNT(*) FROM users;
+
+SELECT AVG(price) FROM products;
+
+SELECT jsonb_agg(product_name) FROM products;
+
+SELECT u.username, p.product_name
+FROM users u
+JOIN products p ON u.id = uuid_nil() -- Invalid join but tests query processing
+WHERE p.price > 50;
+
+WITH ExpensiveProducts AS (
+    SELECT product_name, price
+    FROM products
+    WHERE price > 50
+)
+SELECT product_name FROM ExpensiveProducts;
+
+SELECT username FROM users UNION SELECT product_name FROM products;
+
+VACUUM FULL users;
+ANALYZE products;
+
+CREATE TABLE test_generated (
+  id SERIAL PRIMARY KEY,
+  ts timestamptz NOT NULL DEFAULT now(),
+  generation_time timestamptz GENERATED ALWAYS AS (ts + interval '1 hour') STORED
+);
+
+INSERT INTO test_generated (ts) VALUES (NOW());
+
+SELECT * FROM test_generated;
+
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+
+SELECT id, username, is_active FROM users WHERE is_active = TRUE;

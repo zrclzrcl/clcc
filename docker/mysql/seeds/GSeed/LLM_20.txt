@@ -1,0 +1,53 @@
+SET GLOBAL innodb_adaptive_hash_index=OFF;
+SET GLOBAL optimizer_switch = 'derived_merge=off';
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE t1 (a INT, b VARCHAR(255), c ENUM('x', 'y', 'z')) ENGINE=InnoDB;
+INSERT INTO t1 (a, b, c) VALUES (1, 'abc', 'x'), (2, 'def', 'y'), (3, 'ghi', 'z'), (NULL, 'jkl', 'x'), (5, NULL, 'y');
+CREATE TABLE t2 (x INT, y INT, z VARCHAR(255)) ENGINE=InnoDB;
+INSERT INTO t2 (x, y, z) VALUES (1, 10, 'abc'), (2, 20, 'def'), (4, 40, 'ghi');
+CREATE TABLE t3 (id INT AUTO_INCREMENT PRIMARY KEY, data JSON);
+INSERT INTO t3 (data) VALUES ('{"name": "Alice", "age": 30, "city": "New York"}'), ('{"name": "Bob", "age": 25, "city": "Los Angeles"}');
+SELECT * FROM t1 WHERE a IN (SELECT x FROM t2 WHERE y > 15);
+SELECT a, b FROM t1 WHERE b LIKE 'a%' UNION ALL SELECT x, z FROM t2 WHERE z LIKE 'd%';
+UPDATE t1 SET b = 'updated' WHERE a IS NULL;
+DELETE FROM t2 WHERE x NOT IN (SELECT a FROM t1 WHERE c = 'x');
+ALTER TABLE t1 ADD d TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE INDEX idx_b ON t1 (b);
+SELECT a, JSON_EXTRACT(data, '$.age') AS age FROM t3 WHERE JSON_EXTRACT(data, '$.city') = 'New York';
+SELECT GROUP_CONCAT(b ORDER BY a SEPARATOR ', ') FROM t1;
+REPLACE INTO t1 (a, b, c) VALUES (1, 'replaced', 'z');
+TRUNCATE TABLE t2;
+DROP INDEX idx_b ON t1;
+-- Test for Generated Columns
+CREATE TABLE t4 (
+    id INT PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    full_name VARCHAR(100) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) STORED
+);
+
+INSERT INTO t4 (id, first_name, last_name) VALUES
+(1, 'John', 'Doe'),
+(2, 'Jane', 'Smith');
+
+SELECT * FROM t4;
+
+-- Test for Window Functions
+CREATE TABLE t5 (
+    category VARCHAR(50),
+    value INT
+);
+
+INSERT INTO t5 (category, value) VALUES
+('A', 10),
+('A', 15),
+('B', 20),
+('B', 25);
+
+SELECT
+    category,
+    value,
+    ROW_NUMBER() OVER (PARTITION BY category ORDER BY value) AS row_num
+FROM t5;
+
+SET sql_mode=@old_sql_mode;

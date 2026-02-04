@@ -1,0 +1,44 @@
+CREATE TABLE integers AS SELECT * FROM range(10);
+CREATE TABLE strings AS SELECT i::VARCHAR AS s FROM integers;
+CREATE TABLE bools AS SELECT i%2=0 AS b FROM integers;
+
+-- Test various join conditions and aggregates
+SELECT COUNT(*), SUM(i), AVG(i) FROM integers AS t1 JOIN integers AS t2 ON t1.i = t2.i + 1 WHERE t1.i > 5;
+SELECT COUNT(*), SUM(i), AVG(i) FROM integers AS t1 LEFT JOIN integers AS t2 ON t1.i = t2.i + 1 WHERE t1.i > 5;
+
+-- Test string functions
+SELECT s, LENGTH(s), UPPER(s), SUBSTRING(s, 2, 3) FROM strings WHERE LENGTH(s) > 2;
+
+-- Test boolean logic
+SELECT b, NOT b, b AND TRUE, b OR FALSE FROM bools;
+
+-- Test DuckDB specific list functions
+CREATE TABLE lists AS SELECT list(i) AS l FROM integers GROUP BY i%3;
+SELECT l, list_sum(l), list_sort(l) FROM lists;
+
+-- Test unnesting lists
+SELECT i FROM lists, UNNEST(l) AS i;
+
+-- Test window functions
+SELECT i, ROW_NUMBER() OVER (ORDER BY i), RANK() OVER (ORDER BY i) FROM integers;
+
+-- Test date functions
+CREATE TABLE dates AS SELECT date '2023-01-01' + i AS d FROM integers WHERE i < 5;
+SELECT d, DATE_PART('year', d), DATE_TRUNC('month', d) FROM dates;
+
+-- Test correlation/covariance functions
+CREATE TABLE correlated_data (x INTEGER, y INTEGER);
+INSERT INTO correlated_data VALUES (1, 2), (2, 4), (3, 6);
+SELECT corr(x, y), covar_samp(x, y) FROM correlated_data;
+
+-- Test case statement
+SELECT i, CASE WHEN i > 5 THEN 'high' ELSE 'low' END FROM integers;
+
+-- Test try_cast
+SELECT try_cast('abc' AS INTEGER);
+
+-- Test union all
+SELECT 1 AS a UNION ALL SELECT 2 AS a;
+
+-- Test EXCEPT
+SELECT 1 AS a EXCEPT SELECT 1 AS a;

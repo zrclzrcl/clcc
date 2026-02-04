@@ -1,0 +1,32 @@
+-- Create a table with various data types for testing edge cases
+CREATE TABLE t1 (
+    id INTEGER,
+    name TEXT,
+    value FLOAT,
+    timestamp TIMESTAMP
+);
+
+-- Insert sample data to test different scenarios
+INSERT INTO t1 VALUES 
+(1, 'Alice', 100.5, '2023-01-01 00:00:00'),
+(2, 'Bob', -50.2, '2023-01-02 12:34:56'),
+(3, 'Charlie', 0, '2023-01-03 23:59:59'),
+(4, NULL, NULL, NULL);
+
+-- Create a table using CTAS to test aggregation and grouping
+CREATE TABLE t2 AS
+SELECT name, SUM(value) as total_value
+FROM t1
+GROUP BY name;
+
+-- Use a CTE with window functions to test complex queries
+WITH cte AS (
+    SELECT name, value,
+           ROW_NUMBER() OVER (ORDER BY value DESC) as row_num
+    FROM t1
+)
+SELECT * FROM cte;
+
+-- Add a new column and update it based on existing data
+ALTER TABLE t1 ADD COLUMN new_col BOOLEAN;
+UPDATE t1 SET new_col = (value > 0);

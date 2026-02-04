@@ -1,0 +1,100 @@
+CREATE EXTENSION IF NOT EXISTS plpgsql;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE EXTENSION IF NOT EXISTS citext;
+
+-- Create a table with various data types
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INTEGER CHECK (age > 0),
+    salary DECIMAL(10, 2),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    email CITEXT UNIQUE,
+    address TEXT,
+    data JSONB,
+    point POINT,
+    range INT4RANGE
+);
+
+-- Insert some initial data
+INSERT INTO employees (name, age, salary, email, address, data, point, range) VALUES
+('Alice', 30, 60000.00, 'alice@example.com', '123 Main St', '{"department": "Sales"}', '(1.0, 2.0)', '[10,20]'),
+('Bob', 25, 50000.00, 'bob@example.com', '456 Oak Ave', '{"department": "Marketing"}', '(3.0, 4.0)', '[5,15]');
+
+-- Select data with various conditions
+SELECT * FROM employees WHERE age > 27 AND salary < 70000.00;
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 10;
+SELECT AVG(age) AS average_age, SUM(salary) AS total_salary FROM employees;
+SELECT * FROM employees WHERE email % 'example.com'; -- pg_trgm similarity
+
+-- Update data
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+-- Delete data
+DELETE FROM employees WHERE age > 60;
+
+-- Use window functions
+SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+
+-- Use common table expressions (CTEs)
+WITH RankedEmployees AS (
+    SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees
+)
+SELECT name, salary FROM RankedEmployees WHERE salary_rank <= 5;
+
+-- Test GIST index
+CREATE INDEX employee_point_idx ON employees USING GIST (point);
+SELECT * FROM employees WHERE point @> point '(1.5, 2.5)';
+
+-- Test range functions
+SELECT range, upper(range), lower(range) FROM employees WHERE id = 1;
+
+-- Test JSONB functions
+SELECT data ->> 'department' FROM employees;
+SELECT * FROM employees WHERE data @> '{"department": "Sales"}'::jsonb;
+
+-- Check generate_series
+SELECT generate_series(1, 10);
+
+-- Check generate_series with timestamp
+SELECT generate_series(timestamp '2024-01-01', timestamp '2024-01-10', interval '1 day');
+
+-- Try some plpgsql
+CREATE OR REPLACE FUNCTION get_employee_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employees);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count();
+
+-- Try some complex queries combining features
+SELECT e.name, e.salary, r.salary_rank
+FROM employees e
+JOIN (
+    SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank
+    FROM employees
+    WHERE age > 20
+) r ON e.name = r.name
+WHERE r.salary_rank <= 3;
+
+-- Try some casting operations
+SELECT CAST('123' AS INTEGER);
+SELECT '2024-01-01'::DATE;
+
+-- Insert with ON CONFLICT
+CREATE TABLE IF NOT EXISTS unique_emails (email CITEXT PRIMARY KEY);
+INSERT INTO unique_emails (email) VALUES ('test@example.com') ON CONFLICT DO NOTHING;
+
+-- Try foreign keys
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+INSERT INTO departments (name) VALUES ('IT');
+UPDATE employees SET department_id = (SELECT id FROM departments WHERE name = 'IT') WHERE id = 1;

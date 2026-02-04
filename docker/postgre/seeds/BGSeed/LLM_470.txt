@@ -1,0 +1,143 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    department_id INTEGER,
+    manager_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_dept_id FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (name, location) VALUES ('Marketing', 'Los Angeles');
+INSERT INTO departments (name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 1, NULL);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 2, 75000.00, 2, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2022-05-10', 3, 90000.00, 3, 1);
+
+SELECT * FROM employees WHERE salary > 70000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+SELECT e.first_name, d.name FROM employees e JOIN departments d ON e.department_id = d.id;
+
+-- PostgreSQL Specific Features
+CREATE OR REPLACE FUNCTION calculate_bonus(salary DECIMAL, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+  RETURN salary * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT calculate_bonus(salary, 0.10) FROM employees;
+
+CREATE VIEW employee_summary AS
+SELECT first_name, last_name, salary, department_id FROM employees;
+
+SELECT * FROM employee_summary WHERE salary > 80000;
+
+-- Using GENERATE_SERIES
+SELECT GENERATE_SERIES(1, 10);
+
+-- Using JSON functions
+SELECT json_build_object('name', 'John Doe', 'age', 30);
+
+-- Testing WITH clause (Common Table Expression)
+WITH high_earners AS (
+  SELECT id, first_name, last_name
+  FROM employees
+  WHERE salary > 80000
+)
+SELECT * FROM high_earners;
+
+-- Testing window functions
+SELECT first_name, last_name, salary,
+       RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- More complex query
+SELECT d.name AS department_name,
+       AVG(e.salary) AS average_salary,
+       COUNT(e.id) AS employee_count
+FROM departments d
+JOIN employees e ON d.id = e.department_id
+GROUP BY d.name
+ORDER BY average_salary DESC;
+
+-- Using EXCEPT
+SELECT id FROM employees EXCEPT SELECT id FROM employees WHERE department_id = 1;
+
+-- Using INTERSECT
+SELECT id FROM employees INTERSECT SELECT id FROM employees WHERE salary > 70000;
+
+-- Using LATERAL JOIN
+SELECT e.first_name, subquery.bonus
+FROM employees e
+LATERAL (SELECT calculate_bonus(e.salary, 0.15) AS bonus) AS subquery;
+
+-- Aggregate functions with FILTER clause
+SELECT department_id,
+       AVG(salary) FILTER (WHERE job_id = 2) AS avg_salary_job2
+FROM employees
+GROUP BY department_id;
+
+-- Conditional expressions using CASE
+SELECT first_name,
+       CASE
+           WHEN salary > 80000 THEN 'High'
+           WHEN salary > 60000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+-- More INSERT statements to ensure data diversity
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('Alice', 'Brown', 'alice.brown@example.com', '2023-02-20', 1, 62000.00, 1, 2);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('Bob', 'Miller', 'bob.miller@example.com', '2023-04-05', 2, 78000.00, 2, 3);
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('Carol', 'Davis', 'carol.davis@example.com', '2023-06-12', 3, 95000.00, 3, 2);
+
+-- Testing the LIKE operator
+SELECT * FROM employees WHERE first_name LIKE 'J%';
+
+-- Testing the ILIKE operator (case-insensitive LIKE)
+SELECT * FROM employees WHERE first_name ILIKE 'j%';
+
+-- Testing regular expressions
+SELECT * FROM employees WHERE email ~* '.*@example\.com';
+
+-- Testing NULL values
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id, manager_id) VALUES ('David', 'Wilson', NULL, '2023-08-01', 1, 58000.00, 1, 1);
+SELECT * FROM employees WHERE email IS NULL;
+SELECT * FROM employees WHERE email IS NOT NULL;
+
+-- Testing array types (creating a table and inserting data)
+CREATE TABLE employee_skills (
+    employee_id INTEGER REFERENCES employees(id),
+    skills TEXT[]
+);
+
+INSERT INTO employee_skills (employee_id, skills) VALUES (1, ARRAY['Java', 'Python', 'SQL']);
+INSERT INTO employee_skills (employee_id, skills) VALUES (2, ARRAY['C++', 'Data Analysis']);
+
+SELECT * FROM employee_skills WHERE 'Python' = ANY(skills);
+
+-- DROP objects
+DROP VIEW employee_summary;
+DROP FUNCTION calculate_bonus(DECIMAL, DECIMAL);
+DROP TABLE employee_skills;
+DROP TABLE employees;
+DROP TABLE departments;

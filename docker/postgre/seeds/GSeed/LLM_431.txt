@@ -1,0 +1,290 @@
+CREATE TABLE regions (
+    region_id SERIAL PRIMARY KEY,
+    region_name VARCHAR(50)
+);
+
+CREATE TABLE countries (
+    country_id CHAR(2) PRIMARY KEY,
+    country_name VARCHAR(100),
+    region_id INTEGER,
+    FOREIGN KEY (region_id) REFERENCES regions (region_id)
+);
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(100),
+    location_id INTEGER
+);
+
+CREATE TABLE jobs (
+    job_id SERIAL PRIMARY KEY,
+    job_title VARCHAR(100),
+    min_salary NUMERIC(10, 2),
+    max_salary NUMERIC(10, 2)
+);
+
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INTEGER,
+    salary NUMERIC(10, 2),
+    commission_pct NUMERIC(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER,
+    FOREIGN KEY (job_id) REFERENCES jobs (job_id),
+    FOREIGN KEY (department_id) REFERENCES departments (department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees (employee_id)
+);
+
+CREATE TABLE locations (
+    location_id SERIAL PRIMARY KEY,
+    address VARCHAR(100),
+    postal_code VARCHAR(20),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    country_id CHAR(2),
+    FOREIGN KEY (country_id) REFERENCES countries (country_id)
+);
+
+ALTER TABLE departments ADD CONSTRAINT fk_departments_locations FOREIGN KEY (location_id) REFERENCES locations (location_id);
+
+CREATE TABLE job_history (
+    employee_id INTEGER,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    job_id INTEGER,
+    department_id INTEGER,
+    PRIMARY KEY (employee_id, start_date),
+    FOREIGN KEY (employee_id) REFERENCES employees (employee_id),
+    FOREIGN KEY (job_id) REFERENCES jobs (job_id),
+    FOREIGN KEY (department_id) REFERENCES departments (department_id)
+);
+
+INSERT INTO regions (region_name) VALUES ('Europe');
+INSERT INTO regions (region_name) VALUES ('Americas');
+INSERT INTO regions (region_name) VALUES ('Asia');
+INSERT INTO regions (region_name) VALUES ('Middle East and Africa');
+
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('US', 'United States of America', 2);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('CA', 'Canada', 2);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('UK', 'United Kingdom', 1);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('DE', 'Germany', 1);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('JP', 'Japan', 3);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('CN', 'China', 3);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('IN', 'India', 3);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('AU', 'Australia', 3);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('ZA', 'South Africa', 4);
+INSERT INTO countries (country_id, country_name, region_id) VALUES ('EG', 'Egypt', 4);
+
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('1297 Via Cola di Rie', '00989', 'Rome', NULL, 'IT');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('93091 Calle della Lupa', '10934', 'Venice', NULL, 'IT');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('2017 Shinjuku-ku', '1689', 'Tokyo', 'Tokyo Prefecture', 'JP');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('2004 Charade Rd', '98199', 'Seattle', 'Washington', 'US');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('Magdalen Centre, The Oxford Science Park', 'OX9 9ZB', 'Oxford', 'Oxford', 'UK');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('Schwanthalerstr. 7031', '80925', 'Munich', 'Bavaria', 'DE');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('3790 N Capital Circle SW', '32303', 'Tallahassee', 'Florida', 'US');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('2011 Interiors Blvd', '75024', 'Fairview', 'Texas', 'US');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('999 Harrison Street', '94103', 'San Francisco', 'California', 'US');
+INSERT INTO locations (address, postal_code, city, state, country_id) VALUES ('6092 Boxwood St', '2903', 'White Plains', 'New York', 'US');
+
+INSERT INTO departments (department_name, location_id) VALUES ('Administration', 4);
+INSERT INTO departments (department_name, location_id) VALUES ('Marketing', 3);
+INSERT INTO departments (department_name, location_id) VALUES ('Purchasing', 2);
+INSERT INTO departments (department_name, location_id) VALUES ('Human Resources', 1);
+INSERT INTO departments (department_name, location_id) VALUES ('Shipping', 5);
+INSERT INTO departments (department_name, location_id) VALUES ('IT', 6);
+INSERT INTO departments (department_name, location_id) VALUES ('Public Relations', 7);
+INSERT INTO departments (department_name, location_id) VALUES ('Sales', 8);
+INSERT INTO departments (department_name, location_id) VALUES ('Executive', 9);
+INSERT INTO departments (department_name, location_id) VALUES ('Accounting', 10);
+
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('President', 20000.00, 40000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Administration Manager', 15000.00, 30000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Marketing Manager', 12000.00, 25000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Marketing Representative', 8000.00, 18000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Purchasing Manager', 11000.00, 22000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Purchasing Clerk', 5000.00, 10000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Human Resources Representative', 6000.00, 12000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Shipping Clerk', 4000.00, 9000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Programmer', 7000.00, 15000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Sales Manager', 10000.00, 20000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Sales Representative', 6000.00, 12000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Public Relations Representative', 9000.00, 19000.00);
+INSERT INTO jobs (job_title, min_salary, max_salary) VALUES ('Accountant', 5500.00, 11000.00);
+
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('John', 'Doe', 'john.doe@example.com', '555-123-4567', '2020-01-01', 1, 30000.00, NULL, NULL, 9);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', '2021-02-15', 2, 20000.00, NULL, 1, 1);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Robert', 'Jones', 'robert.jones@example.com', '555-246-8013', '2022-03-10', 3, 18000.00, NULL, 1, 2);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Emily', 'Brown', 'emily.brown@example.com', '555-135-7924', '2023-04-01', 4, 10000.00, 0.15, 3, 2);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Michael', 'Davis', 'michael.davis@example.com', '555-864-2097', '2020-05-20', 5, 16000.00, NULL, 1, 3);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Jessica', 'Wilson', 'jessica.wilson@example.com', '555-753-1986', '2021-06-05', 6, 7000.00, NULL, 5, 3);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('David', 'Garcia', 'david.garcia@example.com', '555-642-9753', '2022-07-12', 7, 9000.00, NULL, 1, 4);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Ashley', 'Rodriguez', 'ashley.rodriguez@example.com', '555-531-8642', '2023-08-01', 8, 6000.00, NULL, 5, 5);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Christopher', 'Williams', 'christopher.williams@example.com', '555-420-7531', '2020-09-18', 9, 12000.00, NULL, 1, 6);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Amanda', 'Martin', 'amanda.martin@example.com', '555-319-6420', '2021-10-03', 10, 15000.00, 0.20, 1, 8);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Kevin', 'Lee', 'kevin.lee@example.com', '555-208-5319', '2022-11-22', 11, 8000.00, 0.25, 10, 8);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Stephanie', 'Perez', 'stephanie.perez@example.com', '555-197-4208', '2023-12-01', 12, 13000.00, NULL, 1, 7);
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, commission_pct, manager_id, department_id) VALUES ('Brandon', 'Thompson', 'brandon.thompson@example.com', '555-086-3197', '2020-01-15', 13, 8500.00, NULL, 1, 10);
+
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (2, '2021-02-15', '2022-06-30', 2, 1);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (3, '2022-03-10', '2023-07-15', 3, 2);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (4, '2023-04-01', '2024-08-20', 4, 2);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (5, '2020-05-20', '2021-09-30', 5, 3);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (6, '2021-06-05', '2022-10-25', 6, 3);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (7, '2022-07-12', '2023-11-11', 7, 4);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (8, '2023-08-01', '2024-12-31', 8, 5);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (9, '2020-09-18', '2021-01-31', 9, 6);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (10, '2021-10-03', '2022-02-28', 10, 8);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (11, '2022-11-22', '2023-03-15', 11, 8);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (12, '2023-12-01', '2024-04-30', 12, 7);
+INSERT INTO job_history (employee_id, start_date, end_date, job_id, department_id) VALUES (13, '2020-01-15', '2024-05-31', 13, 10);
+
+SELECT region_name FROM regions WHERE region_id = 1;
+
+SELECT country_name FROM countries WHERE region_id = 2 ORDER BY country_name;
+
+SELECT address, city FROM locations WHERE country_id = 'US' AND state = 'California';
+
+SELECT department_name FROM departments WHERE location_id IN (SELECT location_id FROM locations WHERE country_id = 'UK');
+
+SELECT first_name, last_name FROM employees WHERE department_id = (SELECT department_id FROM departments WHERE department_name = 'Sales') ORDER BY last_name, first_name;
+
+SELECT employee_id, first_name, last_name, salary FROM employees WHERE salary > (SELECT AVG(salary) FROM employees) ORDER BY salary DESC;
+
+SELECT department_name, COUNT(*) AS employee_count FROM departments JOIN employees ON departments.department_id = employees.department_id GROUP BY department_name ORDER BY employee_count DESC;
+
+SELECT job_title, AVG(salary) AS average_salary FROM jobs JOIN employees ON jobs.job_id = employees.job_id GROUP BY job_title HAVING AVG(salary) > 10000 ORDER BY average_salary DESC;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = (SELECT department_id FROM departments WHERE department_name = 'IT');
+
+DELETE FROM job_history WHERE employee_id IN (SELECT employee_id FROM employees WHERE department_id = (SELECT department_id FROM departments WHERE department_name = 'Shipping'));
+
+CREATE VIEW employee_details AS
+SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.phone_number,
+    e.hire_date,
+    j.job_title,
+    e.salary,
+    e.commission_pct,
+    m.first_name AS manager_first_name,
+    m.last_name AS manager_last_name,
+    d.department_name,
+    l.city,
+    c.country_name,
+    r.region_name
+FROM
+    employees e
+JOIN
+    jobs j ON e.job_id = j.job_id
+LEFT JOIN
+    employees m ON e.manager_id = m.employee_id
+JOIN
+    departments d ON e.department_id = d.department_id
+JOIN
+    locations l ON d.location_id = l.location_id
+JOIN
+    countries c ON l.country_id = c.country_id
+JOIN
+    regions r ON c.region_id = r.region_id;
+
+SELECT * FROM employee_details WHERE salary > 10000 AND region_name = 'Europe';
+
+CREATE INDEX idx_employees_department_id ON employees (department_id);
+CREATE INDEX idx_employees_salary ON employees (salary);
+CREATE INDEX idx_locations_country_id ON locations (country_id);
+
+EXPLAIN SELECT * FROM employees WHERE department_id = 6;
+EXPLAIN SELECT * FROM employees WHERE salary > 15000;
+EXPLAIN SELECT * FROM locations WHERE country_id = 'US';
+
+SELECT version();
+
+SHOW server_version;
+SHOW server_version_num;
+
+SELECT inet_client_addr();
+SELECT inet_client_port();
+SELECT inet_server_addr();
+SELECT inet_server_port();
+
+SELECT pg_backend_pid();
+SELECT pg_current_logfile();
+SELECT pg_conf_load_time();
+SELECT pg_is_in_recovery();
+SELECT pg_listening_channels();
+SELECT pg_postmaster_start_time();
+
+CREATE FUNCTION greet(name text) RETURNS text AS $$
+BEGIN
+    RETURN 'Hello, ' || name || '!';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT greet('World');
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(100),
+    operation_type VARCHAR(50),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'UTC'),
+    user_name VARCHAR(100) DEFAULT current_user
+);
+
+CREATE OR REPLACE FUNCTION log_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, operation_type)
+        VALUES (TG_TABLE_NAME, 'INSERT');
+        RETURN NEW;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, operation_type)
+        VALUES (TG_TABLE_NAME, 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, operation_type)
+        VALUES (TG_TABLE_NAME, 'DELETE');
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employees_audit
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_changes();
+
+INSERT INTO employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, department_id)
+VALUES ('Test', 'User', 'test.user@example.com', '555-111-2222', '2024-01-01', 9, 10000.00, 6);
+
+UPDATE employees SET salary = 11000.00 WHERE email = 'test.user@example.com';
+
+DELETE FROM employees WHERE email = 'test.user@example.com';
+
+SELECT * FROM audit_log;
+
+DROP TRIGGER employees_audit ON employees;
+DROP FUNCTION log_changes();
+DROP TABLE audit_log;
+DROP FUNCTION greet(text);
+DROP INDEX idx_locations_country_id;
+DROP INDEX idx_employees_salary;
+DROP INDEX idx_employees_department_id;
+DROP VIEW employee_details;
+DROP TABLE job_history;
+DROP TABLE employees;
+DROP TABLE jobs;
+DROP TABLE departments;
+ALTER TABLE countries DROP CONSTRAINT countries_region_id_fkey;
+DROP TABLE locations;
+DROP TABLE countries;
+DROP TABLE regions;

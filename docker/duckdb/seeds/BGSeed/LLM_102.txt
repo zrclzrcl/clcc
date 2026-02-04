@@ -1,0 +1,85 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(255),
+    department VARCHAR(255),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees (name, department, salary) VALUES
+    ('Alice', 'Sales', 50000.00),
+    ('Bob', 'Engineering', 75000.00),
+    ('Charlie', 'Sales', 55000.00),
+    ('David', 'Marketing', 60000.00),
+    ('Eve', 'Engineering', 80000.00);
+
+CREATE TABLE departments (
+    department_name VARCHAR(255) PRIMARY KEY,
+    location VARCHAR(255)
+);
+
+INSERT INTO departments (department_name, location) VALUES
+    ('Sales', 'New York'),
+    ('Engineering', 'San Francisco'),
+    ('Marketing', 'Chicago');
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 65000;
+
+-- DuckDB specific feature: APPROXIMATE COUNT DISTINCT
+SELECT department, approx_count_distinct(name) AS approx_employee_count
+FROM employees
+GROUP BY department;
+
+-- DuckDB specific feature: AUTO INCREMENT
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name VARCHAR(255),
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (product_name, price) VALUES
+    ('Laptop', 1200.00),
+    ('Mouse', 25.00),
+    ('Keyboard', 75.00);
+
+-- DuckDB UNNEST and LIST
+SELECT value FROM (SELECT list([1,2,3,4,5]) AS my_list) , UNNEST(my_list) AS value;
+
+-- Testing aggregate functions with window functions
+SELECT
+    name,
+    department,
+    salary,
+    AVG(salary) OVER (PARTITION BY department) AS avg_department_salary
+FROM employees;
+
+-- String functions
+SELECT name, UPPER(department), LENGTH(name) FROM employees WHERE name LIKE 'A%';
+
+-- Date functions (although DuckDB's date support might need further tweaking based on versions)
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    order_date DATE
+);
+
+INSERT INTO orders (order_date) VALUES ('2023-01-15'), ('2023-02-20'), ('2023-03-10');
+
+SELECT order_date, DATE_TRUNC('month', order_date) FROM orders;
+
+-- Test case-insensitive comparison
+SELECT * FROM employees WHERE lower(name) = 'alice';
+
+-- Test NULL handling
+INSERT INTO employees (name, department, salary) VALUES (NULL, 'HR', NULL);
+SELECT * FROM employees WHERE salary IS NULL;
+
+-- Demonstrate pivot/crosstab functionality using duckdb. (This is a complex query for fuzzing)
+-- Requires the 'pivot' extension to be loaded for actual execution, but good for seed.
+-- CREATE VIEW salary_by_department AS
+-- SELECT department,
+--     SUM(CASE WHEN name LIKE 'A%' THEN salary ELSE 0 END) AS a_salary,
+--     SUM(CASE WHEN name LIKE 'B%' THEN salary ELSE 0 END) AS b_salary
+-- FROM employees
+-- GROUP BY department;
+
+-- SELECT * FROM salary_by_department PIVOT department USING sum(a_salary) AS a, sum(b_salary) as b;

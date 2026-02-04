@@ -1,0 +1,80 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, salary, hire_date, department_id) VALUES
+('John', 'Doe', 60000.00, '2022-01-15', 1),
+('Jane', 'Smith', 75000.00, '2021-05-20', 2),
+('Peter', 'Jones', 90000.00, '2020-03-10', 3);
+
+-- MariaDB specific features: Window Functions, Common Table Expressions (CTEs), JSON functions
+
+-- Window Function: Calculate the average salary per department
+SELECT first_name, last_name, salary, department_id,
+       AVG(salary) OVER (PARTITION BY department_id) AS avg_department_salary
+FROM employees;
+
+-- CTE: Find employees who earn more than the average salary
+WITH AvgSalaries AS (
+    SELECT department_id, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department_id
+)
+SELECT e.first_name, e.last_name, e.salary
+FROM employees e
+JOIN AvgSalaries a ON e.department_id = a.department_id
+WHERE e.salary > a.avg_salary;
+
+-- JSON function : Store additional employee details in JSON format
+ALTER TABLE employees ADD COLUMN details JSON;
+
+UPDATE employees SET details = JSON_OBJECT('bonus_eligible', TRUE, 'performance_score', 90) WHERE id = 1;
+UPDATE employees SET details = JSON_OBJECT('bonus_eligible', FALSE, 'performance_score', 75) WHERE id = 2;
+UPDATE employees SET details = JSON_OBJECT('bonus_eligible', TRUE, 'performance_score', 85) WHERE id = 3;
+
+SELECT first_name, last_name, JSON_EXTRACT(details, '$.bonus_eligible') AS bonus_eligible FROM employees;
+
+-- Example using sequence
+CREATE SEQUENCE seq_example START WITH 10 INCREMENT BY 5 MAXVALUE 100 CYCLE;
+SELECT SEQ_EXAMPLE.nextval;
+
+-- Example using stored procedure (for more complex logic)
+DELIMITER //
+CREATE PROCEDURE GetEmployeeCountByDepartment(IN dept_id INT, OUT employee_count INT)
+BEGIN
+    SELECT COUNT(*) INTO employee_count FROM employees WHERE department_id = dept_id;
+END //
+DELIMITER ;
+
+CALL GetEmployeeCountByDepartment(1, @count);
+SELECT @count;
+
+-- GIS functions example (requires spatial data types) - create table if does not exist
+CREATE TABLE IF NOT EXISTS locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    point POINT SRID 0
+);
+INSERT INTO locations (name, point) VALUES ('Office', ST_GeomFromText('POINT(10 20)'));
+SELECT ST_Distance_Sphere(POINT(0,0), POINT(10,10));
+
+--Fulltext index and search
+
+ALTER TABLE employees ADD FULLTEXT INDEX name (first_name,last_name);
+SELECT first_name,last_name FROM employees WHERE MATCH (first_name,last_name) AGAINST ('John');

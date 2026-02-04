@@ -1,0 +1,62 @@
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT CHECK (age >= 0),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    value DECIMAL(10, 2) NOT NULL,
+    category ENUM('A', 'B', 'C'),
+    FOREIGN KEY (id) REFERENCES t1(id)
+);
+
+INSERT INTO t1 VALUES 
+(1, 'Alice', 30, NOW()),
+(2, 'Bob', 45, '2023-01-01 00:00:00'),
+(3, 'Charlie', NULL, DEFAULT);
+
+INSERT INTO t2 VALUES
+(1, 100.5, 'A'),
+(2, 200.75, 'B'),
+(3, NULL, 'C');
+
+ANALYZE TABLE t1;
+
+SET optimizer_switch='index_merge=on';
+
+FLUSH STATUS;
+SHOW STATUS LIKE 'Handler%';
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE x INT DEFAULT 0;
+    SELECT COUNT(*) INTO x FROM t1 WHERE age > 25;
+    IF x > 2 THEN
+        INSERT INTO t2 (id, value, category) VALUES (4, 300.00, 'C');
+    END IF;
+END$$
+
+DELIMITER ;
+
+CREATE TRIGGER trg_before_insert_t1 BEFORE INSERT ON t1 FOR EACH ROW
+BEGIN
+    SET NEW.created_at = CURRENT_TIMESTAMP();
+END;
+
+PREPARE stmt1 FROM 
+"SELECT t1.name, t2.value, t2.category 
+FROM t1 
+JOIN t2 ON t1.id = t2.id 
+WHERE t1.age > ? AND t2.value < ?
+ORDER BY t1.name DESC";
+
+SET @min_age = 25;
+SET @max_value = 200.75;
+
+EXECUTE stmt1 USING @min_age, @max_value;
+
+DEALLOCATE PREPARE stmt1;

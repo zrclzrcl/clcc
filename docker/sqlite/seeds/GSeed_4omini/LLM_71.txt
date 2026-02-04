@@ -1,0 +1,34 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department TEXT NOT NULL,
+    salary REAL NOT NULL DEFAULT 50000,
+    hire_date DATE NOT NULL DEFAULT (DATE('now'))
+);
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    budget REAL NOT NULL CHECK (budget > 0)
+);
+
+INSERT INTO departments (name, budget) VALUES ('HR', 100000), ('Engineering', 200000), ('Sales', 150000);
+INSERT INTO employees (name, department, salary) VALUES ('Alice', 'HR', 70000), ('Bob', 'Engineering', 90000), ('Charlie', 'Sales', 60000);
+INSERT OR REPLACE INTO employees (id, name, department, salary) VALUES (1, 'Alice', 'HR', 75000);
+INSERT OR IGNORE INTO employees (id, name, department, salary) VALUES (4, 'David', 'Engineering', NULL);
+UPDATE departments SET budget = budget * 1.10 WHERE id = 1; 
+UPDATE employees SET salary = salary * 0.90 WHERE department = 'Sales';
+
+SELECT department, COUNT(*) AS num_employees, SUM(salary) AS total_salary FROM employees GROUP BY department;
+SELECT d.name, e.name FROM departments d LEFT JOIN employees e ON d.name = e.department WHERE e.salary IS NOT NULL ORDER BY d.name;
+
+DELETE FROM employees WHERE id NOT IN (SELECT id FROM employees ORDER BY hire_date DESC LIMIT 2);
+PRAGMA foreign_keys=ON;
+CREATE TABLE projects (
+   id INTEGER PRIMARY KEY,
+   name TEXT NOT NULL,
+   employee_id INTEGER,
+   FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+INSERT INTO projects (name, employee_id) VALUES ('Project Alpha', 1), ('Project Beta', 2);

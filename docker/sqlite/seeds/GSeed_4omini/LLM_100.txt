@@ -1,0 +1,15 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER);
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL,
+    FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO users(name, age) VALUES('Alice', 30);
+INSERT INTO users(name, age) VALUES('Bob', 25);
+INSERT INTO orders(user_id, amount) VALUES(1, 100.50);
+INSERT INTO orders(user_id, amount) VALUES(1, 200.75);
+INSERT INTO orders(user_id, amount) VALUES(2, 50.00);
+SELECT name, age FROM users WHERE age > 20;
+SELECT u.name, SUM(o.amount) AS total_spent
+FROM users u JOIN orders o ON u.id = o.user_id
+GROUP BY u.name HAVING total_spent > 75;
+SELECT u.name FROM users u WHERE u.id NOT IN (SELECT DISTINCT o.user_id FROM orders o);
+UPDATE users SET age = age + 1 WHERE age < 30;
+DELETE FROM orders WHERE amount < 100;

@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, customer_name TEXT, order_date DATE, total_amount REAL);
+INSERT INTO orders(customer_name, order_date, total_amount) VALUES ('Alice', '2023-04-10', 150.75);
+INSERT INTO orders(customer_name, order_date, total_amount) VALUES ('Bob', '2023-04-11', 200.50);
+INSERT INTO orders(customer_name, order_date, total_amount) VALUES ('Charlie', '2023-04-12', 50.00);
+
+SELECT * FROM orders WHERE total_amount > 100;
+SELECT customer_name, SUM(total_amount) FROM orders GROUP BY customer_name HAVING SUM(total_amount) > 100;
+SELECT COUNT(*) FROM orders WHERE order_date BETWEEN '2023-04-01' AND '2023-04-30';
+
+CREATE TABLE customer_feedback(feedback_id INTEGER PRIMARY KEY, order_id INTEGER, feedback TEXT, FOREIGN KEY(order_id) REFERENCES orders(order_id));
+INSERT INTO customer_feedback(order_id, feedback) VALUES (1, 'Great service and fast delivery!');
+INSERT INTO customer_feedback(order_id, feedback) VALUES (2, 'Product was as described, very satisfied.');
+
+SELECT o.customer_name, cf.feedback FROM orders o JOIN customer_feedback cf ON o.order_id = cf.order_id WHERE cf.feedback LIKE '%great%';
+SELECT AVG(total_amount) FROM orders WHERE customer_name = 'Bob';

@@ -1,0 +1,27 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+-- Demonstrate window functions with different PARTITION BY and ORDER BY clauses
+SELECT
+    i,
+    ROW_NUMBER() OVER (ORDER BY i),
+    RANK() OVER (ORDER BY i),
+    DENSE_RANK() OVER (ORDER BY i),
+    ROW_NUMBER() OVER (PARTITION BY i % 2 ORDER BY i)
+FROM integers;
+
+-- Demonstrate LIST aggregate function (DuckDB specific)
+SELECT LIST(i) FROM integers;
+
+-- Demonstrate UNNEST (DuckDB specific, but common as LATERAL VIEW EXPLODE in other DBs)
+SELECT * FROM UNNEST([1, 2, 3]);
+
+-- Demonstrate string functions and NULL handling
+SELECT LENGTH(NULLIF('abc', 'def')), UPPER('abc'), LOWER('ABC');
+
+-- Demonstrate date functions
+SELECT CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP;
+
+-- Demonstrate create table as select (CTAS)
+CREATE TABLE ctas AS SELECT i * 2 AS j FROM integers WHERE i IS NOT NULL;
+SELECT * FROM ctas;

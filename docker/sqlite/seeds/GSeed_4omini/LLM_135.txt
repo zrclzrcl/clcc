@@ -1,0 +1,21 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    product TEXT NOT NULL,
+    quantity INTEGER CHECK(quantity > 0),
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+INSERT INTO users (username, email) VALUES ('test_user', 'test@example.com');
+INSERT INTO orders (user_id, product, quantity) VALUES (1, 'widget', 10);
+INSERT INTO orders (user_id, product, quantity) VALUES (1, 'gadget', 5);
+INSERT INTO orders (user_id, product, quantity) VALUES (1, 'doohickey', 20);
+-- Test edge case by attempting to insert an order with non-existent user id
+INSERT INTO orders (user_id, product, quantity) VALUES (999, 'invalid_product', 1);

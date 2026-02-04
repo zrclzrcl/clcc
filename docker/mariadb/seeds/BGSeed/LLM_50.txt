@@ -1,0 +1,93 @@
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category VARCHAR(50),
+    stock_quantity INT UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone_number VARCHAR(20),
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(2),
+    zip_code VARCHAR(10),
+    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT,
+    product_id INT,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+INSERT INTO products (product_name, description, price, category, stock_quantity) VALUES
+('Awesome T-Shirt', 'A comfortable t-shirt for everyday wear.', 19.99, 'Clothing', 100),
+('Ergonomic Mouse', 'A mouse designed for comfort and productivity.', 29.99, 'Electronics', 50),
+('Coffee Maker', 'Makes delicious coffee in minutes.', 49.99, 'Appliances', 25);
+
+INSERT INTO customers (first_name, last_name, email, phone_number, address, city, state, zip_code) VALUES
+('John', 'Doe', 'john.doe@example.com', '555-123-4567', '123 Main St', 'Anytown', 'CA', '91234'),
+('Jane', 'Smith', 'jane.smith@example.com', '555-987-6543', '456 Oak Ave', 'Springfield', 'IL', '62704');
+
+INSERT INTO orders (customer_id, total_amount, status) VALUES
+(1, 59.97, 'processing'),
+(2, 49.99, 'pending');
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 1, 19.99),
+(1, 2, 1, 29.99),
+(2, 3, 1, 49.99);
+
+-- MariaDB specific functions/features
+SELECT CAST('2024-01-01' AS DATE);
+SELECT DATE_ADD(NOW(), INTERVAL 1 DAY);
+SELECT GROUP_CONCAT(product_name SEPARATOR ', ') FROM products;
+SELECT JSON_OBJECT('name', 'John', 'age', 30);
+SELECT ST_AsText(ST_GeomFromText('POINT(1 1)'));
+
+-- Test with a stored procedure (simple example)
+DELIMITER //
+CREATE PROCEDURE GetCustomerOrders(IN customer_id_param INT)
+BEGIN
+    SELECT * FROM orders WHERE customer_id = customer_id_param;
+END //
+DELIMITER ;
+
+CALL GetCustomerOrders(1);
+
+-- Trigger to update the stock quantity after an order is placed.
+DELIMITER //
+CREATE TRIGGER update_stock_after_order
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET stock_quantity = stock_quantity - NEW.quantity
+    WHERE product_id = NEW.product_id;
+END //
+DELIMITER ;
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (1, 1, 1, 19.99);
+
+ANALYZE TABLE products, customers, orders, order_items;

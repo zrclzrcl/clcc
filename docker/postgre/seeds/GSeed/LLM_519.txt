@@ -1,0 +1,54 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50),
+    emails TEXT[]
+);
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+INSERT INTO employees (name, salary, hire_date, department, emails) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales', '{"alice@example.com", "alice.smith@company.com"}'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing', '{"bob@example.com"}'),
+('Charlie Brown', 50000.00, '2023-03-10', 'Sales', '{}'),
+('David Lee', 80000.00, '2020-11-01', 'Engineering', '{"david@example.com", "david.lee@company.com"}');
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, COUNT(*) FROM employees GROUP BY department ORDER BY COUNT(*) DESC;
+
+SELECT name, hire_date FROM employees ORDER BY hire_date LIMIT 2 OFFSET 1;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering'), ('HR');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = departments.dept_id FROM departments WHERE employees.department = departments.dept_name;
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+WITH SalesEmployees AS (
+    SELECT id, name, salary FROM employees WHERE department = 'Sales'
+)
+SELECT name, salary FROM SalesEmployees WHERE salary > 55000;
+
+SELECT generate_series(1, 5);
+
+EXPLAIN SELECT * FROM employees WHERE salary > 70000;
+
+ANALYZE employees;
+
+TRUNCATE TABLE employees;

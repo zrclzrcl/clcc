@@ -1,0 +1,111 @@
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+SET optimizer_switch = 'index_condition_pushdown=on,mrr=on,mrr_cost_based=on';
+
+-- Table with various data types and constraints
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    stock INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Table for categories (for foreign key relationship)
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Add a category_id to the products table as a foreign key
+ALTER TABLE products ADD COLUMN category_id INT;
+ALTER TABLE products ADD FOREIGN KEY (category_id) REFERENCES categories(id);
+
+-- Insert some initial data into categories
+INSERT INTO categories (name) VALUES ('Electronics'), ('Books'), ('Clothing');
+
+-- Insert some initial data into products
+INSERT INTO products (name, description, price, stock, category_id) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 10, 1),
+('Database Fuzzing for Dummies', 'A comprehensive guide to database fuzzing', 25.50, 50, 2),
+('T-Shirt', 'Comfortable cotton t-shirt', 15.00, 100, 3),
+('Smartphone', 'Latest smartphone model', 900.00, 20, 1),
+('SQL Cookbook', 'Solutions for common SQL problems', 30.00, 30, 2);
+
+-- Table for logging (example of temporal data and different storage engine)
+CREATE TABLE product_changes (
+    product_id INT NOT NULL,
+    change_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    old_price DECIMAL(10, 2) UNSIGNED,
+    new_price DECIMAL(10, 2) UNSIGNED,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE=ARCHIVE;
+
+-- Triggers to log price changes (testing trigger functionality)
+DELIMITER //
+CREATE TRIGGER product_price_update
+AFTER UPDATE
+ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price <> OLD.price THEN
+        INSERT INTO product_changes (product_id, old_price, new_price)
+        VALUES (OLD.id, OLD.price, NEW.price);
+    END IF;
+END;//
+DELIMITER ;
+
+-- Update the price of a product to trigger the trigger
+UPDATE products SET price = 1250.00 WHERE name = 'Laptop';
+
+-- Example of a stored procedure (testing stored procedure functionality)
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN categoryName VARCHAR(255))
+BEGIN
+    SELECT p.id, p.name, p.price
+    FROM products p
+    JOIN categories c ON p.category_id = c.id
+    WHERE c.name = categoryName;
+END//
+DELIMITER ;
+
+-- Call the stored procedure
+CALL GetProductsByCategory('Electronics');
+
+-- Create an index with multiple columns.
+CREATE INDEX idx_product_name_price ON products (name, price);
+
+-- A complex query that joins tables, uses aggregate functions, and a subquery (for testing query optimization)
+SELECT c.name, AVG(p.price) AS average_price, COUNT(*) AS product_count
+FROM categories c
+JOIN products p ON c.id = p.category_id
+WHERE p.price > (SELECT AVG(price) FROM products)
+GROUP BY c.name
+HAVING product_count > 1;
+
+-- Analyze tables for query optimization
+ANALYZE TABLE products, categories, product_changes;
+
+-- Test a spatial data type
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 4326
+);
+
+INSERT INTO spatial_data (name, location) VALUES ('Office', ST_GeomFromText('POINT(-73.9857 40.7484)', 4326));
+
+SELECT name, ST_AsText(location) FROM spatial_data;
+
+-- Test FULLTEXT index
+ALTER TABLE products ADD FULLTEXT INDEX idx_description (description);
+SELECT * FROM products WHERE MATCH(description) AGAINST ('laptop' IN NATURAL LANGUAGE MODE);
+
+-- Test some user defined functions
+CREATE FUNCTION add_ten (num INT)
+RETURNS INT
+DETERMINISTIC
+RETURN num + 10;
+
+SELECT add_ten(5);

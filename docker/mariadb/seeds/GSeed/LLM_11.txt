@@ -1,0 +1,85 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    category_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (category_id)
+);
+
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT
+);
+
+ALTER TABLE products ADD FOREIGN KEY (category_id) REFERENCES categories(id);
+
+INSERT INTO categories (name, description) VALUES
+('Electronics', 'A category for electronic gadgets'),
+('Clothing', 'A category for apparel'),
+('Home Goods', 'A category for items in your home');
+
+INSERT INTO products (name, description, price, category_id) VALUES
+('Smartphone X', 'The latest smartphone with AI features', 999.99, 1),
+('T-Shirt', 'A comfortable cotton t-shirt', 19.99, 2),
+('Coffee Maker', 'A programmable coffee maker with a grinder', 79.99, 3),
+('Smartwatch Y', 'A fitness tracker with heart rate monitor', 149.99, 1);
+
+CREATE OR REPLACE VIEW product_summary AS
+SELECT p.name, p.price, c.name AS category
+FROM products p JOIN categories c ON p.category_id = c.id;
+
+SELECT * FROM product_summary WHERE price > 50;
+
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN cat_id INT)
+BEGIN
+    SELECT * FROM products WHERE category_id = cat_id;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory(1);
+
+CREATE TRIGGER update_product_description
+BEFORE UPDATE ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price > 1000 THEN
+        SET NEW.description = CONCAT(NEW.description, ' - Premium product');
+    END IF;
+END;
+
+UPDATE products SET price = 1099.99 WHERE name = 'Smartphone X';
+
+CREATE TABLE sales (
+  sale_id INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT,
+  sale_date DATE,
+  quantity INT,
+  price_per_unit DECIMAL(10,2),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO sales (product_id, sale_date, quantity, price_per_unit) VALUES
+(1, '2024-01-15', 2, 1099.99),
+(2, '2024-01-15', 10, 19.99),
+(3, '2024-01-16', 5, 79.99);
+
+CREATE GLOBAL TEMPORARY TABLE temp_sales LIKE sales;
+INSERT INTO temp_sales SELECT * FROM sales WHERE sale_date > '2024-01-01';
+SELECT * FROM temp_sales;
+
+SET @var1 = 'test_value';
+SELECT @var1;
+
+PREPARE stmt FROM 'SELECT * FROM products WHERE price > ?';
+SET @price = 50;
+EXECUTE stmt USING @price;
+DEALLOCATE PREPARE stmt;
+
+ANALYZE TABLE products;
+
+OPTIMIZE TABLE products;

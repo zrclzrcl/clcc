@@ -1,0 +1,288 @@
+begin;
+
+-- Basic table creation and data insertion
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    department VARCHAR(50)
+);
+
+INSERT INTO employee (name, age, salary, department) VALUES
+    ('Alice', 30, 60000.00, 'Sales'),
+    ('Bob', 25, 50000.00, 'Marketing'),
+    ('Charlie', 35, 70000.00, 'Engineering'),
+    ('David', 28, 55000.00, 'Sales'),
+    ('Eve', 32, 65000.00, 'Marketing');
+
+-- Basic SELECT statements
+SELECT * FROM employee;
+SELECT name, salary FROM employee WHERE department = 'Sales';
+SELECT AVG(salary) FROM employee;
+
+-- UPDATE and DELETE statements
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Marketing';
+DELETE FROM employee WHERE age > 35;
+
+-- Table with different data types
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(8, 2),
+    in_stock BOOLEAN,
+    last_updated TIMESTAMP
+);
+
+INSERT INTO products (name, price, in_stock, last_updated) VALUES
+    ('Laptop', 1200.00, TRUE, NOW()),
+    ('Mouse', 25.00, TRUE, NOW()),
+    ('Keyboard', 75.00, FALSE, NOW() - INTERVAL '1 week');
+
+-- JOIN operations
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+INSERT INTO departments (name, location) VALUES
+    ('Sales', 'New York'),
+    ('Marketing', 'London'),
+    ('Engineering', 'San Francisco');
+
+ALTER TABLE employee ADD COLUMN department_id INTEGER;
+
+UPDATE employee SET department_id = 1 WHERE department = 'Sales';
+UPDATE employee SET department_id = 2 WHERE department = 'Marketing';
+UPDATE employee SET department_id = 3 WHERE department = 'Engineering';
+
+ALTER TABLE employee DROP COLUMN department;
+
+SELECT employee.name, departments.name AS department_name
+FROM employee
+JOIN departments ON employee.department_id = departments.id;
+
+-- Aggregate functions and GROUP BY
+SELECT department_id, COUNT(*), AVG(salary)
+FROM employee
+GROUP BY department_id;
+
+-- Subqueries
+SELECT name, salary
+FROM employee
+WHERE salary > (SELECT AVG(salary) FROM employee WHERE department_id = 1);
+
+-- Window functions
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employee;
+
+-- Common Table Expressions (CTEs)
+WITH RankedSalaries AS (
+    SELECT
+        name,
+        salary,
+        RANK() OVER (ORDER BY salary DESC) AS salary_rank
+    FROM employee
+)
+SELECT name, salary
+FROM RankedSalaries
+WHERE salary_rank <= 3;
+
+-- Triggers (basic example)
+CREATE OR REPLACE FUNCTION update_last_updated()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.last_updated = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER products_update_trigger
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION update_last_updated();
+
+UPDATE products SET price = 1300.00 WHERE name = 'Laptop';
+
+-- Functions (basic example)
+CREATE OR REPLACE FUNCTION get_employee_count(dept_id INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM employee WHERE department_id = dept_id);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT get_employee_count(1);
+
+-- Views
+CREATE VIEW high_salary_employees AS
+SELECT name, salary
+FROM employee
+WHERE salary > 60000.00;
+
+SELECT * FROM high_salary_employees;
+
+-- Indexing
+CREATE INDEX idx_employee_department ON employee (department_id);
+
+-- Explain plans
+EXPLAIN SELECT * FROM employee WHERE department_id = 1;
+
+-- Using pg_statistic
+SELECT tablename, attname, null_frac, avg_width, n_distinct FROM pg_stats WHERE tablename = 'employee';
+
+-- Sequences
+CREATE SEQUENCE my_sequence START 100;
+SELECT nextval('my_sequence');
+
+-- Transactions
+START TRANSACTION;
+UPDATE employee SET salary = salary * 1.05 WHERE department_id = 2;
+INSERT INTO employee (name, age, salary, department_id) VALUES ('New Employee', 27, 52000.00, 2);
+COMMIT;
+
+-- Savepoints
+START TRANSACTION;
+SAVEPOINT my_savepoint;
+UPDATE employee SET salary = salary * 1.10 WHERE department_id = 3;
+ROLLBACK TO SAVEPOINT my_savepoint;
+COMMIT;
+
+-- Cursors
+DECLARE employee_cursor CURSOR FOR SELECT name, salary FROM employee;
+FETCH NEXT FROM employee_cursor;
+CLOSE employee_cursor;
+
+-- Prepared statements
+PREPARE my_prepared_statement (INTEGER) AS
+SELECT name, salary FROM employee WHERE age > $1;
+EXECUTE my_prepared_statement(28);
+DEALLOCATE my_prepared_statement;
+
+-- PL/pgSQL loops
+DO $$
+DECLARE
+    i INTEGER := 1;
+BEGIN
+    WHILE i <= 5 LOOP
+        RAISE NOTICE 'Iteration: %', i;
+        i := i + 1;
+    END LOOP;
+END $$;
+
+-- JSON support (basic)
+ALTER TABLE products ADD COLUMN details JSONB;
+UPDATE products SET details = '{"manufacturer": "Dell", "screen_size": 15}' WHERE name = 'Laptop';
+SELECT name, details -> 'manufacturer' FROM products WHERE name = 'Laptop';
+
+-- UNLOGGED table
+CREATE UNLOGGED TABLE temp_table (id SERIAL PRIMARY KEY, value TEXT);
+INSERT INTO temp_table (value) VALUES ('test');
+
+-- Foreign key
+ALTER TABLE employee ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments (id);
+
+-- Check constraint
+ALTER TABLE employee ADD CONSTRAINT check_age CHECK (age > 18);
+
+-- Constraints
+ALTER TABLE products ADD CONSTRAINT unique_product_name UNIQUE (name);
+
+-- Materialized view
+CREATE MATERIALIZED VIEW mv_employee_salaries AS
+SELECT department_id, AVG(salary) AS avg_salary
+FROM employee
+GROUP BY department_id;
+
+REFRESH MATERIALIZED VIEW mv_employee_salaries;
+
+-- Partitioned table
+CREATE TABLE sales (
+    sale_date DATE,
+    region TEXT,
+    amount DECIMAL
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_y2023 PARTITION OF sales
+FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+INSERT INTO sales (sale_date, region, amount) VALUES ('2023-05-15', 'North', 150.00);
+
+-- Common data types
+CREATE TABLE data_types_test (
+  smallint_col smallint,
+  integer_col integer,
+  bigint_col bigint,
+  decimal_col decimal(10, 2),
+  numeric_col numeric(10, 2),
+  real_col real,
+  double_precision_col double precision,
+  serial_col serial,
+  bigserial_col bigserial,
+  text_col text,
+  varchar_col varchar(50),
+  char_col char(10),
+  date_col date,
+  time_col time,
+  timestamp_col timestamp,
+  timestamptz_col timestamptz,
+  boolean_col boolean,
+  uuid_col uuid,
+  json_col json,
+  jsonb_col jsonb
+);
+
+-- Test exclusion constraint
+CREATE TABLE reservation (
+    room_id integer,
+    during tsrange,
+    EXCLUDE USING gist (room_id WITH =, during WITH &&)
+);
+
+-- Foreign data wrapper
+CREATE EXTENSION postgres_fdw;
+
+-- Autovacuum parameters (test syntax, actual fdw setup is difficult)
+ALTER TABLE employee SET (autovacuum_vacuum_threshold = 50);
+
+-- Explain analyze
+EXPLAIN ANALYZE SELECT * FROM employee WHERE age > 25;
+
+-- Advisory lock
+SELECT pg_advisory_lock(1);
+SELECT pg_advisory_unlock(1);
+
+-- Create table like
+CREATE TABLE employee_copy (LIKE employee INCLUDING ALL);
+
+-- Check pg_locks
+SELECT * FROM pg_locks WHERE relation = 'employee'::regclass;
+
+-- Create domain
+CREATE DOMAIN posint AS INTEGER CHECK (VALUE > 0);
+CREATE TABLE domain_test (id posint);
+
+-- Create collation
+CREATE COLLATION german (locale = 'de_DE');
+
+-- Create operator class
+CREATE OPERATOR CLASS int4eq_hash_ops
+    DEFAULT FOR TYPE int4 USING hash AS
+    OPERATOR 1 =,
+    FUNCTION 1 hashint4(int4);
+
+-- Generated columns
+CREATE TABLE triangle (
+  a INT,
+  b INT,
+  c INT GENERATED ALWAYS AS (a * a + b * b) STORED
+);
+
+INSERT INTO triangle (a, b) VALUES (3, 4);
+SELECT * FROM triangle;
+
+end;

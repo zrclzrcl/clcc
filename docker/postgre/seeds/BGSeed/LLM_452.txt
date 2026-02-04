@@ -1,0 +1,115 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+('Eve Wilson', 65000.00, 'Marketing', '2022-09-01');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT department, AVG(salary) AS average_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 65000.00;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE hire_date < '2021-01-01';
+
+CREATE VIEW sales_employees AS
+SELECT id, name, salary FROM employees WHERE department = 'Sales';
+
+SELECT * FROM sales_employees WHERE salary > 60000.00;
+
+-- Using window functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Using Common Table Expressions (CTEs)
+WITH DepartmentAverages AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employees
+    GROUP BY department
+)
+SELECT e.name, e.salary, d.avg_salary
+FROM employees e
+JOIN DepartmentAverages d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Using generate_series
+SELECT generate_series(1, 10, 2);
+
+-- Using string functions
+SELECT name, UPPER(department) FROM employees;
+
+-- Using date functions
+SELECT name, EXTRACT(YEAR FROM hire_date) FROM employees;
+
+-- Using jsonb functions
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    details JSONB
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "price": 1200, "specs": {"ram": "16GB", "storage": "512GB SSD"}}'),
+('Monitor', '{"brand": "LG", "price": 300, "specs": {"size": "27 inch", "resolution": "1920x1080"}}');
+
+SELECT name, details -> 'brand' AS brand FROM products;
+SELECT name, details -> 'specs' ->> 'ram' AS ram FROM products;
+SELECT * FROM products WHERE (details -> 'price')::numeric > 500;
+
+-- Using array functions
+CREATE TABLE tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    tags TEXT[]
+);
+
+INSERT INTO tags (name, tags) VALUES
+('Article 1', '{"news", "politics"}'),
+('Article 2', '{"sports", "football"}');
+
+SELECT name, tags[1] FROM tags;
+SELECT name FROM tags WHERE 'news' = ANY(tags);
+
+-- trigger example
+CREATE OR REPLACE FUNCTION check_salary()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_check_trigger
+BEFORE INSERT OR UPDATE
+ON employees
+FOR EACH ROW
+EXECUTE FUNCTION check_salary();
+
+-- attempt to insert invalid data
+-- INSERT INTO employees (name, salary, department, hire_date) VALUES ('Bad Employee', -100, 'HR', '2024-01-01');
+
+-- check constraint example
+ALTER TABLE employees ADD CONSTRAINT positive_salary CHECK (salary >= 0);
+
+-- rule example
+CREATE OR REPLACE RULE employees_insert AS ON INSERT TO employees
+DO ALSO (SELECT 1 WHERE NEW.salary >= 0);

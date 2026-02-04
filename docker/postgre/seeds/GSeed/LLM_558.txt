@@ -1,0 +1,105 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    department VARCHAR(50),
+    salary INTEGER,
+    hire_date DATE
+);
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice', 'Sales', 60000, '2020-01-15'),
+('Bob', 'Marketing', 70000, '2021-03-20'),
+('Charlie', 'Sales', 65000, '2020-05-10'),
+('David', 'Engineering', 80000, '2019-11-01'),
+('Eve', 'Marketing', 75000, '2021-07-01'),
+('Fred', 'Engineering', 90000, '2019-09-15'),
+('Grace', 'Sales', 55000, '2020-02-28'),
+('Harry', 'Marketing', 68000, '2021-05-05');
+
+-- Window functions with PARTITION BY and ORDER BY
+SELECT name, department, salary,
+       RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+SELECT name, department, salary, hire_date,
+       ROW_NUMBER() OVER (PARTITION BY department ORDER BY hire_date) as hire_order
+FROM employees;
+
+SELECT name, department, salary,
+       AVG(salary) OVER (PARTITION BY department) as avg_dept_salary
+FROM employees;
+
+-- Window function with RANGE clause
+SELECT name, salary, hire_date,
+       SUM(salary) OVER (ORDER BY hire_date RANGE BETWEEN INTERVAL '1 year' PRECEDING AND CURRENT ROW) as rolling_salary
+FROM employees;
+
+-- Window function with ROWS clause
+SELECT name, salary, hire_date,
+       AVG(salary) OVER (ORDER BY hire_date ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) as moving_avg_salary
+FROM employees;
+
+-- Window functions with window names
+SELECT name, salary, department,
+       RANK() OVER w as dept_rank,
+       AVG(salary) OVER w as dept_avg_salary
+FROM employees
+WINDOW w AS (PARTITION BY department ORDER BY salary DESC);
+
+-- Using LAG and LEAD
+SELECT name, salary,
+       LAG(salary, 1, 0) OVER (ORDER BY salary) as prev_salary,
+       LEAD(salary, 1, 0) OVER (ORDER BY salary) as next_salary
+FROM employees;
+
+-- Complex window function with filter
+SELECT department,
+       SUM(salary) FILTER (WHERE hire_date > '2020-01-01') OVER (PARTITION BY department) AS filtered_sum
+FROM employees;
+
+-- Nested window functions
+SELECT name, department, salary,
+       RANK() OVER (ORDER BY AVG(salary) OVER (PARTITION BY department) DESC) as overall_rank
+FROM employees;
+
+-- Window function with nulls
+INSERT INTO employees (name, department, salary, hire_date) VALUES ('NullPerson', 'Sales', NULL, '2022-01-01');
+
+SELECT name, salary,
+       AVG(salary) OVER (PARTITION BY department) as avg_dept_salary
+FROM employees;
+
+-- Different window frame options
+SELECT
+    name,
+    salary,
+    SUM(salary) OVER (ORDER BY salary ASC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total_unbounded,
+    SUM(salary) OVER (ORDER BY salary ASC ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS window_3_row_sum,
+    SUM(salary) OVER (ORDER BY salary ASC ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS future_sum
+FROM employees;
+
+-- EXCLUDE options
+
+SELECT name, salary,
+       SUM(salary) OVER (ORDER BY salary ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE CURRENT ROW) as sum_exclude_current,
+       SUM(salary) OVER (ORDER BY salary ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE GROUP) as sum_exclude_group,
+       SUM(salary) OVER (ORDER BY salary ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING EXCLUDE TIES) as sum_exclude_ties
+FROM employees;
+
+-- GROUPS frame
+SELECT
+    name,
+    salary,
+    SUM(salary) OVER (ORDER BY salary ASC GROUPS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total_groups_unbounded,
+    SUM(salary) OVER (ORDER BY salary ASC GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS window_3_groups_sum,
+    SUM(salary) OVER (ORDER BY salary ASC GROUPS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS future_groups_sum
+FROM employees;
+
+-- RANGE interval with time
+SELECT
+    name,
+    hire_date,
+    SUM(salary) OVER (ORDER BY hire_date RANGE BETWEEN INTERVAL '6 months' PRECEDING AND INTERVAL '6 months' FOLLOWING) as interval_range_sum
+FROM employees;
+
+DROP TABLE employees;

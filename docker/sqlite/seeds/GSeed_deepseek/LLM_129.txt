@@ -1,0 +1,14 @@
+SELECT 
+    sum(0) OVER (),
+    count(*) OVER (),
+    max(1) OVER (),
+    min(2) OVER (),
+    avg(3) OVER (),
+    (SELECT 1 UNION ALL SELECT 2),
+    'test' || NULL,
+    CASE WHEN 1=1 THEN 'a' ELSE 'b' END
+FROM 
+    (SELECT 1 AS col)
+ORDER BY 
+    sum(0) OVER (),
+    count(*) OVER ();

@@ -1,0 +1,105 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+SET @tx_isolation='READ-COMMITTED';
+
+-- Create a table with various data types and constraints.
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    quantity INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    discount FLOAT NULL
+);
+
+-- Insert some initial data.
+INSERT INTO products (name, description, price, quantity, discount) VALUES
+('Widget A', 'A standard widget.', 19.99, 100, NULL),
+('Widget B', 'A deluxe widget with extra features.', 29.99, 50, 0.1),
+('Gadget X', 'A high-tech gadget.', 99.99, 25, NULL),
+('Thingamajig Y', 'A quirky thingamajig.', 49.99, 75, 0.05);
+
+-- Create a table for product categories.
+CREATE TABLE categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Insert some categories.
+INSERT INTO categories (name) VALUES
+('Electronics'),
+('Home Goods'),
+('Toys');
+
+-- Create a many-to-many relationship between products and categories.
+CREATE TABLE product_categories (
+    product_id INT,
+    category_id INT,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+-- Assign products to categories.
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 2), -- Widget A is a Home Good
+(2, 2), -- Widget B is a Home Good
+(3, 1), -- Gadget X is an Electronic
+(4, 3); -- Thingamajig Y is a Toy
+
+-- Test some common queries.
+SELECT * FROM products WHERE price > 50;
+SELECT name, price, quantity FROM products ORDER BY price DESC;
+SELECT c.name, COUNT(pc.product_id) AS product_count FROM categories c LEFT JOIN product_categories pc ON c.id = pc.category_id GROUP BY c.name ORDER BY product_count DESC;
+
+-- Test some update queries.
+UPDATE products SET price = price * 1.1 WHERE discount IS NULL;
+UPDATE products SET quantity = quantity + 10 WHERE name LIKE '%Widget%';
+
+-- Test a delete query.
+DELETE FROM products WHERE quantity = 0;
+
+-- Test a join query
+SELECT p.name, c.name FROM products p JOIN product_categories pc ON p.id = pc.product_id JOIN categories c ON pc.category_id = c.id;
+
+-- Test window functions (MariaDB specific)
+SELECT name, price, ROW_NUMBER() OVER (ORDER BY price DESC) as row_num FROM products;
+SELECT name, price, RANK() OVER (ORDER BY price DESC) as price_rank FROM products;
+
+-- Test JSON functions (MariaDB specific)
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = JSON_OBJECT('color', 'red', 'material', 'plastic') WHERE id = 1;
+SELECT name, JSON_EXTRACT(details, '$.color') FROM products WHERE details IS NOT NULL;
+
+-- Test stored procedure.
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN categoryName VARCHAR(255))
+BEGIN
+    SELECT p.name, p.price
+    FROM products p
+    JOIN product_categories pc ON p.id = pc.product_id
+    JOIN categories c ON pc.category_id = c.id
+    WHERE c.name = categoryName;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Electronics');
+DROP PROCEDURE GetProductsByCategory;
+
+-- Test spatial data types (MariaDB specific). Requires enabling spatial support.
+-- CREATE TABLE locations (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), point POINT SRID 0);
+-- INSERT INTO locations (name, point) VALUES ('Location A', ST_GeomFromText('POINT(10 10)') );
+-- SELECT name, ST_AsText(point) FROM locations;
+-- DROP TABLE locations;
+
+-- Test the use of 'explain' to analyze query execution
+EXPLAIN SELECT * FROM products WHERE price > 50;
+
+-- Cleanup (Optional, but good practice)
+-- DROP TABLE product_categories;
+-- DROP TABLE categories;
+-- DROP TABLE products;
+
+SET sql_mode=@old_sql_mode;

@@ -1,0 +1,41 @@
+CREATE TABLE departments (
+    id INT PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+INSERT INTO departments VALUES (1, 'Engineering'), (2, 'Marketing');
+
+CREATE TABLE employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    dept_id INT,
+    CONSTRAINT fk_dept FOREIGN KEY (dept_id) REFERENCES departments(id)
+);
+
+INSERT INTO employees (name, salary, hire_date, dept_id) VALUES
+('Alice', 85000.00, '2023-01-15', 1),
+('Bob', 90000.00, '2023-02-20', 2),
+('Charlie', 75000.00, '2023-03-10', 1);
+
+CREATE INDEX idx_name ON employees(name);
+
+UPDATE employees SET salary = 88000.00 WHERE id=1;
+
+DELETE FROM departments WHERE id=2;
+
+SELECT * FROM employees;
+
+SELECT e.name, d.name AS dept_name FROM employees e JOIN departments d ON e.dept_id = d.id;
+
+SELECT AVG(salary) FROM employees;
+
+CREATE TABLE json_test (
+    id INT PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_test VALUES (1, '{"name": "John", "age": 30}');
+
+SELECT JSON_EXTRACT(data, '$.name') AS name FROM json_test;

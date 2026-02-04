@@ -1,0 +1,77 @@
+-- Set optimizer settings to test different execution plans
+SET optimizer_switch='index_merge=on,batch_merges=off';
+
+-- Create a table with various data types including MariaDB-specific ones
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive'),
+    data JSON,
+    location POINT
+);
+
+-- Create another table for testing relationships and triggers
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    t1_id INT,
+    amount DECIMAL(10,2),
+    FOREIGN KEY (t1_id) REFERENCES t1(id)
+);
+
+-- Insert sample data into tables with various edge cases
+INSERT INTO t1 VALUES 
+    (NULL, 'Product 1', 19.99, NULL, 'active', '{"category": "electronics"}', Point(37.7858, -122.4069)),
+    (NULL, '', 0.00, CURRENT_TIMESTAMP, 'inactive', NULL, NULL),
+    (NULL, 'Product 3', 1000000.99, '2023-01-01 00:00:00', 'active', '{"category": "clothing"}', Point(-73.9352, 40.7306));
+
+-- Create a trigger to test procedural logic
+DELIMITER //
+CREATE TRIGGER t1_after_update
+AFTER UPDATE ON t1
+FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (t1_id, amount) VALUES (OLD.id, 100.50);
+END//
+DELIMITER ;
+
+-- Start transaction to test transaction handling
+START TRANSACTION;
+
+-- Insert data into t2 referencing t1
+INSERT INTO t2 (t1_id, amount) SELECT id, price FROM t1 WHERE status = 'active';
+
+COMMIT;
+
+-- Create a stored procedure with parameters and dynamic SQL
+DELIMITER //
+CREATE PROCEDURE sp_test(IN p_name VARCHAR(50))
+BEGIN
+    DECLARE v_price DECIMAL(10,2);
+    
+    -- Dynamic SQL query based on input parameter
+    SET @sql = CONCAT('SELECT price INTO v_price FROM t1 WHERE name LIKE ''%', p_name, '%''');
+    
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+    
+    SELECT v_price AS result;
+END//
+DELIMITER ;
+
+-- Create a view to test query optimization on views
+CREATE VIEW v1 AS 
+SELECT t1.name, t2.amount 
+FROM t1 
+JOIN t2 ON t1.id = t2.t1_id 
+WHERE t1.status = 'active';
+
+-- Test the stored procedure with sample input
+CALL sp_test('Product');
+
+-- Clean up (optional for initial seed)
+-- DROP TABLE t2, t1;
+-- DROP PROCEDURE sp_test;
+-- DROP VIEW v1;

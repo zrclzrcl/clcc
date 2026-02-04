@@ -1,0 +1,48 @@
+SET @@global.max_connections = 100;
+CREATE TABLE t0 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    score DECIMAL(10, 2),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_name (name)
+);
+INSERT INTO t0 (name, score) VALUES ('Alice', 98.7), ('Bob', 85.3), ('Charlie', NULL);
+ANALYZE TABLE t0;
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    data JSON
+);
+INSERT INTO t1 VALUES (1, '{"key": "value", "array": [1,2,3]}'), (2, '{"name": "test"}');
+ALTER TABLE t0 ADD COLUMN email VARCHAR(255) UNIQUE;
+START TRANSACTION;
+INSERT INTO t0 (name, score, email) VALUES ('David', 78.9, 'david@example.com');
+COMMIT;
+CREATE PROCEDURE update_scores()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE s DECIMAL(10,2);
+    DECLARE cur CURSOR FOR SELECT score FROM t0 WHERE score > 80;
+    OPEN cur;
+    read_loop: LOOP
+        FETCH cur INTO s;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        UPDATE t0 SET score = s * 1.1 WHERE score = s;
+    END LOOP;
+    CLOSE cur;
+END;
+DELIMITER ;;
+CREATE TRIGGER after_insert_t0 AFTER INSERT ON t0 FOR EACH ROW
+BEGIN
+    INSERT INTO t1 (id, data) VALUES (NEW.id, JSON_OBJECT('name', NEW.name));
+END;;
+DELIMITER ;
+SET @@global.event_scheduler = 1;
+CREATE EVENT cleanup_old_data
+ON SCHEDULE EVERY 1 HOUR
+DO
+DELETE FROM t0 WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
+SELECT id, name, score, email, JSON_EXTRACT(data, '$.key') AS key_value
+FROM t0 JOIN t1 ON t0.id = t1.id
+WHERE score > 80 AND email IS NOT NULL;

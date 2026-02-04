@@ -1,0 +1,142 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    department VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, department, salary, hire_date) VALUES
+('Alice Smith', 'Sales', 60000.00, '2022-01-15'),
+('Bob Johnson', 'Marketing', 75000.00, '2021-05-20'),
+('Charlie Brown', 'Engineering', 90000.00, '2023-03-10'),
+('David Lee', 'Sales', 62000.00, '2022-08-01'),
+('Eve Wilson', 'Marketing', 78000.00, '2021-11-05');
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 4;
+
+SELECT * FROM employees WHERE salary > 70000.00 ORDER BY name;
+
+SELECT department, AVG(salary) AS average_salary FROM employees GROUP BY department;
+
+SELECT e.name, d.name AS department_name
+FROM employees e
+JOIN departments d ON e.department = d.name;
+
+SELECT * FROM employees WHERE hire_date BETWEEN '2022-01-01' AND '2023-12-31';
+
+SELECT COUNT(*) FROM employees;
+
+SELECT MAX(salary) FROM employees;
+
+ALTER TABLE employees ADD COLUMN json_data JSONB;
+
+UPDATE employees SET json_data = '{"performance": "good", "skills": ["SQL", "Python"]}' WHERE id = 1;
+
+SELECT name, json_data ->> 'performance' AS performance FROM employees;
+
+CREATE TYPE status_enum AS ENUM ('active', 'inactive', 'pending');
+
+ALTER TABLE employees ADD COLUMN status status_enum;
+
+UPDATE employees SET status = 'active' WHERE id = 1;
+UPDATE employees SET status = 'inactive' WHERE id = 2;
+UPDATE employees SET status = 'pending' WHERE id = 3;
+
+SELECT * FROM employees WHERE status = 'active';
+
+CREATE TABLE array_example (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_example (tags) VALUES (ARRAY['tag1', 'tag2', 'tag3']);
+
+SELECT tags[1] FROM array_example;
+
+CREATE TABLE interval_example (
+    id SERIAL PRIMARY KEY,
+    duration INTERVAL
+);
+
+INSERT INTO interval_example (duration) VALUES ('1 hour 30 minutes');
+
+SELECT * FROM interval_example WHERE duration > '1 hour';
+
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, department, 0 AS level
+    FROM employees
+    WHERE department = 'Engineering'
+    UNION ALL
+    SELECT e.id, e.name, e.department, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department = eh.department and e.id != eh.id
+    WHERE eh.level < 2
+)
+SELECT * FROM employee_hierarchy;
+
+SELECT generate_series(1, 10);
+
+CREATE TABLE point_example (
+  id SERIAL PRIMARY KEY,
+  location POINT
+);
+
+INSERT INTO point_example (location) VALUES ('(1,2)');
+SELECT * FROM point_example;
+
+CREATE TABLE line_example (
+  id SERIAL PRIMARY KEY,
+  line_segment LINE
+);
+
+INSERT INTO line_example (line_segment) VALUES ('((1,2),(3,4))');
+SELECT * FROM line_example;
+
+CREATE TABLE box_example (
+  id SERIAL PRIMARY KEY,
+  bounding_box BOX
+);
+
+INSERT INTO box_example (bounding_box) VALUES ('((1,2),(3,4))');
+SELECT * FROM box_example;
+
+CREATE TABLE circle_example (
+  id SERIAL PRIMARY KEY,
+  circle CIRCLE
+);
+
+INSERT INTO circle_example (circle) VALUES ('<(1,2),3>');
+SELECT * FROM circle_example;
+
+CREATE TABLE polygon_example (
+  id SERIAL PRIMARY KEY,
+  polygon POLYGON
+);
+
+INSERT INTO polygon_example (polygon) VALUES ('((0,0),(1,1),(2,0))');
+SELECT * FROM polygon_example;
+
+CREATE TABLE path_example (
+  id SERIAL PRIMARY KEY,
+  path PATH
+);
+
+INSERT INTO path_example (path) VALUES ('[(0,0),(1,1),(2,0)]');
+SELECT * FROM path_example;
+
+SELECT * FROM pg_timezone_names;
+SELECT pg_backend_pid();

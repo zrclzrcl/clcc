@@ -1,0 +1,12 @@
+CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, email TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE posts (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, content TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id));
+INSERT INTO users (username, email) VALUES ('test_user', 'test@example.com'), ('another_user', 'another@example.com');
+INSERT INTO posts (user_id, content) VALUES (1, 'This is a test post.'), (1, 'Another post content.'), (2, 'Content from another user.');
+SELECT * FROM users WHERE created_at > DATETIME('now', '-1 day');
+SELECT username, COUNT(posts.id) AS post_count FROM users LEFT JOIN posts ON users.id = posts.user_id GROUP BY users.id HAVING post_count > 0 ORDER BY post_count DESC;
+SELECT content FROM posts WHERE user_id = (SELECT id FROM users WHERE username = 'test_user') AND LENGTH(content) > 10;
+SELECT EXISTS(SELECT 1 FROM users WHERE email = 'nonexistent@example.com');
+UPDATE users SET email = 'updated_email@example.com' WHERE username = 'test_user';
+DELETE FROM posts WHERE user_id = 1 AND created_at < DATETIME('now', '-7 days');
+SELECT user_id, COUNT(*) as post_count FROM posts GROUP BY user_id ORDER BY post_count DESC LIMIT 1;
+SELECT (SELECT COUNT(*) FROM users) AS total_users, (SELECT COUNT(*) FROM posts) AS total_posts;

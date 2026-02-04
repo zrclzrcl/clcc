@@ -1,0 +1,59 @@
+-- Create a test table with various data types including PostgreSQL-specific ones
+CREATE TABLE test_edge_cases (
+    id SERIAL PRIMARY KEY,
+    text_field TEXT,
+    numeric_field NUMERIC(20, 5),
+    jsonb_field JSONB,
+    uuid_field UUID,
+    timestamp_field TIMESTAMP WITH TIME ZONE,
+    bool_field BOOLEAN DEFAULT FALSE,
+    bytea_field BYTEA
+);
+
+-- Insert edge-case data into the table
+INSERT INTO test_edge_cases (text_field, numeric_field, jsonb_field, uuid_field, timestamp_field, bool_field, bytea_field)
+VALUES 
+('Empty String', 0.00001, '{}'::JSONB, '00000000-0000-0000-0000-000000000000'::UUID, '1970-01-01 00:00:01+00', TRUE, '\x00'),
+('Test String', 9999999999.99999, '{"key": "value"}'::JSONB, '12345678-1234-5678-1234-567812345678'::UUID, '2024-01-01 12:34:56+00', FALSE, '\xff');
+
+-- Create indexes on the table
+CREATE INDEX idx_text_field ON test_edge_cases (text_field);
+CREATE INDEX idx_jsonb_field ON test_edge_cases USING GIN (jsonb_field);
+
+-- Create a function that manipulates JSON data
+CREATE OR REPLACE FUNCTION manipulate_json(j JSONB)
+RETURNS JSONB AS $$
+BEGIN
+    RETURN j || '{"processed": TRUE}';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Select statements with different query patterns
+SELECT id, text_field, numeric_field, jsonb_field, uuid_field 
+FROM test_edge_cases 
+WHERE timestamp_field >= '2024-01-01 00:00:00+00' AND bool_field = TRUE;
+
+SELECT COUNT(*) AS total_records FROM test_edge_cases;
+
+SELECT JSONB_ARRAY_LENGTH(jsonb_field) AS array_length FROM test_edge_cases WHERE id = 1;
+
+-- Alter table to modify constraints and columns
+ALTER TABLE test_edge_cases ADD COLUMN new_column TEXT;
+ALTER TABLE test_edge_cases ALTER COLUMN text_field SET NOT NULL;
+ALTER TABLE test_edge_cases DROP CONSTRAINT IF EXISTS test_edge_cases_pkey;
+ALTER TABLE test_edge_cases ADD PRIMARY KEY (id);
+
+-- Query system catalogs to check metadata changes
+SELECT relname, relkind FROM pg_class WHERE relname = 'test_edge_cases';
+
+-- Test user permissions by creating roles and adjusting privileges
+CREATE ROLE test_user WITH LOGIN PASSWORD 'securepassword';
+GRANT SELECT ON test_edge_cases TO test_user;
+REVOKE SELECT ON test_edge_cases FROM test_user;
+
+-- Clean up the database objects
+DROP FUNCTION manipulate_json(JSONB);
+DROP INDEX idx_text_field;
+DROP INDEX idx_jsonb_field;
+DROP TABLE test_edge_cases;
+DROP ROLE test_user;

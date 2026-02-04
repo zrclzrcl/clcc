@@ -1,0 +1,132 @@
+SET extra_float_digits = 2;
+
+-- Create table with various data types
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    int_col INTEGER,
+    float_col REAL,
+    double_col DOUBLE PRECISION,
+    char_col CHAR(10),
+    varchar_col VARCHAR(50),
+    text_col TEXT,
+    date_col DATE,
+    timestamp_col TIMESTAMP,
+    boolean_col BOOLEAN,
+    json_col JSONB,
+    uuid_col UUID DEFAULT gen_random_uuid(),
+    point_col POINT
+);
+
+-- Insert data with different values and edge cases
+INSERT INTO fuzz_test_table (int_col, float_col, double_col, char_col, varchar_col, text_col, date_col, timestamp_col, boolean_col, json_col, point_col) VALUES
+(1, 1.1, 1.11, 'a', 'abc', 'This is a text', '2024-01-01', '2024-01-01 10:00:00', TRUE, '{"key": "value"}', '(1,2)'),
+(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2147483647, 3.4028235e+38, 1.7976931348623157e+308, 'bbbbbbbbbb', 'Very long string', 'loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong text', '1970-01-01', '1970-01-01 00:00:00', FALSE, '{"key": null}', '(0,0)'),
+(-2147483648, -3.4028235e+38, -1.7976931348623157e+308, 'ccccccccc', 'Short', 'short', '2099-12-31', '2099-12-31 23:59:59', TRUE, '[]', '(-1,-1)'),
+(0, 0.0, 0.0, 'ddddddddd', '', '', '2024-06-15', '2024-06-15 12:34:56', FALSE, '123', '(100,-200)'),
+(10, 10.5, 10.55, 'eeeeeeeee', 'with space', 'with space', '2023-11-20', '2023-11-20 05:00:00', TRUE, '{"a": 1, "b": 2}', '(-50, 50)'),
+(5, -5.5, -5.55, 'fffffffff', 'with "quotes"', 'with "quotes"', '2024-03-10', '2024-03-10 18:00:00', FALSE, '{"key": "value with quotes"}', '(3.14, 2.71)');
+
+-- Test SELECT statements
+SELECT * FROM fuzz_test_table;
+SELECT id, int_col, varchar_col FROM fuzz_test_table WHERE int_col > 0;
+SELECT COUNT(*) FROM fuzz_test_table;
+SELECT AVG(float_col) FROM fuzz_test_table;
+SELECT MAX(double_col), MIN(double_col) FROM fuzz_test_table;
+SELECT text_col FROM fuzz_test_table WHERE text_col LIKE '%text%';
+SELECT json_col -> 'key' FROM fuzz_test_table;
+SELECT uuid_col FROM fuzz_test_table;
+SELECT point_col FROM fuzz_test_table WHERE point_col = '(1,2)';
+
+-- Test UPDATE statements
+UPDATE fuzz_test_table SET int_col = 100 WHERE id = 1;
+UPDATE fuzz_test_table SET varchar_col = 'Updated' WHERE boolean_col = TRUE;
+
+-- Test DELETE statements
+DELETE FROM fuzz_test_table WHERE int_col IS NULL;
+
+-- Test JOIN statements
+CREATE TABLE another_table (
+    id SERIAL PRIMARY KEY,
+    fuzz_test_table_id INTEGER REFERENCES fuzz_test_table(id),
+    value VARCHAR(20)
+);
+
+INSERT INTO another_table (fuzz_test_table_id, value) VALUES
+(1, 'one'),
+(2, 'two'),
+(1, 'three');
+
+SELECT * FROM fuzz_test_table JOIN another_table ON fuzz_test_table.id = another_table.fuzz_test_table_id;
+
+-- Test aggregate functions with GROUP BY
+SELECT int_col, COUNT(*) FROM fuzz_test_table GROUP BY int_col;
+
+-- Test ORDER BY
+SELECT * FROM fuzz_test_table ORDER BY int_col DESC, varchar_col ASC;
+
+-- Test LIMIT and OFFSET
+SELECT * FROM fuzz_test_table LIMIT 3 OFFSET 1;
+
+-- Test CASE WHEN
+SELECT
+    id,
+    CASE
+        WHEN int_col > 5 THEN 'Large'
+        WHEN int_col < 5 THEN 'Small'
+        ELSE 'Medium'
+    END AS size
+FROM fuzz_test_table;
+
+-- Test DISTINCT
+SELECT DISTINCT int_col FROM fuzz_test_table;
+
+-- Test window functions (PostgreSQL specific)
+SELECT
+    id,
+    int_col,
+    ROW_NUMBER() OVER (ORDER BY int_col) AS row_num
+FROM fuzz_test_table;
+
+-- Test Common Table Expressions (CTEs)
+WITH subquery AS (
+    SELECT id, int_col FROM fuzz_test_table WHERE int_col > 0
+)
+SELECT * FROM subquery WHERE int_col < 10;
+
+-- Test array functions (PostgreSQL specific)
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    int_array INTEGER[]
+);
+INSERT INTO array_test (int_array) VALUES ('{1,2,3}'), ('{4,5,6}');
+SELECT int_array[1] FROM array_test;
+
+-- Test range functions (PostgreSQL specific)
+CREATE TABLE range_test (
+    id SERIAL PRIMARY KEY,
+    int4range int4range
+);
+INSERT INTO range_test (int4range) VALUES ('[10,20]');
+SELECT int4range FROM range_test WHERE 15 <@ int4range;
+
+-- Test foreign data wrapper (if available)
+-- CREATE EXTENSION postgres_fdw;
+-- CREATE SERVER my_foreign_server
+--   FOREIGN DATA WRAPPER postgres_fdw
+--   OPTIONS (host 'localhost', port '5432', dbname 'foreign_db');
+-- CREATE USER MAPPING FOR CURRENT_USER
+--   SERVER my_foreign_server
+--   OPTIONS (user 'foreign_user', password 'foreign_password');
+-- CREATE FOREIGN TABLE foreign_table (
+--   id integer,
+--   name text
+-- ) SERVER my_foreign_server
+-- OPTIONS (schema_name 'public', table_name 'my_table');
+-- SELECT * FROM foreign_table;
+
+-- Cleanup (optional, but good practice)
+DROP TABLE IF EXISTS another_table;
+DROP TABLE IF EXISTS array_test;
+DROP TABLE IF EXISTS range_test;
+DROP TABLE IF EXISTS fuzz_test_table;

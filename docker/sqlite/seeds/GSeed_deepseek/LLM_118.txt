@@ -1,0 +1,61 @@
+PRAGMA recursive_triggers = true;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK(age >= 0),
+    UNIQUE(name)
+);
+
+CREATE TABLE t2(
+    id INTEGER PRIMARY KEY,
+    value REAL,
+    status TEXT DEFAULT 'active'
+);
+
+CREATE INDEX idx_t1_age_desc ON t1(age DESC);
+CREATE INDEX idx_t2_value_abs ON t2(ABS(value));
+
+CREATE TRIGGER tr_t1_after_insert AFTER INSERT ON t1 BEGIN
+    INSERT INTO t2(value) VALUES (NEW.age * 10.5);
+END;
+
+CREATE TRIGGER tr_t2_before_update BEFORE UPDATE ON t2 BEGIN
+    SELECT CASE WHEN NEW.status NOT IN ('active', 'inactive') THEN RAISE(ABORT, 'Invalid status')
+              END;
+END;
+
+CREATE VIEW v1 AS
+SELECT t1.name, t2.value
+FROM t1 JOIN t2 ON t1.id = t2.id;
+
+CREATE FUNCTION fn_sum(a INT, b INT) RETURNS INT AS $$
+    SELECT a + b;
+$$ LANGUAGE SQL;
+
+WITH cte AS (
+    SELECT name, age FROM t1 WHERE age > 30
+)
+SELECT * FROM cte ORDER BY name DESC LIMIT 5;
+
+SELECT name, ROW_NUMBER() OVER (ORDER BY age DESC) as rank
+FROM t1;
+
+BEGIN;
+INSERT INTO t1(name, age) VALUES('Alice', 30);
+INSERT INTO t1(name, age) VALUES('Bob', 25);
+COMMIT;
+
+SAVEPOINT sp1;
+UPDATE t2 SET value = value * 0.9 WHERE status = 'active';
+ROLLBACK TO sp1;
+
+SELECT * FROM t1 LEFT JOIN t2 ON t1.id = t2.id
+WHERE t1.age > 25 AND t2.status = 'active';
+
+INSERT INTO t1(name, age) VALUES('Charlie', 35), ('David', 40);
+UPDATE t1 SET name = 'Eve' WHERE id = (SELECT id FROM t1 WHERE name = 'Alice');
+DELETE FROM t1 WHERE age < 28;
+
+VACUUM;

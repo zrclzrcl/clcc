@@ -1,0 +1,64 @@
+SET optimizer_switch='batched_key_access=on,materialization=off';
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age SMALLINT UNSIGNED DEFAULT 0,
+    balance DECIMAL(10,2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    status ENUM('active', 'inactive') NOT NULL,
+    data TEXT,
+    UNIQUE INDEX idx_unique_status (status)
+) ENGINE=MyISAM;
+
+CREATE TABLE t3 (
+    id INT PRIMARY KEY,
+    content MEDIUMBLOB,
+    metadata JSON
+) ENGINE=Spider COMMENT='MariaDB specific Spider engine';
+
+INSERT INTO t1 VALUES 
+(1, 'Alice', 30, 1000.50, '2024-01-01 00:00:00'),
+(2, 'Bob', NULL, -500.75, '2024-01-02 12:34:56');
+
+INSERT INTO t2 VALUES 
+(1, 'active', '{"key": "value"}'),
+(2, 'inactive', NULL);
+
+DELIMITER $$
+
+CREATE TRIGGER trg_t1_before_insert BEFORE INSERT ON t1
+FOR EACH ROW
+BEGIN
+    IF NEW.age < 0 THEN
+        SET NEW.age = 0;
+    END IF;
+END$$
+
+DELIMITER ;
+
+SELECT 
+    t1.name,
+    t2.status,
+    (t1.balance + t2.id) AS total,
+    JSON_EXTRACT(t2.data, '$.key') AS extracted_data
+FROM t1
+JOIN t2 ON t1.id = t2.id
+WHERE t1.age > 0
+UNION ALL
+SELECT 
+    'NULL' AS name,
+    NULL AS status,
+    NULL AS total,
+    NULL AS extracted_data;
+
+SET @var1 = (SELECT COUNT(*) FROM t1);
+SET @var2 = (SELECT MAX(balance) FROM t1);
+
+CALL sp_test(@var1, @var2);
+
+SET GLOBAL max_connections = 500;

@@ -1,0 +1,15 @@
+SHOW GLOBAL STATUS LIKE 'wsrep_cluster_size';
+CREATE TABLE test_blob (id INT PRIMARY KEY, data MEDIUMBLOB);
+INSERT INTO test_blob VALUES (1, REPEAT('A', 1024));
+SELECT LENGTH(data) FROM test_blob WHERE id = 1;
+CREATE TABLE t1 (a INT, b TEXT(100), c ENUM('x-small', 'small', 'medium', 'large', 'x-large'));
+INSERT INTO t1 (a, b, c) VALUES (1, 'short text', 'small');
+SELECT * FROM t1 WHERE b LIKE '%text%';
+CREATE TABLE t2 (ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
+INSERT INTO t2 () VALUES ();
+SELECT * FROM t2;
+CREATE TABLE t3 (js JSON);
+INSERT INTO t3 VALUES ('{"name": "John", "age": 30, "city": "New York"}');
+SELECT js->'$.age' FROM t3;
+FLUSH TABLES WITH READ LOCK;
+UNLOCK TABLES;

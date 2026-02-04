@@ -1,0 +1,35 @@
+ATTACH ':memory:' AS test_db;
+
+CREATE TABLE test_db.users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE test_db.posts (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES test_db.users(id) ON DELETE CASCADE
+);
+
+INSERT INTO test_db.users (name, email) VALUES ('Alice', 'alice@example.com');
+INSERT INTO test_db.users (name, email) VALUES ('Bob', 'bob@example.com');
+
+CREATE TRIGGER user_posts_count AFTER INSERT ON test_db.posts
+BEGIN
+    UPDATE test_db.users SET posts_count = 
+        (SELECT COUNT(*) FROM test_db.posts WHERE user_id = NEW.user_id)
+    WHERE id = NEW.user_id;
+END;
+
+INSERT INTO test_db.posts (user_id, content) VALUES (1, 'Hello World!');
+INSERT INTO test_db.posts (user_id, content) VALUES (1, 'Another post');
+INSERT INTO test_db.posts (user_id, content) VALUES (2, 'Hello from Bob!');
+
+SELECT * FROM test_db.users;
+SELECT * FROM test_db.posts;
+
+DETACH test_db;

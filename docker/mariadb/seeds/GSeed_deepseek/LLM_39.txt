@@ -1,0 +1,54 @@
+SET default_storage_engine = archive;
+
+CREATE TABLE gis_features (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    geom GEOMETRY NOT NULL,
+    name VARCHAR(100)
+) ENGINE = InnoDB;
+
+SHOW CREATE TABLE gis_features;
+
+INSERT INTO gis_features (geom, name)
+VALUES 
+(ST_GeomFromText('POINT(1 2)'), 'Point A'),
+(ST_GeomFromWKB(ST_AsWKB(ST_LineFromText('LINESTRING(3 4,5 6)'))), 'Line B');
+
+ANALYZE TABLE gis_features;
+
+CREATE TABLE test_json (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO test_json (data)
+VALUES 
+('{"name": "Alice", "age": 30}'),
+('{"scores": [85, 92, 78]}');
+
+CREATE TABLE sales (
+    sale_id INT AUTO_INCREMENT PRIMARY KEY,
+    amount DECIMAL(10, 2),
+    sale_date DATE
+) PARTITION BY RANGE (YEAR(sale_date)) (
+    PARTITION p2023 VALUES LESS THAN (2024)
+);
+
+INSERT INTO sales (amount, sale_date)
+VALUES 
+(100.50, '2023-01-15'),
+(75.75, '2023-02-20');
+
+DELIMITER //
+CREATE PROCEDURE insert_sale(IN amount DECIMAL(10, 2))
+BEGIN
+    INSERT INTO sales (amount, sale_date)
+    VALUES (amount, CURDATE());
+END//
+DELIMITER ;
+
+CREATE TRIGGER after_insert_gis
+AFTER INSERT ON gis_features
+FOR EACH ROW
+INSERT INTO test_json (data) 
+VALUES 
+('{"event": "insert", "id": NEW.id}');

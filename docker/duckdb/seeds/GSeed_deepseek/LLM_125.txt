@@ -1,0 +1,112 @@
+-- Create a table for testing basic operations
+CREATE TABLE test_basic (
+  id INTEGER,
+  name VARCHAR(255),
+  value DECIMAL,
+  timestamp TIMESTAMPTZ
+);
+
+-- Create a table with unique constraints and indexes
+CREATE TABLE test_unique (
+  id SERIAL PRIMARY KEY,
+  unique_value VARCHAR(100) UNIQUE,
+  INDEX idx_unique (unique_value)
+);
+
+-- Create a table for testing joins and relationships
+CREATE TABLE test_join_left (
+  left_id INTEGER PRIMARY KEY,
+  left_name VARCHAR(255),
+  left_value DECIMAL
+);
+
+CREATE TABLE test_join_right (
+  right_id INTEGER PRIMARY KEY,
+  right_name VARCHAR(255),
+  right_value DECIMAL,
+  foreign_key INTEGER REFERENCES test_join_left(left_id)
+);
+
+-- Create a table for testing string operations
+CREATE TABLE test_string (
+  id INTEGER PRIMARY KEY,
+  text_field TEXT,
+  char_field CHAR(10)
+);
+
+-- Insert sample data into the tables
+INSERT INTO test_basic VALUES
+  (1, 'Test Name 1', 100.5, '2023-01-01T12:00:00'),
+  (2, 'Test Name 2', NULL, '2023-01-02T13:30:45'),
+  (3, '', 200.75, '2023-01-03T08:15:00');
+
+INSERT INTO test_unique VALUES
+  DEFAULT,
+  'unique1',
+  NULL;
+
+INSERT INTO test_join_left VALUES
+  (1, 'Left 1', 10),
+  (2, 'Left 2', 20);
+
+INSERT INTO test_join_right VALUES
+  (1, 'Right 1', 5, 1),
+  (2, 'Right 2', 15, 2);
+
+INSERT INTO test_string VALUES
+  (1, 'Hello World!', 'HELLO'),
+  (2, NULL, 'TEST'),
+  (3, '   Leading and trailing spaces   ', 'TRIM');
+
+-- Create a view for testing complex queries
+CREATE VIEW test_view AS
+  SELECT
+    b.id,
+    b.name,
+    j.left_value,
+    j.right_value,
+    s.text_field,
+    s.char_field
+  FROM test_basic b
+  LEFT JOIN test_join_left j ON b.id = j.left_id
+  LEFT JOIN test_string s ON b.id = s.id;
+
+-- Create a table for testing window functions and CTEs
+CREATE TABLE test_window (
+  id INTEGER PRIMARY KEY,
+  group_id INTEGER,
+  value DECIMAL
+);
+
+INSERT INTO test_window VALUES
+  (1, 1, 10),
+  (2, 1, 20),
+  (3, 1, 30),
+  (4, 2, 15),
+  (5, 2, 25);
+
+-- Create a table for testing aggregate functions and grouping
+CREATE TABLE test_aggregate (
+  id INTEGER PRIMARY KEY,
+  category VARCHAR(100),
+  value DECIMAL
+);
+
+INSERT INTO test_aggregate VALUES
+  (1, 'A', 100),
+  (2, 'A', 200),
+  (3, 'B', 300),
+  (4, 'B', 400);
+
+-- Create a table for testing vacuum and database maintenance
+CREATE TABLE test_vacuum (
+  id INTEGER PRIMARY KEY,
+  data TEXT
+);
+
+-- Vacuum the database to test space management
+VACUUM;
+
+-- Create indexes for testing query optimization
+CREATE INDEX idx_test_basic_value ON test_basic(value);
+CREATE INDEX idx_test_aggregate_category ON test_aggregate(category);

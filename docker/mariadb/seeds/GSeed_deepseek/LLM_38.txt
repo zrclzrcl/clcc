@@ -1,0 +1,37 @@
+SHOW VARIABLES LIKE 'version%';
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age DECIMAL(3,0) DEFAULT 0,
+    created_at DATE NOT NULL,
+    UNIQUE INDEX idx_name (name),
+    CHECK (age >= 0)
+);
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data JSON,
+    length Virtual GENERATED ALWAYS AS (JSON_LENGTH(data)) STORED
+);
+INSERT INTO t1 VALUES 
+    (NULL, 'Alice', 30, '2024-01-01'),
+    (NULL, 'Bob', 25, '2024-01-02'),
+    (NULL, 'Charlie', 0, '2024-01-03');
+ALTER TABLE t1 ADD COLUMN active BOOLEAN DEFAULT TRUE;
+CREATE INDEX idx_t1_name ON t1(name(10));
+INSERT INTO t2 VALUES 
+    (NULL, '{"name": "Alice", "age": 30}', NULL),
+    (NULL, '{"name": "Bob", "age": 25}', NULL);
+UPDATE t1 SET age = 30 WHERE id = 1;
+DELETE FROM t1 WHERE id = 2;
+SELECT 
+    t1.id, t1.name, t1.age, t2.data->>'$.name' AS json_name
+FROM 
+    t1
+JOIN 
+    t2 ON t1.id = t2.id
+WHERE 
+    t1.active = TRUE AND t2.length > 0
+GROUP BY 
+    t1.id
+HAVING 
+    SUM(t1.age) >= 55;

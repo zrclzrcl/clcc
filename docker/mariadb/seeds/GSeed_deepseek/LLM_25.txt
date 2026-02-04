@@ -1,0 +1,28 @@
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    data JSON,
+    status ENUM('active', 'inactive')
+);
+
+ALTER TABLE test_table ADD INDEX idx_name (name);
+
+INSERT INTO test_table (name, data, status) VALUES 
+('Test1', '{"key": "value"}', 'active'),
+('Test2', '{"number": 123}', 'inactive');
+
+SELECT id, name, JSON_EXTRACT(data, '$.key') AS extracted_value 
+FROM test_table 
+WHERE status = 'active' AND name LIKE 'Test%';
+
+UPDATE test_table SET data = '{"updated": true}' WHERE id = 1;
+
+DELETE FROM test_table WHERE status = 'inactive';
+
+SELECT t1.id, t2.name 
+FROM test_table t1 
+JOIN (
+    SELECT id, name FROM test_table WHERE status = 'active'
+) t2 ON t1.id = t2.id
+UNION
+SELECT id, name FROM test_table WHERE status = 'inactive';

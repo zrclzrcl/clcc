@@ -1,0 +1,43 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE Users (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Articles (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT,
+    author_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE Comments (
+    id INTEGER PRIMARY KEY,
+    article_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES Articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+INSERT INTO Users (username, email) VALUES 
+('john_doe', 'john@example.com'),
+('jane_smith', 'jane@example.com');
+
+INSERT INTO Articles (title, content, author_id) VALUES 
+('First Article', 'This is the content of the first article.', 1),
+('Second Article', 'Content of the second article, which is more detailed.', 2);
+
+INSERT INTO Comments (article_id, user_id, comment) VALUES 
+(1, 1, 'Great article!'),
+(1, 2, 'Thanks for sharing.'),
+(2, 1, 'Very insightful. I learned a lot.');
+
+SELECT * FROM Users;
+SELECT * FROM Articles;
+SELECT * FROM Comments WHERE article_id = 1;

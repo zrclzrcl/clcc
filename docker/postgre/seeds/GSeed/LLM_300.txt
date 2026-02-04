@@ -1,0 +1,144 @@
+-- Initial seed for PostgreSQL 18 RC1 fuzzing
+
+-- Create tables
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INTEGER,
+    salary DECIMAL(10, 2),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    location VARCHAR(255)
+);
+
+CREATE TABLE projects (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    budget DECIMAL(12, 2)
+);
+
+CREATE TABLE employee_projects (
+    employee_id INTEGER REFERENCES employees(id),
+    project_id INTEGER REFERENCES projects(id),
+    PRIMARY KEY (employee_id, project_id),
+    role VARCHAR(255)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department FOREIGN KEY (department_id) REFERENCES departments(id);
+
+
+-- Insert data
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, age, salary, department_id) VALUES
+('Alice', 30, 60000.00, 1),
+('Bob', 25, 50000.00, 2),
+('Charlie', 35, 70000.00, 3);
+
+INSERT INTO projects (name, start_date, end_date, budget) VALUES
+('Project A', '2024-01-01', '2024-06-30', 100000.00),
+('Project B', '2024-03-01', '2024-09-30', 150000.00);
+
+INSERT INTO employee_projects (employee_id, project_id, role) VALUES
+(1, 1, 'Manager'),
+(2, 2, 'Developer'),
+(3, 1, 'Developer');
+
+
+-- Select queries
+SELECT * FROM employees WHERE age > 28;
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 2;
+SELECT d.name AS department, COUNT(e.id) AS employee_count FROM departments d LEFT JOIN employees e ON d.id = e.department_id GROUP BY d.name;
+SELECT e.name, p.name FROM employees e JOIN employee_projects ep ON e.id = ep.employee_id JOIN projects p ON ep.project_id = p.id WHERE p.start_date < '2024-04-01';
+SELECT DISTINCT location FROM departments;
+
+-- Update and delete
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+DELETE FROM projects WHERE end_date < CURRENT_DATE;
+
+-- Aggregate functions
+SELECT AVG(salary) FROM employees;
+SELECT MAX(age) FROM employees;
+
+-- Using CASE statement
+SELECT name,
+       CASE
+           WHEN salary > 65000 THEN 'High'
+           WHEN salary > 55000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+-- Using NULL and COALESCE
+SELECT name, COALESCE(CAST(age AS VARCHAR), 'N/A') AS age_display FROM employees;
+
+-- Using LIKE operator
+SELECT * FROM employees WHERE name LIKE 'A%';
+
+-- Using BETWEEN operator
+SELECT * FROM employees WHERE age BETWEEN 25 AND 32;
+
+-- Using IN operator
+SELECT * FROM departments WHERE location IN ('New York', 'London');
+
+-- Using subqueries
+SELECT name FROM employees WHERE department_id IN (SELECT id FROM departments WHERE location = 'San Francisco');
+
+-- Using EXISTS operator
+SELECT name FROM departments WHERE EXISTS (SELECT 1 FROM employees WHERE employees.department_id = departments.id);
+
+-- Create index
+CREATE INDEX idx_employee_name ON employees (name);
+CREATE INDEX idx_department_location ON departments (location);
+
+-- Using WITH clause (Common Table Expression)
+WITH high_earners AS (
+    SELECT id, name, salary FROM employees WHERE salary > 65000
+)
+SELECT * FROM high_earners ORDER BY salary DESC;
+
+-- Specific PostgreSQL features
+CREATE TYPE employment_status AS ENUM ('employed', 'unemployed', 'retired');
+ALTER TABLE employees ADD COLUMN status employment_status;
+UPDATE employees SET status = 'employed';
+
+-- Array type
+ALTER TABLE employees ADD COLUMN skills TEXT[];
+UPDATE employees SET skills = ARRAY['SQL', 'Python'] WHERE id = 1;
+SELECT skills[1] FROM employees WHERE id = 1; -- Accessing array element
+
+-- JSONB type (assuming jsonb extension is enabled).  If not, remove this part.
+CREATE EXTENSION IF NOT EXISTS jsonb;
+ALTER TABLE employees ADD COLUMN details JSONB;
+UPDATE employees SET details = '{"experience": 5, "education": "Master"}'::jsonb WHERE id = 1;
+SELECT details ->> 'experience' FROM employees WHERE id = 1;
+
+-- Generate Series
+SELECT generate_series(1, 10);
+
+-- String concatenation
+SELECT name || ' works in ' || (SELECT name FROM departments WHERE id = employees.department_id) FROM employees;
+
+-- Type casting
+SELECT CAST(salary AS INTEGER) FROM employees;
+
+-- UUID type
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; -- Enable uuid extension if needed
+ALTER TABLE employees ADD COLUMN employee_uuid UUID DEFAULT uuid_generate_v4();
+SELECT employee_uuid FROM employees;
+
+-- tsvector (Full Text Search).  Needs proper table setup.
+ALTER TABLE employees ADD COLUMN search_vector tsvector;
+UPDATE employees SET search_vector = to_tsvector('english', name || ' ' || COALESCE(CAST(age AS TEXT), '') || ' ' || COALESCE(CAST(salary AS TEXT), '')) ;
+CREATE INDEX idx_employee_search ON employees USING GIN (search_vector);
+SELECT * FROM employees WHERE search_vector @@ to_tsquery('english', 'Alice');

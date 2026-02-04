@@ -1,0 +1,11 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, age INTEGER CHECK(age >= 0));
+INSERT INTO users (username, age) VALUES ('alice', 30);
+INSERT INTO users (username, age) VALUES ('bob', 25);
+INSERT INTO users (username, age) VALUES ('charlie', NULL);
+INSERT INTO users (username, age) VALUES ('dave', -5); -- This will fail due to CHECK constraint
+SELECT id, username FROM users WHERE age IS NULL;
+SELECT username, COUNT(*) AS count FROM users GROUP BY username HAVING count > 1;
+CREATE TABLE transactions(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO transactions (user_id, amount, date) VALUES (1, 100.50, '2023-10-01');
+INSERT INTO transactions (user_id, amount, date) VALUES (2, 250.00, '2023-10-05');
+SELECT u.username, SUM(t.amount) AS total_amount FROM users u LEFT JOIN transactions t ON u.id = t.user_id GROUP BY u.username;

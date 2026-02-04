@@ -1,0 +1,96 @@
+SET default_storage_engine=InnoDB;
+-- Test spatial data types and functions
+CREATE TABLE spatial_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    location POINT SRID 4326
+);
+
+INSERT INTO spatial_data (name, location) VALUES
+('Office', ST_GeomFromText('POINT(12.9716 77.5946)', 4326)),
+('Home', ST_GeomFromText('POINT(34.0522 -118.2437)', 4326));
+
+SELECT id, name, ST_AsText(location) AS location FROM spatial_data;
+SELECT ST_Distance_Sphere(location, ST_GeomFromText('POINT(13.0827 80.2707)', 4326)) AS distance FROM spatial_data WHERE name = 'Office';
+
+-- Test JSON data type
+CREATE TABLE json_data (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data JSON
+);
+
+INSERT INTO json_data (data) VALUES
+('{"name": "John Doe", "age": 30, "address": {"street": "123 Main St", "city": "Anytown"}}'),
+('{"product": "Laptop", "price": 1200.00, "features": ["fast", "lightweight", "portable"]}');
+
+SELECT id, JSON_EXTRACT(data, '$.name') AS name FROM json_data;
+SELECT id, JSON_UNQUOTE(JSON_EXTRACT(data, '$.address.city')) AS city FROM json_data;
+UPDATE json_data SET data = JSON_SET(data, '$.age', 31) WHERE id = 1;
+
+-- Test window functions
+CREATE TABLE sales (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product VARCHAR(255),
+    sale_date DATE,
+    amount DECIMAL(10, 2)
+);
+
+INSERT INTO sales (product, sale_date, amount) VALUES
+('A', '2023-01-01', 100.00),
+('A', '2023-01-02', 150.00),
+('B', '2023-01-01', 200.00),
+('B', '2023-01-02', 250.00);
+
+SELECT product, sale_date, amount,
+       ROW_NUMBER() OVER (PARTITION BY product ORDER BY sale_date) AS row_num,
+       SUM(amount) OVER (PARTITION BY product ORDER BY sale_date) AS running_total
+FROM sales;
+
+-- Test dynamic columns
+
+CREATE TABLE dynamic_table (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    dyncol BLOB
+);
+
+INSERT INTO dynamic_table (dyncol) VALUES (COLUMN_CREATE('name', 'Alice', 'age', 25));
+SELECT id, COLUMN_GET(dyncol, 'name' AS CHAR) AS name, COLUMN_GET(dyncol, 'age' AS SIGNED) AS age FROM dynamic_table;
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE GetSalesTotal(IN product_name VARCHAR(255), OUT total DECIMAL(10, 2))
+BEGIN
+    SELECT SUM(amount) INTO total FROM sales WHERE product = product_name;
+END //
+DELIMITER ;
+
+CALL GetSalesTotal('A', @total);
+SELECT @total;
+
+-- Test generated columns
+CREATE TABLE generated_columns (
+    id INT PRIMARY KEY,
+    a INT,
+    b INT,
+    c INT GENERATED ALWAYS AS (a + b) VIRTUAL
+);
+
+INSERT INTO generated_columns (id, a, b) VALUES (1, 10, 20);
+SELECT * FROM generated_columns;
+
+-- Test Fulltext Indexing
+
+CREATE TABLE articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255),
+    body TEXT,
+    FULLTEXT INDEX (title, body)
+);
+
+INSERT INTO articles (title, body) VALUES
+('The quick brown fox', 'Jumps over the lazy dog'),
+('Another article', 'About a fast rabbit');
+
+SELECT * FROM articles WHERE MATCH (title, body) AGAINST ('quick brown' IN NATURAL LANGUAGE MODE);
+
+ANALYZE TABLE spatial_data, json_data, sales, dynamic_table, generated_columns, articles;

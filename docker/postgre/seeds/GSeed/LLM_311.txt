@@ -1,0 +1,140 @@
+CREATE TABLE employee (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE,
+    job_id INTEGER,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INTEGER,
+    department_id INTEGER
+);
+
+CREATE TABLE department (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50),
+    location_id INTEGER
+);
+
+CREATE TABLE job (
+    job_id SERIAL PRIMARY KEY,
+    job_title VARCHAR(50),
+    min_salary DECIMAL(10, 2),
+    max_salary DECIMAL(10, 2)
+);
+
+ALTER TABLE employee ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id)
+    REFERENCES department (department_id);
+
+ALTER TABLE employee ADD CONSTRAINT fk_job
+    FOREIGN KEY (job_id)
+    REFERENCES job (job_id);
+
+-- Insert some data
+INSERT INTO department (department_name, location_id) VALUES ('Sales', 1);
+INSERT INTO department (department_name, location_id) VALUES ('Marketing', 2);
+INSERT INTO job (job_title, min_salary, max_salary) VALUES ('Sales Representative', 40000, 80000);
+INSERT INTO job (job_title, min_salary, max_salary) VALUES ('Marketing Manager', 60000, 120000);
+
+INSERT INTO employee (first_name, last_name, email, hire_date, job_id, salary, department_id)
+VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 1, 50000.00, 1);
+INSERT INTO employee (first_name, last_name, email, hire_date, job_id, salary, department_id)
+VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-20', 2, 75000.00, 2);
+
+-- Select and join
+SELECT e.first_name, e.last_name, d.department_name
+FROM employee e
+JOIN department d ON e.department_id = d.department_id;
+
+-- Update salary with a subquery
+UPDATE employee
+SET salary = salary * 1.10
+WHERE job_id IN (SELECT job_id FROM job WHERE job_title = 'Sales Representative');
+
+-- Delete an employee
+DELETE FROM employee WHERE employee_id = 2;
+
+-- Try some PostgreSQL specific stuff:
+CREATE INDEX idx_employee_last_name ON employee (last_name);
+
+-- Using generate_series to insert multiple rows:
+INSERT INTO department (department_name, location_id)
+SELECT 'Department ' || i, i
+FROM generate_series(3, 5) AS i;
+
+-- Using jsonb operations
+CREATE TABLE json_test (id SERIAL PRIMARY KEY, data jsonb);
+INSERT INTO json_test (data) VALUES ('{"name": "test", "value": 1}');
+SELECT data -> 'name' FROM json_test;
+
+-- Using array operations
+CREATE TABLE array_test (id SERIAL PRIMARY KEY, data integer[]);
+INSERT INTO array_test (data) VALUES ('{1,2,3}');
+SELECT data[1] FROM array_test;
+
+-- Check constraint
+ALTER TABLE employee ADD CONSTRAINT check_salary CHECK (salary > 0);
+
+-- Foreign key ON DELETE CASCADE
+ALTER TABLE employee DROP CONSTRAINT fk_department;
+ALTER TABLE employee ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id)
+    REFERENCES department (department_id) ON DELETE CASCADE;
+
+-- Materialized View
+CREATE MATERIALIZED VIEW employee_summary AS
+SELECT department_id, AVG(salary) AS avg_salary
+FROM employee
+GROUP BY department_id;
+
+REFRESH MATERIALIZED VIEW employee_summary;
+
+-- Window function
+SELECT
+    department_id,
+    AVG(salary) OVER (PARTITION BY department_id) as avg_salary_by_department
+FROM employee;
+
+-- Common Table Expression (CTE)
+WITH EmployeeSalaries AS (
+    SELECT department_id, AVG(salary) AS avg_salary
+    FROM employee
+    GROUP BY department_id
+)
+SELECT d.department_name, es.avg_salary
+FROM department d
+JOIN EmployeeSalaries es ON d.department_id = es.department_id;
+
+-- Trigger
+CREATE OR REPLACE FUNCTION update_hire_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.hire_date = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_employee_hire_date
+BEFORE INSERT ON employee
+FOR EACH ROW
+EXECUTE FUNCTION update_hire_date();
+
+INSERT INTO employee (first_name, last_name, email, job_id, salary, department_id) VALUES ('Trigger', 'Test', 'trigger@test.com', 1, 50000, 1);
+
+-- Add constraint to employee table
+ALTER TABLE employee ADD CONSTRAINT unique_email UNIQUE (email);
+
+-- Grant privilege
+GRANT SELECT ON employee TO PUBLIC;
+
+-- Revoke privilege
+REVOKE ALL PRIVILEGES ON department FROM PUBLIC;
+
+-- Full Text Search
+ALTER TABLE employee ADD COLUMN search_vector tsvector;
+UPDATE employee SET search_vector = to_tsvector('english', first_name || ' ' || last_name || ' ' || email);
+CREATE INDEX employee_search_idx ON employee USING GIN (search_vector);
+SELECT * FROM employee WHERE search_vector @@ to_tsquery('english', 'John');

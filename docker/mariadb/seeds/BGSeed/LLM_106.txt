@@ -1,0 +1,78 @@
+SET sql_mode = 'STRICT_ALL_TABLES';
+
+-- Create a table with various data types and constraints
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2) CHECK (salary > 0),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT,
+    INDEX name_idx (first_name, last_name),
+    FULLTEXT INDEX email_ft_idx (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create a departments table for foreign key relationship
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL UNIQUE,
+    location_id INT
+) ENGINE=InnoDB;
+
+-- Add foreign key constraint after table creation (demonstrates ALTER TABLE)
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+-- Insert some sample data
+INSERT INTO departments (department_name) VALUES ('Sales'), ('Marketing'), ('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 75000.00, 2),
+('Robert', 'Jones', 'robert.jones@example.com', '2022-05-10', 90000.00, 3);
+
+-- Test JSON functionality (MariaDB specific)
+ALTER TABLE employees ADD COLUMN skills JSON;
+UPDATE employees SET skills = '["SQL", "Python", "Data Analysis"]' WHERE first_name = 'John';
+UPDATE employees SET skills = '["Marketing", "Social Media", "SEO"]' WHERE first_name = 'Jane';
+
+-- Test Stored Procedure (basic example)
+DELIMITER //
+CREATE PROCEDURE GetEmployeeCount(IN dept_id INT, OUT employee_count INT)
+BEGIN
+    SELECT COUNT(*) INTO employee_count FROM employees WHERE department_id = dept_id;
+END //
+DELIMITER ;
+
+CALL GetEmployeeCount(1, @count);
+SELECT @count;
+
+-- Test Window Function (MariaDB specific)
+SELECT
+    first_name,
+    salary,
+    department_id,
+    RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) as salary_rank
+FROM
+    employees;
+
+-- Test FULLTEXT search
+SELECT * FROM employees WHERE MATCH(email) AGAINST ('example.com');
+
+-- Test Common Table Expression (CTE)
+WITH HighSalaryEmployees AS (
+    SELECT first_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT * FROM HighSalaryEmployees;
+
+-- Optimize Table
+OPTIMIZE TABLE employees;
+
+-- Analyze Table
+ANALYZE TABLE employees;

@@ -1,0 +1,59 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Create a table with various data types
+CREATE TABLE fuzz_test (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    value INTEGER,
+    amount NUMERIC(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    data JSONB,
+    tags TEXT[],
+    point POINT
+);
+
+-- Insert some initial data
+INSERT INTO fuzz_test (name, description, value, amount, data, tags, point) VALUES
+('Item 1', 'A test item', 10, 19.99, '{"key1": "value1", "key2": 123}', '{"tag1", "tag2"}', '(1.0, 2.0)'),
+('Item 2', 'Another item', 20, 29.99, '{"key3": "value3", "key4": 456}', '{"tag3", "tag4"}', '(3.0, 4.0)'),
+('Item 3', 'Yet another item', 30, 39.99, '{"key5": "value5", "key6": 789}', '{"tag1", "tag3"}', '(5.0, 6.0)');
+
+-- Update some data
+UPDATE fuzz_test SET value = 100 WHERE name = 'Item 1';
+
+-- Delete some data
+DELETE FROM fuzz_test WHERE value > 50;
+
+-- Select data with various conditions and functions
+SELECT * FROM fuzz_test WHERE amount > 25.00 AND description LIKE '%item%';
+SELECT name, UPPER(name), LENGTH(name) FROM fuzz_test;
+SELECT AVG(amount), SUM(value) FROM fuzz_test;
+SELECT * FROM fuzz_test WHERE tags && ARRAY['tag1', 'tag5'];
+SELECT * FROM fuzz_test WHERE data @> '{"key1": "value1"}';
+SELECT id, name, point <@ box '((0,0),(5,5))' FROM fuzz_test; -- contains operator for box type
+
+-- Use pg_trgm for fuzzy string matching
+SELECT name FROM fuzz_test WHERE name % 'Itm'; -- similarity operator
+
+-- Window function example
+SELECT name, amount, RANK() OVER (ORDER BY amount DESC) FROM fuzz_test;
+
+-- Test array aggregation
+SELECT array_agg(name) FROM fuzz_test;
+
+-- Test array unnesting
+SELECT unnest(tags) FROM fuzz_test;
+
+-- Test jsonb aggregation
+SELECT jsonb_agg(data) from fuzz_test;
+
+-- Test NULLIF function
+SELECT NULLIF(value, 10) FROM fuzz_test;
+
+-- Test COALESCE function
+SELECT COALESCE(description, 'No description') FROM fuzz_test;
+
+-- clean up
+DROP TABLE fuzz_test;
+DROP EXTENSION pg_trgm;

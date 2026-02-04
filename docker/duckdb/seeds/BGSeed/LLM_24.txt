@@ -1,0 +1,15 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (value) VALUES (1), (2), (3);
+
+CREATE VIEW large_integers AS
+SELECT value FROM integers WHERE value > 1;
+
+-- Test DuckDB-specific feature: APPROXIMATE PERCENTILE
+SELECT approx_percentile(0.5) WITHIN GROUP (ORDER BY value) FROM integers;
+
+-- Test ALTER TABLE with a CHECK constraint
+ALTER TABLE integers ADD COLUMN description VARCHAR CHECK (LENGTH(description) < 50);

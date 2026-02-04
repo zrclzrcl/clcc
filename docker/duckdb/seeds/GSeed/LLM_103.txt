@@ -1,0 +1,28 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c');
+
+CREATE VIEW integer_doubles AS SELECT i * 2 AS doubled FROM integers;
+
+-- DuckDB specific feature: APPROXIMATE PERCENTILE
+SELECT APPROXIMATE PERCENTILE(0.5) WITHIN GROUP (ORDER BY i) FROM integers;
+
+-- Demonstrating window functions and joins
+SELECT
+    i,
+    RANK() OVER (ORDER BY i DESC) as ranking,
+    s
+FROM
+    integers
+JOIN
+    strings ON LENGTH(s) = 1
+WHERE i IN (SELECT doubled FROM integer_doubles WHERE doubled < 8)
+ORDER BY i;
+
+-- Use of UNNEST to expand an array
+SELECT value FROM UNNEST([1, 2, 3]);
+
+-- Testing EXCEPT ALL with a subquery
+SELECT i FROM integers EXCEPT ALL SELECT doubled FROM integer_doubles WHERE doubled > 2;

@@ -1,0 +1,167 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(product_id),
+    quantity INT
+);
+
+INSERT INTO products (product_name, price) VALUES
+('Laptop', 1200.00),
+('Mouse', 25.00),
+('Keyboard', 75.00);
+
+INSERT INTO customers (customer_name, email) VALUES
+('John Doe', 'john.doe@example.com'),
+('Jane Smith', 'jane.smith@example.com');
+
+INSERT INTO orders (customer_id) VALUES
+(1),
+(2);
+
+INSERT INTO order_items (order_id, product_id, quantity) VALUES
+(1, 1, 1),
+(1, 2, 2),
+(2, 3, 1);
+
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+SELECT customer_name, email FROM customers WHERE customer_id = 1;
+SELECT product_name, price FROM products WHERE price > 50.00;
+
+SELECT o.order_id, c.customer_name
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id;
+
+SELECT p.product_name, SUM(oi.quantity) AS total_quantity_sold
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_name
+ORDER BY total_quantity_sold DESC;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE product_name = 'Mouse';
+
+CREATE INDEX idx_customer_email ON customers (email);
+
+DROP INDEX idx_customer_email;
+
+ALTER TABLE customers ADD COLUMN phone_number VARCHAR(20);
+
+ALTER TABLE customers DROP COLUMN phone_number;
+
+SELECT version();
+SELECT current_database();
+SELECT current_user;
+
+CREATE VIEW customer_orders AS
+SELECT c.customer_name, o.order_id, o.order_date
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT * FROM customer_orders;
+
+DROP VIEW customer_orders;
+
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER) RETURNS INTEGER AS $$
+BEGIN
+    RETURN a + b;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT add_numbers(5, 10);
+
+DROP FUNCTION add_numbers(INTEGER, INTEGER);
+
+CREATE TYPE inventory_status AS ENUM ('in_stock', 'out_of_stock', 'low_stock');
+
+ALTER TABLE products ADD COLUMN status inventory_status;
+
+UPDATE products SET status = 'in_stock' WHERE product_id = 1;
+
+SELECT product_name, status FROM products;
+
+DROP TYPE inventory_status;
+
+-- Examples of using window functions
+SELECT product_name, price,
+       RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM products;
+
+SELECT customer_name,
+       ROW_NUMBER() OVER (ORDER BY customer_name) AS row_num
+FROM customers;
+
+-- Using Common Table Expressions (CTEs)
+WITH high_price_products AS (
+    SELECT product_name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT product_name, price
+FROM high_price_products
+ORDER BY price DESC;
+
+-- Example of using generate_series
+SELECT generate_series(1, 5);
+
+-- Example using unnest
+SELECT unnest(ARRAY['apple', 'banana', 'cherry']);
+
+-- Example using JSON functions
+SELECT json_build_object('name', 'Laptop', 'price', 1200.00);
+
+-- Example using hstore (requires extension)
+CREATE EXTENSION IF NOT EXISTS hstore;
+
+CREATE TABLE product_details (
+    product_id INT PRIMARY KEY,
+    details HSTORE
+);
+
+INSERT INTO product_details (product_id, details) VALUES (1, 'color => black, memory => 16GB');
+
+SELECT details -> 'color' FROM product_details WHERE product_id = 1;
+
+DROP TABLE product_details;
+DROP EXTENSION hstore;
+
+-- Using foreign data wrappers (requires extension and setup)
+-- CREATE EXTENSION postgres_fdw;
+-- CREATE SERVER my_foreign_server
+--   FOREIGN DATA WRAPPER postgres_fdw
+--   OPTIONS (host 'remote_host', port '5432', dbname 'remote_db');
+-- CREATE USER MAPPING FOR local_user
+--   SERVER my_foreign_server
+--   OPTIONS (user 'remote_user', password 'remote_password');
+-- CREATE FOREIGN TABLE remote_table (
+--   id integer,
+--   name text
+-- ) SERVER my_foreign_server
+--   OPTIONS (schema_name 'public', table_name 'my_table');
+-- SELECT * FROM remote_table;
+-- DROP FOREIGN TABLE remote_table;
+-- DROP USER MAPPING FOR local_user SERVER my_foreign_server;
+-- DROP SERVER my_foreign_server;
+-- DROP EXTENSION postgres_fdw;

@@ -1,0 +1,67 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE fuzz_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT,
+    num INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+INSERT INTO fuzz_table (data, num) VALUES
+('test data 1', 10),
+('test data 2', 20),
+('test data 3', 30);
+
+SELECT id, data, num FROM fuzz_table WHERE num > 15 ORDER BY id DESC LIMIT 2;
+
+UPDATE fuzz_table SET data = 'updated data' WHERE id = 1;
+
+DELETE FROM fuzz_table WHERE num < 15;
+
+SELECT COUNT(*) FROM fuzz_table;
+
+CREATE INDEX idx_fuzz_table_num ON fuzz_table (num);
+
+SELECT data, SUM(num) OVER (ORDER BY id) FROM fuzz_table;
+
+SELECT id, data FROM fuzz_table WHERE data LIKE '%data%';
+
+SELECT gen_random_uuid();
+
+CREATE TABLE json_table (
+    id SERIAL PRIMARY KEY,
+    json_data JSONB
+);
+
+INSERT INTO json_table (json_data) VALUES
+('{"key1": "value1", "key2": 123}'),
+('{"key3": "value3", "key4": 456}');
+
+SELECT json_data ->> 'key1' FROM json_table WHERE id = 1;
+
+WITH RECURSIVE counter AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM counter WHERE n < 5
+)
+SELECT n FROM counter;
+
+SELECT * FROM fuzz_table WHERE created_at BETWEEN NOW() - INTERVAL '1 day' AND NOW();
+
+ALTER TABLE fuzz_table ADD COLUMN extra_data BOOLEAN DEFAULT FALSE;
+
+UPDATE fuzz_table SET extra_data = TRUE WHERE id % 2 = 0;
+
+SELECT id, data, num FROM fuzz_table WHERE extra_data = TRUE;
+
+DROP INDEX idx_fuzz_table_num;
+
+CREATE TABLE array_table (
+    id SERIAL PRIMARY KEY,
+    int_array INTEGER[]
+);
+
+INSERT INTO array_table (int_array) VALUES ('{1,2,3}'), ('{4,5,6}');
+
+SELECT int_array[1] FROM array_table WHERE id = 1;
+
+SELECT id, data, num FROM fuzz_table ORDER BY random() LIMIT 10;

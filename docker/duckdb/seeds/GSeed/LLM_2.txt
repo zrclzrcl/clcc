@@ -1,0 +1,85 @@
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    city VARCHAR(255)
+);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(255),
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2)
+);
+
+-- Create a view to calculate the total revenue per customer
+CREATE VIEW customer_revenue AS
+SELECT
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    SUM(oi.quantity * oi.unit_price) AS total_revenue
+FROM
+    customers c
+JOIN
+    orders o ON c.customer_id = o.customer_id
+JOIN
+    order_items oi ON o.order_id = oi.order_id
+GROUP BY
+    c.customer_id, c.first_name, c.last_name;
+
+-- Insert some sample data
+INSERT INTO customers (customer_id, first_name, last_name, city) VALUES
+(1, 'Alice', 'Smith', 'New York'),
+(2, 'Bob', 'Johnson', 'Los Angeles'),
+(3, 'Charlie', 'Brown', 'Chicago');
+
+INSERT INTO products (product_id, product_name, price) VALUES
+(101, 'Laptop', 1200.00),
+(102, 'Mouse', 25.00),
+(103, 'Keyboard', 75.00);
+
+INSERT INTO orders (order_id, customer_id, order_date, total_amount) VALUES
+(1, 1, '2023-01-15', 1225.00),
+(2, 2, '2023-02-20', 1300.00),
+(3, 1, '2023-03-10', 100.00);
+
+INSERT INTO order_items (order_item_id, order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 101, 1, 1200.00),
+(2, 1, 102, 1, 25.00),
+(3, 2, 101, 1, 1200.00),
+(4, 2, 103, 1, 100.00),
+(5, 3, 102, 4, 25.00);
+
+-- DuckDB specific function usage for data analysis
+SELECT customer_id, first_name, last_name, total_revenue, quantile_cont(0.5) WITHIN GROUP (ORDER BY total_revenue) OVER () AS median_revenue
+FROM customer_revenue;
+
+-- Test date functions in DuckDB
+SELECT order_date, date_trunc('month', order_date) AS month_start FROM orders;
+
+-- Use UNNEST and generate_series to expand a range
+SELECT i FROM UNNEST(generate_series(1, 5, 1)) AS t(i);
+
+-- Test string functions
+SELECT first_name, upper(first_name), lower(first_name) FROM customers;
+
+-- Add a column with a DEFAULT value
+ALTER TABLE customers ADD COLUMN registration_date DATE DEFAULT CURRENT_DATE;
+
+-- Test window functions for ranking
+SELECT product_name, price, RANK() OVER (ORDER BY price DESC) AS price_rank FROM products;

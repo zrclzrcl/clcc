@@ -1,0 +1,37 @@
+CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, c TEXT);
+CREATE TABLE t2(d FLOAT, e DATE, f BOOLEAN);
+CREATE INDEX idx_t1_b ON t1(b);
+
+WITH cte AS (
+    SELECT 
+        t1.a,
+        t1.b,
+        t2.d,
+        ROW_NUMBER() OVER (PARTITION BY t1.c ORDER BY t2.e DESC) as rn
+    FROM 
+        t1
+    LEFT JOIN 
+        t2 ON t1.b = t2.d
+)
+SELECT 
+    cte.rn,
+    COUNT(*) AS cnt,
+    SUM(t2.d) FILTER (WHERE t2.f IS TRUE) AS sum_d_true,
+    MIN(t2.e) OVER () AS min_e,
+    MAX(t1.b) AS max_b
+FROM 
+    cte
+JOIN (
+    SELECT 
+        d, 
+        e,
+        COUNT(*) as subgroup_count
+    FROM 
+        t2
+    GROUP BY 
+        d, e
+    HAVING 
+        subgroup_count > 5
+) AS sq ON cte.d = sq.d
+GROUP BY 
+    cte.rn;

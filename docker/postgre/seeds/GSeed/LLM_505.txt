@@ -1,0 +1,24 @@
+-- Sample initial seed for a DBMS fuzzer
+
+-- Create a simple table
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+-- Insert some data
+INSERT INTO employees (id, name, salary) VALUES (1, 'Alice', 60000.00);
+INSERT INTO employees (id, name, salary) VALUES (2, 'Bob', 75000.00);
+
+-- Select data
+SELECT * FROM employees;
+
+-- Update salary
+UPDATE employees SET salary = 80000.00 WHERE id = 2;
+
+-- Delete a record
+DELETE FROM employees WHERE id = 1;
+
+-- Drop the table
+DROP TABLE employees;

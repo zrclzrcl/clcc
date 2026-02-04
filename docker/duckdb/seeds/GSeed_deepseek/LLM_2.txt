@@ -1,0 +1,76 @@
+-- Create tables with various data types
+CREATE TABLE t1 (
+    id INT PRIMARY KEY,
+    value REAL,
+    description TEXT
+);
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    category TEXT,
+    amount DECIMAL(10, 2)
+);
+
+-- Insert sample data into tables
+INSERT INTO t1 (id, value, description) VALUES
+(1, 100.5, 'First entry'),
+(2, NULL, 'Second entry'),
+(3, 200.75, 'Third entry');
+
+INSERT INTO t2 (id, category, amount) VALUES
+(1, 'A', 100.00),
+(2, 'B', 200.50),
+(3, 'C', NULL);
+
+-- Create indexes for query optimization
+CREATE INDEX idx_t1_value ON t1(value);
+CREATE INDEX idx_t2_category ON t2(category);
+
+-- Create views with different join types and subqueries
+CREATE VIEW v_left_join AS 
+SELECT t1.id, t1.description, t2.category, t2.amount 
+FROM t1 LEFT JOIN t2 ON t1.id = t2.id;
+
+CREATE VIEW v_right_join AS 
+SELECT t1.id, t1.description, t2.category, t2.amount 
+FROM t1 RIGHT JOIN t2 ON t1.id = t2.id;
+
+-- View using a subquery with aggregate function
+CREATE VIEW v_subquery AS 
+SELECT id, description, (SELECT AVG(amount) FROM t2 WHERE category = 'A') as avg_amount 
+FROM t1;
+
+-- View demonstrating window functions
+CREATE VIEW v_window AS 
+SELECT id, value, RANK() OVER (ORDER BY value DESC) as rank_value 
+FROM t1;
+
+-- PRAGMA settings specific to DuckDB
+PRAGMA enable_object_id_cache;
+PRAGMA memory_limit='1GB';
+
+-- SELECT statements testing various functionalities and edge cases
+SELECT 
+    id,
+    CASE 
+        WHEN value > 200 THEN 'High'
+        WHEN value < 100 THEN 'Low'
+        ELSE 'Medium'
+    END as category,
+    TRIM(description) as cleaned_desc
+FROM t1;
+
+-- Testing division by zero and type casting
+SELECT 
+    amount / NULLIF(id, 0) as safe_division,
+    CAST(amount AS REAL) as amount_real
+FROM t2;
+
+-- Testing aggregate functions with GROUP BY and HAVING
+SELECT 
+    category, 
+    COUNT(*) as count_records,
+    SUM(amount) as total_amount
+FROM t2
+GROUP BY category
+HAVING COUNT(*) > 1;

@@ -1,0 +1,51 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(id);
+
+-- Insert some initial data.  Focuses on edge cases like NULL values and maximum lengths.
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00),
+('Jane', 'Smith', 'jane.smith@example.com', '2023-03-20', 2, 75000.00),
+('Michael', 'Brown', 'michael.brown@example.com', '2023-05-10', 3, 50000.00),
+('Emily', 'Wilson', 'emily.wilson@example.com', '2023-07-01', 1, 62000.00),
+('David', 'Lee', 'david.lee@example.com', '2023-09-05', 2, 78000.00),
+('Olivia', 'Garcia', 'olivia.garcia@example.com', '2023-11-12', 3, 52000.00),
+('Alexander', 'Rodriguez', 'alexander.rodriguez@example.com', '2024-01-18', 1, 65000.00),
+('Sophia', 'Martinez', 'sophia.martinez@example.com', '2024-03-25', 2, 80000.00),
+('William', 'Hernandez', 'william.hernandez@example.com', '2024-05-15', 3, 55000.00),
+('Isabella', 'Lopez', 'isabella.lopez@example.com', '2024-07-05', 1, 68000.00);
+
+INSERT INTO departments (name, location_id) VALUES ('Sales', 1), ('Marketing', 2), ('Engineering', 3);
+
+-- Examples of queries.  These test various operations and conditions.
+SELECT * FROM employees WHERE salary > 70000;
+SELECT first_name, last_name FROM employees WHERE department_id = (SELECT id FROM departments WHERE name = 'Sales');
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = (SELECT id FROM departments WHERE name = 'Marketing');
+DELETE FROM employees WHERE hire_date < '2023-01-01';
+
+-- MySQL Specific Functionalities
+SELECT SLEEP(2);
+SELECT DATABASE();
+SELECT USER();
+
+-- Test NULLS and conditional logic
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, commission_pct, manager_id, department_id, phone_number) VALUES ('Null', 'Test', NULL, '2024-01-01', 1, 50000, NULL, NULL, 1, NULL);
+SELECT IF(salary > 60000, 'High', 'Low') AS SalaryLevel FROM employees;

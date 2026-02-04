@@ -1,0 +1,47 @@
+from ubuntu:22.04
+LABEL maintainer="zrcl"
+
+ENV DEBIAN_FRONTEND noninteractive
+
+# common config
+RUN apt-get update && apt-get -y install make cmake build-essential vim sudo git tcl8.6 tcl8.6-tdbc-sqlite3\
+    clang ninja-build pkg-config clang-format \
+    libpq-dev libyaml-cpp-dev lld llvm python3-fire python3-pip && pip3 install openai colorama scipy
+
+RUN mkdir -p /home && \
+    groupadd dobigthing && \
+    useradd -l -K UMASK=0000 -d /home -g dobigthing dobigthing && \
+    chown dobigthing:dobigthing /home
+
+RUN	echo "dobigthing:dobigthing" | chpasswd && usermod -a -G sudo dobigthing
+RUN chmod +w /etc/sudoers && \
+    echo "%dobigthing   ALL=(ALL:ALL)NOPASSWD:ALL" >> /etc/sudoers && \
+    chmod -w /etc/sudoers
+
+USER dobigthing
+WORKDIR /home
+ADD ./src/clcc_generator/count_feedbackpoint.py  /home/clcc/count_feedbackpoint.py
+RUN git clone https://github.com/s3team/Squirrel.git && \
+    cd Squirrel && git submodule update --init && rm -rf ./srcs/custom_mutator.cc 
+
+ADD ./src/clcc_mutator/custom_mutator.cc /home/Squirrel/srcs/custom_mutator.cc
+
+RUN cd Squirrel && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSQLITE=ON && \
+    cmake --build build -j && \
+    cd AFLplusplus/ && git remote add upstream https://github.com/AFLplusplus/AFLplusplus.git && git fetch upstream --tags && \
+    git reset --hard v4.31c && LLVM_CONFIG=llvm-config-14 make -j 
+
+
+
+RUN git clone https://github.com/duckdb/duckdb.git duckdb && cd duckdb && git checkout v1.2.2 && mkdir bld
+
+WORKDIR /home/duckdb
+
+ENV CC=/home/Squirrel/AFLplusplus/afl-cc
+ENV CXX=/home/Squirrel/AFLplusplus/afl-c++
+RUN CC=/home/Squirrel/AFLplusplus/afl-cc CXX=/home/Squirrel/AFLplusplus/afl-c++ make 
+
+RUN AFL_DEBUG=1 /home/duckdb/build/release/duckdb -f 1 2>&1 | grep "__afl_map_size" | tail -n 1 | cut -d"," -f8 | cut -d" " -f 3 > /tmp/mapsize
+ADD ./docker/set_seed/  /home/Squirrel/data/fuzz_root/set_seed/
+ADD ./src/start_fuzz_py/squirrel_run_duckdb.py  /home/Squirrel/scripts/utils/clcc_run_duckdb.py
+WORKDIR /home/Squirrel/scripts/utils

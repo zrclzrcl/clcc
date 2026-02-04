@@ -1,0 +1,80 @@
+CREATE TABLE employees (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE NOT NULL,
+    job_id VARCHAR(10) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    location_id INT
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(id);
+
+INSERT INTO departments (name, location_id) VALUES
+('Sales', 1700),
+('Marketing', 1800),
+('IT', 1900),
+('Finance', 2000),
+('Shipping', 2100);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 'SA_REP', 60000.00, 1),
+('Jane', 'Smith', 'jane.smith@example.com', '2021-05-20', 'MK_MAN', 75000.00, 2),
+('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 'IT_PROG', 80000.00, 3),
+('Alice', 'Brown', 'alice.brown@example.com', '2022-11-01', 'FI_ACCOUNT', 55000.00, 4),
+('Bob', 'Williams', 'bob.williams@example.com', '2023-07-05', 'SH_CLERK', 45000.00, 5);
+
+-- Test case:  Invalid email format using REGEXP_LIKE (MySQL specific)
+SELECT * FROM employees WHERE email REGEXP '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+SELECT * FROM employees WHERE NOT email REGEXP '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+-- Test case:  Check constraint violation (not supported directly, but test how optimizer handles similar WHERE clauses)
+-- Add a column that isn't defined for the check constraint.
+ALTER TABLE employees ADD age INT;
+SELECT * FROM employees WHERE salary < 0;  -- Try to violate an implicit constraint.
+
+-- Test case:  NULL handling in calculations
+UPDATE employees SET commission_pct = NULL WHERE id = 3;
+SELECT first_name, last_name, salary, salary * (1 + IFNULL(commission_pct, 0)) AS total_compensation FROM employees;
+
+-- Test case:  Date calculations
+SELECT first_name, last_name, hire_date, DATE_ADD(hire_date, INTERVAL 1 YEAR) AS anniversary FROM employees;
+
+-- Test case:  Subquery and EXISTS
+SELECT * FROM departments WHERE EXISTS (SELECT 1 FROM employees WHERE employees.department_id = departments.id AND salary > 70000);
+
+-- Test case:  String manipulation
+SELECT UPPER(first_name), LOWER(last_name), SUBSTRING(email, 1, 5) FROM employees;
+
+-- Test case:  GROUP BY and aggregate functions
+SELECT department_id, AVG(salary), COUNT(*) FROM employees GROUP BY department_id;
+
+-- Test case:  Error Handling (force an error)
+SELECT CAST('abc' AS UNSIGNED);
+
+-- Test case: Window Functions (MySQL 8.0+)
+SELECT first_name, last_name, salary, RANK() OVER (ORDER BY salary DESC) AS salary_rank FROM employees;
+SELECT first_name, last_name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) AS salary_row_number FROM employees;
+
+-- Test case: JSON support (MySQL 5.7+)
+ALTER TABLE employees ADD COLUMN preferences JSON;
+UPDATE employees SET preferences = '{"theme": "dark", "notifications": true}' WHERE id = 1;
+SELECT first_name, JSON_EXTRACT(preferences, '$.theme') FROM employees;
+
+-- Test case: Spatial Data (create a table for this)
+CREATE TABLE locations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    coordinate POINT SRID 0
+);
+INSERT INTO locations (name, coordinate) VALUES ('Office', ST_GeomFromText('POINT(10 20)'));
+SELECT ST_AsText(coordinate) from locations;

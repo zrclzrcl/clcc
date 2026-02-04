@@ -1,0 +1,13 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, age INTEGER, email TEXT UNIQUE);
+INSERT INTO users(name, age, email) VALUES('Alice', 30, 'alice@example.com'), ('Bob', 25, 'bob@example.com'), ('Charlie', NULL, 'charlie@example.com');
+
+CREATE TABLE orders(id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, order_date TEXT, FOREIGN KEY(user_id) REFERENCES users(id));
+INSERT INTO orders(user_id, amount, order_date) VALUES(1, 150.00, '2023-01-15'), (2, 35.50, '2023-01-17'), (3, NULL, '2023-01-19');
+
+-- Edge case testing: selecting users with NULL age
+SELECT name FROM users WHERE age IS NULL;
+
+-- Testing potential functionality: join and aggregate
+SELECT u.name, COUNT(o.id) AS order_count, SUM(o.amount) AS total_spent
+FROM users u LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id;

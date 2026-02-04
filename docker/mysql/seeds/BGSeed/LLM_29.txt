@@ -1,0 +1,144 @@
+SET default_storage_engine=InnoDB;
+SET SESSION innodb_strict_mode = ON;
+SET GLOBAL innodb_file_per_table = ON;
+
+-- Test different data types and constraints
+CREATE TABLE test_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    decimal_col DECIMAL(10, 2),
+    float_col FLOAT,
+    double_col DOUBLE,
+    bit_col BIT(8),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    binary_col BINARY(16),
+    varbinary_col VARBINARY(255),
+    tinyblob_col TINYBLOB,
+    blob_col BLOB,
+    mediumblob_col MEDIUMBLOB,
+    longblob_col LONGBLOB,
+    tinytext_col TINYTEXT,
+    text_col TEXT,
+    mediumtext_col MEDIUMTEXT,
+    longtext_col LONGTEXT,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3')
+);
+
+-- Insert some initial data
+INSERT INTO test_types (tiny_int, small_int, normal_int, varchar_col, enum_col, set_col) VALUES
+(127, 32767, 2147483647, 'test varchar', 'value1', 'option1'),
+(-128, -32768, -2147483648, 'another test', 'value2', 'option2,option3');
+
+-- Test JSON functionality
+CREATE TABLE test_json (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    json_data JSON
+);
+
+INSERT INTO test_json (json_data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}'),
+('{"product": "Laptop", "price": 1200, "features": ["fast", "lightweight"]}');
+
+-- Test spatial data types (requires MySQL 5.7.2 or later and spatial support enabled)
+CREATE TABLE test_spatial (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    point_col POINT SRID 0,
+    line_col LINESTRING SRID 0,
+    polygon_col POLYGON SRID 0
+);
+
+INSERT INTO test_spatial (point_col, line_col, polygon_col) VALUES
+(ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('LINESTRING(0 0, 1 1, 2 2)'), ST_GeomFromText('POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))'));
+
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE GetJsonData(IN input_id INT)
+BEGIN
+    SELECT json_data FROM test_json WHERE id = input_id;
+END //
+DELIMITER ;
+
+CALL GetJsonData(1);
+
+-- Test views
+CREATE VIEW json_view AS
+SELECT id, json_data->>'$.name' AS name FROM test_json;
+
+SELECT * FROM json_view;
+
+-- Test triggers
+
+CREATE TABLE trigger_test (id INT PRIMARY KEY, value INT);
+CREATE TABLE trigger_log (id INT, old_value INT, new_value INT, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+DELIMITER //
+CREATE TRIGGER trigger_test_update BEFORE UPDATE ON trigger_test
+FOR EACH ROW
+BEGIN
+  INSERT INTO trigger_log (id, old_value, new_value) VALUES (OLD.id, OLD.value, NEW.value);
+END;//
+DELIMITER ;
+
+INSERT INTO trigger_test (id, value) VALUES (1, 10);
+UPDATE trigger_test SET value = 20 WHERE id = 1;
+SELECT * FROM trigger_log;
+
+-- Test user defined functions
+-- Requires 'CREATE FUNCTION' privilege and log_bin_trust_function_creators=1
+--
+-- DELIMITER //
+-- CREATE FUNCTION add_one(i INT)
+-- RETURNS INT
+-- DETERMINISTIC
+-- BEGIN
+--   RETURN i + 1;
+-- END //
+-- DELIMITER ;
+--
+-- SELECT add_one(5);
+
+-- Test partitioning (simple range partitioning)
+CREATE TABLE range_partitioned_table (
+    id INT,
+    measurement_date DATE NOT NULL,
+    data VARCHAR(32)
+)
+PARTITION BY RANGE( YEAR(measurement_date) ) (
+    PARTITION p0 VALUES LESS THAN (2020),
+    PARTITION p1 VALUES LESS THAN (2021),
+    PARTITION p2 VALUES LESS THAN (2022),
+    PARTITION p3 VALUES LESS THAN MAXVALUE
+);
+
+INSERT INTO range_partitioned_table (id, measurement_date, data) VALUES
+(1, '2019-12-31', 'Data 2019'),
+(2, '2020-01-01', 'Data 2020'),
+(3, '2021-05-15', 'Data 2021'),
+(4, '2022-10-20', 'Data 2022');
+
+SELECT * FROM range_partitioned_table PARTITION (p0);
+
+
+-- Clean up (for idempotency and re-running)
+DROP PROCEDURE IF EXISTS GetJsonData;
+DROP VIEW IF EXISTS json_view;
+DROP TRIGGER IF EXISTS trigger_test_update;
+DROP FUNCTION IF EXISTS add_one;
+DROP TABLE IF EXISTS test_types;
+DROP TABLE IF EXISTS test_json;
+DROP TABLE IF EXISTS test_spatial;
+DROP TABLE IF EXISTS trigger_test;
+DROP TABLE IF EXISTS trigger_log;
+DROP TABLE IF EXISTS range_partitioned_table;

@@ -1,0 +1,22 @@
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
+);
+
+CREATE TABLE posts (
+    post_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT INTO users (username, email) VALUES ('test_user', 'test@example.com');
+INSERT INTO users (username, email) VALUES ('another_user', 'another@example.com');
+INSERT INTO posts (user_id, content) VALUES (1, 'This is the first post.');
+INSERT INTO posts (user_id, content) VALUES (1, 'This is the second post, testing constraints.');
+INSERT INTO posts (user_id, content) VALUES (2, 'Another user post.');
+INSERT INTO posts (user_id, content) VALUES (NULL, 'This post has no associated user, and should fail due to missing foreign key constraint.');

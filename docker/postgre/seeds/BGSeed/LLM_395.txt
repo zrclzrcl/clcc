@@ -1,0 +1,92 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    salary DECIMAL(10, 2),
+    hire_date DATE DEFAULT CURRENT_DATE,
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    location VARCHAR(255)
+);
+
+ALTER TABLE employees
+ADD CONSTRAINT fk_department
+FOREIGN KEY (department_id)
+REFERENCES departments(id);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, email, salary, department_id) VALUES
+('John Doe', 'john.doe@example.com', 60000.00, 1),
+('Jane Smith', 'jane.smith@example.com', 75000.00, 2),
+('Peter Jones', 'peter.jones@example.com', 90000.00, 3);
+
+-- Example of ON CONFLICT DO NOTHING
+INSERT INTO departments (name, location) VALUES ('Sales', 'Los Angeles') ON CONFLICT (name) DO NOTHING;
+
+-- Example of ON CONFLICT DO UPDATE
+INSERT INTO employees (name, email, salary, department_id) VALUES ('John Doe', 'john.doe@newexample.com', 65000.00, 1)
+ON CONFLICT (email) DO UPDATE SET salary = EXCLUDED.salary, department_id = EXCLUDED.department_id;
+
+-- Using a WHERE clause in ON CONFLICT DO UPDATE
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Jane Smith', 'jane.smith@example.com', 80000.00, 2)
+ON CONFLICT (email) DO UPDATE SET salary = EXCLUDED.salary WHERE employees.salary < EXCLUDED.salary;
+
+-- Using RETURNING clause with ON CONFLICT DO UPDATE
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Peter Jones', 'peter.jones@example.com', 95000.00, 3)
+ON CONFLICT (email) DO UPDATE SET salary = EXCLUDED.salary RETURNING *;
+
+-- Example with a composite unique index
+CREATE UNIQUE INDEX employees_name_department_unique ON employees (name, department_id);
+
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Alice Brown', 'alice.brown@example.com', 70000.00, 1);
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Alice Brown', 'alice.brown2@example.com', 72000.00, 1)
+ON CONFLICT (name, department_id) DO UPDATE SET salary = EXCLUDED.salary;
+
+-- Testing conflict target inference
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Bob White', 'bob.white@example.com', 80000.00, 2);
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Bob White', 'bob.white@example.com', 85000.00, 3)
+ON CONFLICT DO UPDATE SET department_id = EXCLUDED.department_id;
+
+-- Advanced ON CONFLICT with expressions
+CREATE UNIQUE INDEX lower_email_idx ON employees (lower(email));
+
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Charlie Green', 'Charlie.Green@example.com', 90000.00, 3);
+INSERT INTO employees (name, email, salary, department_id) VALUES ('Charlie Green', 'charlie.green@example.com', 92000.00, 1)
+ON CONFLICT (lower(email)) DO UPDATE SET salary = EXCLUDED.salary;
+
+-- Partitioned table example
+
+CREATE TABLE sales (
+    sale_id SERIAL PRIMARY KEY,
+    sale_date DATE NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    region VARCHAR(50) NOT NULL
+) PARTITION BY LIST (region);
+
+CREATE TABLE sales_north PARTITION OF sales FOR VALUES IN ('North');
+CREATE TABLE sales_south PARTITION OF sales FOR VALUES IN ('South');
+
+CREATE UNIQUE INDEX sale_id_north_idx ON sales_north (sale_id);
+CREATE UNIQUE INDEX sale_id_south_idx ON sales_south (sale_id);
+
+INSERT INTO sales (sale_date, amount, region) VALUES ('2024-01-15', 1500.00, 'North');
+INSERT INTO sales (sale_date, amount, region) VALUES ('2024-02-20', 2000.00, 'South');
+
+INSERT INTO sales (sale_date, amount, region) VALUES ('2024-01-15', 1600.00, 'North') ON CONFLICT (sale_id) DO UPDATE SET amount = EXCLUDED.amount;
+
+-- Test generated columns and ON CONFLICT
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(510) GENERATED ALWAYS AS (name || ' (' || email || ')') STORED;
+INSERT INTO employees (name, email, salary, department_id) VALUES ('David Black', 'david.black@example.com', 88000.00, 2);
+INSERT INTO employees (name, email, salary, department_id) VALUES ('David Black', 'david.black@example.com', 91000.00, 2) ON CONFLICT (email) DO UPDATE SET salary = EXCLUDED.salary;
+
+DROP TABLE sales;
+DROP TABLE employees;
+DROP TABLE departments;

@@ -1,0 +1,52 @@
+-- Create table with various data types and constraints
+CREATE TABLE t0 (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    value REAL,
+    data BLOB,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create a table for relationship testing
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY,
+    ref_id INTEGER REFERENCES t0(id),
+    status TEXT CHECK (status IN ('active', 'inactive'))
+);
+
+-- Insert sample data into t0 and t1
+INSERT INTO t0 VALUES 
+(1, 'Test Name 1', 100.5, X'010203', CURRENT_TIMESTAMP),
+(2, 'Test Name 2', NULL, NULL, CURRENT_TIMESTAMP);
+
+INSERT INTO t1 VALUES 
+(1, 1, 'active'),
+(2, 2, 'inactive');
+
+-- Update and delete operations
+UPDATE t0 SET value = 200.5 WHERE id = 1;
+DELETE FROM t0 WHERE id = 2;
+
+-- Create indexes for better query testing
+CREATE INDEX idx_t0_name ON t0(name);
+CREATE UNIQUE INDEX idx_t1_ref_id ON t1(ref_id);
+
+-- Test transactions
+BEGIN;
+    INSERT INTO t0 VALUES (3, 'Tx Test', 50.5, X'040506', CURRENT_TIMESTAMP);
+COMMIT;
+
+BEGIN;
+    DELETE FROM t0 WHERE id = 3;
+ROLLBACK;
+
+-- Query with window function and aggregate
+SELECT 
+    id,
+    name,
+    RANK() OVER (ORDER BY value DESC) as rank,
+    COUNT(*) OVER () as total_records
+FROM t0
+WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '1 day'
+ORDER BY name ASC
+LIMIT 5;

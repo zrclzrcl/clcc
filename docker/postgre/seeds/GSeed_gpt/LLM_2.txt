@@ -1,0 +1,60 @@
+-- Initial seed for PostgreSQL test environment setup
+
+-- Create necessary schemas if they don't exist
+CREATE SCHEMA IF NOT EXISTS public;
+CREATE SCHEMA IF NOT EXISTS pg_temp;
+
+-- Create tables with required columns and data types
+CREATE TABLE IF NOT EXISTS agg_group_1 (
+    c1 numeric,
+    c2 text,
+    c3 integer
+);
+
+CREATE TABLE IF NOT EXISTS agg_group_2 (
+    c1 numeric,
+    c2 text,
+    c3 integer
+);
+
+CREATE TABLE IF NOT EXISTS agg_group_3 (
+    c1 numeric,
+    c2 integer,
+    c3 integer
+);
+
+CREATE TABLE IF NOT EXISTS agg_group_4 (
+    c1 numeric,
+    c2 text,
+    c3 integer
+);
+
+-- Create indexes on frequently queried columns
+CREATE INDEX IF NOT EXISTS idx_agg_group_1_c1 ON agg_group_1 (c1);
+CREATE INDEX IF NOT EXISTS idx_agg_group_2_c1 ON agg_group_2 (c1);
+CREATE INDEX IF NOT EXISTS idx_agg_group_3_c1 ON agg_group_3 (c1);
+CREATE INDEX IF NOT EXISTS idx_agg_group_4_c1 ON agg_group_4 (c1);
+
+-- Create functions used in test cases
+CREATE OR REPLACE FUNCTION pg_temp.add_one(numeric)
+RETURNS numeric AS $$
+BEGIN
+    RETURN $1 + 1;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION pg_temp.multiply_two_numbers(integer, integer)
+RETURNS integer AS $$
+BEGIN
+    RETURN $1 * $2;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create sequence for generating unique identifiers
+CREATE SEQUENCE IF NOT EXISTS test_sequence
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE test_sequence OWNER TO postgres;

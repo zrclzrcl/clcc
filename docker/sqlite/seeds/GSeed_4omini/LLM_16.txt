@@ -1,0 +1,21 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE posts(id INTEGER PRIMARY KEY, user_id INTEGER, content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE comments(id INTEGER PRIMARY KEY, post_id INTEGER, content TEXT, user_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(post_id) REFERENCES posts(id), FOREIGN KEY(user_id) REFERENCES users(id));
+PRAGMA foreign_keys = ON;
+
+INSERT INTO users (username, password) VALUES ('user1', 'pass123');
+INSERT INTO users (username, password) VALUES ('user2', 'pass456');
+INSERT INTO posts (user_id, content) VALUES (1, 'First post by user1!');
+INSERT INTO posts (user_id, content) VALUES (2, 'Hello from user2!');
+INSERT INTO comments (post_id, user_id, content) VALUES (1, 2, 'Nice post!');
+INSERT INTO comments (post_id, user_id, content) VALUES (2, 1, 'Thank you!');
+
+ALTER TABLE users ADD COLUMN email TEXT UNIQUE;
+UPDATE users SET email = 'user1@example.com' WHERE username = 'user1';
+UPDATE users SET email = 'user2@example.com' WHERE username = 'user2';
+DELETE FROM comments WHERE id = 1;
+
+CREATE TEMP TABLE temp_users AS SELECT * FROM users WHERE username LIKE 'user%';
+DROP TABLE IF EXISTS archived_posts;
+CREATE TABLE archived_posts AS SELECT * FROM posts WHERE created_at < datetime('now', '-30 days');

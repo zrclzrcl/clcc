@@ -1,0 +1,61 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50),
+    data JSONB
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    location VARCHAR(100)
+);
+
+INSERT INTO departments (name, location) VALUES
+('Sales', 'New York'),
+('Marketing', 'London'),
+('Engineering', 'San Francisco');
+
+INSERT INTO employees (name, salary, hire_date, department, data) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales', '{"title": "Sales Representative", "level": 1}'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing', '{"title": "Marketing Manager", "level": 2}'),
+('Charlie Brown', 90000.00, '2020-11-01', 'Engineering', '{"title": "Software Engineer", "level": 3}');
+
+UPDATE employees SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employees WHERE id = 3;
+
+SELECT * FROM employees WHERE salary > 70000;
+
+SELECT department, AVG(salary) AS avg_salary FROM employees GROUP BY department;
+
+CREATE INDEX idx_employee_department ON employees (department);
+
+ALTER TABLE employees ADD COLUMN email VARCHAR(100);
+
+UPDATE employees SET email = LOWER(REPLACE(name, ' ', '.')) || '@example.com';
+
+CREATE VIEW high_earners AS SELECT name, salary FROM employees WHERE salary > 80000;
+
+SELECT * FROM high_earners;
+
+--Example of using a CTE
+WITH SalesEmployees AS (
+    SELECT id, name, salary FROM employees WHERE department = 'Sales'
+)
+SELECT id, name, salary FROM SalesEmployees WHERE salary > 60000;
+
+-- Example of using JSONB operators
+SELECT name FROM employees WHERE data ->> 'title' = 'Marketing Manager';
+
+-- Example with uuid
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO products (name) VALUES ('Laptop'), ('Mouse');
+
+SELECT * FROM products;

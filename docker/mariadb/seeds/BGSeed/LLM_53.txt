@@ -1,0 +1,118 @@
+SET @old_unique_checks=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @old_foreign_key_checks=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @old_sql_mode=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO';
+
+-- Create a database specifically for testing MariaDB features
+CREATE DATABASE IF NOT EXISTS mariadb_fuzz_test;
+USE mariadb_fuzz_test;
+
+-- Create a table using a MariaDB-specific storage engine (e.g., Aria or MyRocks)
+CREATE TABLE IF NOT EXISTS aria_table (
+    id INT PRIMARY KEY,
+    data VARCHAR(255)
+) ENGINE=Aria DEFAULT PAGE_SIZE=4K;
+
+CREATE TABLE IF NOT EXISTS myrocks_table (
+    id INT PRIMARY KEY,
+    data VARCHAR(255)
+) ENGINE=MyRocks;
+
+-- Insert some data into the tables
+INSERT INTO aria_table (id, data) VALUES (1, 'Aria data');
+INSERT INTO myrocks_table (id, data) VALUES (1, 'MyRocks data');
+
+-- Test window functions (MariaDB 10.2+)
+CREATE OR REPLACE VIEW window_view AS
+SELECT
+    id,
+    data,
+    ROW_NUMBER() OVER (ORDER BY id) AS row_num,
+    RANK() OVER (ORDER BY id) AS rank_num
+FROM
+    aria_table;
+
+SELECT * FROM window_view;
+
+-- Test JSON functions (MariaDB 10.2+)
+CREATE TABLE IF NOT EXISTS json_table (
+    id INT PRIMARY KEY,
+    json_data JSON
+);
+
+INSERT INTO json_table (id, json_data) VALUES (1, '{"name": "John Doe", "age": 30}');
+
+SELECT JSON_EXTRACT(json_data, '$.name') FROM json_table WHERE id = 1;
+
+-- Test dynamic columns (MariaDB 5.3+)
+CREATE TABLE IF NOT EXISTS dynamic_columns_table (
+    id INT PRIMARY KEY,
+    dyncol BLOB
+);
+
+INSERT INTO dynamic_columns_table (id, dyncol) VALUES (1, COLUMN_CREATE('name', 'Alice', 'age', 25));
+
+SELECT COLUMN_GET(dyncol, 'name' AS CHAR) FROM dynamic_columns_table WHERE id = 1;
+
+-- Test sequences (MariaDB 10.3+) - if sequence is not available, use AUTO_INCREMENT
+CREATE OR REPLACE TABLE seq_table (id INT PRIMARY KEY AUTO_INCREMENT);
+INSERT INTO seq_table () VALUES (),(),();
+SELECT LAST_INSERT_ID();
+
+-- Test temporal tables (MariaDB 10.3+)
+CREATE TABLE IF NOT EXISTS history_table (
+    id INT PRIMARY KEY,
+    data VARCHAR(255),
+    valid_from TIMESTAMP(6) GENERATED ALWAYS AS ROW START,
+    valid_to TIMESTAMP(6) GENERATED ALWAYS AS ROW END,
+    PERIOD FOR valid (valid_from, valid_to)
+) WITH SYSTEM VERSIONING;
+
+INSERT INTO history_table (id, data) VALUES (1, 'Initial data');
+UPDATE history_table SET data = 'Updated data' WHERE id = 1;
+SELECT * FROM history_table FOR SYSTEM_TIME ALL;
+
+-- Test SPATIAL data types (MariaDB supports them, similar to MySQL, but testing is good)
+CREATE TABLE IF NOT EXISTS spatial_table (
+    id INT PRIMARY KEY,
+    location POINT SRID 0
+);
+INSERT INTO spatial_table (id, location) VALUES (1, ST_GeomFromText('POINT(10 10)'));
+SELECT ST_AsText(location) FROM spatial_table;
+
+-- Test user defined function (UDF) - Example: `fnv1a_64`
+-- Assuming UDF `fnv1a_64` exists (needs to be installed separately), test it.
+-- SELECT fnv1a_64('test');  -- Commented out, as it requires UDF installation
+
+-- Test optimizer hints
+SELECT /*+ BNL(aria_table) */ * FROM aria_table;
+
+-- Test stored procedures and functions
+DELIMITER //
+CREATE OR REPLACE PROCEDURE test_proc (IN param INT)
+BEGIN
+    SELECT * FROM aria_table WHERE id = param;
+END //
+DELIMITER ;
+
+CALL test_proc(1);
+
+-- Test TRIGGER
+CREATE OR REPLACE TABLE trigger_test (id INT PRIMARY KEY, val VARCHAR(20));
+CREATE OR REPLACE TABLE trigger_log (id INT, old_val VARCHAR(20), new_val VARCHAR(20));
+DELIMITER //
+CREATE OR REPLACE TRIGGER trigger_example BEFORE UPDATE ON trigger_test FOR EACH ROW
+BEGIN
+  INSERT INTO trigger_log VALUES (OLD.id, OLD.val, NEW.val);
+END;//
+DELIMITER ;
+INSERT INTO trigger_test (id, val) VALUES (1, 'test');
+UPDATE trigger_test SET val = 'test2' WHERE id = 1;
+SELECT * FROM trigger_log;
+
+-- Reset session variables
+SET @old_unique_checks=@@UNIQUE_CHECKS;
+SET UNIQUE_CHECKS=@old_unique_checks;
+SET @old_foreign_key_checks=@@FOREIGN_KEY_CHECKS;
+SET FOREIGN_KEY_CHECKS=@old_foreign_key_checks;
+SET @old_sql_mode=@@SQL_MODE;
+SET SQL_MODE=@old_sql_mode;

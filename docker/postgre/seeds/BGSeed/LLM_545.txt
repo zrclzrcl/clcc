@@ -1,0 +1,142 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO products (name, description, price) VALUES
+('Laptop', 'High-performance laptop with 16GB RAM and 512GB SSD', 1200.00),
+('Mouse', 'Wireless mouse with ergonomic design', 25.00),
+('Keyboard', 'Mechanical keyboard with customizable RGB lighting', 100.00);
+
+CREATE INDEX idx_products_name ON products (name);
+
+SELECT id, name, price FROM products WHERE price > 50 ORDER BY price DESC;
+
+UPDATE products SET price = price * 1.1 WHERE name LIKE '%laptop%';
+
+DELETE FROM products WHERE id = 3;
+
+SELECT COUNT(*) FROM products;
+
+-- Using window functions
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) as price_rank
+FROM products;
+
+-- Using common table expressions (CTEs)
+WITH ExpensiveProducts AS (
+    SELECT id, name, price
+    FROM products
+    WHERE price > 100
+)
+SELECT * FROM ExpensiveProducts;
+
+-- Using GENERATE_SERIES
+SELECT generate_series(1, 10, 2);
+
+-- Using string functions
+SELECT name, UPPER(name), LOWER(name), LENGTH(name) FROM products;
+
+-- Using date/time functions
+SELECT created_at, EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at) FROM products;
+
+-- Using NULLIF and COALESCE
+SELECT name, description, COALESCE(description, 'No description available') FROM products;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION discount_price(price DECIMAL, discount DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN price * (1 - discount);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT name, price, discount_price(price, 0.1) AS discounted_price FROM products;
+
+-- Create a trigger
+CREATE OR REPLACE FUNCTION update_created_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.created_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_products_created_at
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION update_created_at();
+
+UPDATE products SET name = 'New Laptop' WHERE id = 1;
+
+-- Using JSON functions
+ALTER TABLE products ADD COLUMN details JSONB;
+
+UPDATE products SET details = '{"screen_size": 15.6, "resolution": "1920x1080"}'::JSONB WHERE name = 'Laptop';
+
+SELECT name, details ->> 'screen_size' AS screen_size FROM products WHERE name = 'Laptop';
+
+-- Using tsvector and tsquery for full-text search
+ALTER TABLE products ADD COLUMN searchable_text tsvector;
+
+UPDATE products SET searchable_text = to_tsvector('english', name || ' ' || description);
+
+CREATE INDEX idx_products_searchable_text ON products USING GIN (searchable_text);
+
+SELECT name FROM products WHERE searchable_text @@ to_tsquery('english', 'laptop & high');
+
+-- create a table with generated identity
+CREATE TABLE orders (
+    order_id bigint GENERATED ALWAYS AS IDENTITY,
+    product_id INTEGER,
+    quantity INTEGER
+);
+
+INSERT INTO orders (product_id, quantity) VALUES (1, 2);
+SELECT * FROM orders;
+
+-- Create enum type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+INSERT INTO person VALUES ('Moe', 'happy');
+SELECT * FROM person;
+
+-- Partitioned table
+CREATE TABLE measurement (
+    logdate date NOT NULL,
+    peaktemp int,
+    unitsales int
+) PARTITION BY RANGE (logdate);
+
+CREATE TABLE measurement_y2016m01 PARTITION OF measurement
+    FOR VALUES FROM ('2016-01-01') TO ('2016-02-01');
+
+INSERT INTO measurement VALUES ('2016-01-05', 30, 10);
+SELECT * FROM measurement;
+
+-- Foreign data wrapper
+CREATE EXTENSION file_fdw;
+CREATE SERVER my_file_server
+FOREIGN DATA WRAPPER file_fdw;
+CREATE FOREIGN TABLE sales_data (
+    year int,
+    month int,
+    day int,
+    sales numeric
+)
+SERVER my_file_server
+OPTIONS (filename '/path/to/sales_data.csv', format 'csv');
+
+-- Aggregate function
+SELECT max(price) FROM products;
+
+-- Explain command
+EXPLAIN SELECT * FROM products WHERE price > 100;

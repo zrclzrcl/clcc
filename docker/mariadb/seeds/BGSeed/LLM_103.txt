@@ -1,0 +1,124 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+-- Test table creation with various data types and constraints
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) CHECK (price >= 0),
+    quantity INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX (product_name)
+);
+
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY AUTO_INCREMENT,
+    category_name VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE product_categories (
+    product_id INT,
+    category_id INT,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+-- Insert initial data
+INSERT INTO categories (category_name) VALUES ('Electronics'), ('Clothing'), ('Home Goods');
+
+INSERT INTO products (product_name, description, price, quantity) VALUES
+('Laptop', 'High-performance laptop', 1200.00, 10),
+('T-Shirt', 'Comfortable cotton t-shirt', 25.00, 100),
+('Coffee Maker', 'Automatic coffee maker', 80.00, 20),
+('Smartphone', 'Latest smartphone model', 900.00, 15);
+
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1), (2, 2), (3, 3), (4, 1);
+
+-- Test SELECT statements with joins and aggregations
+SELECT p.product_name, c.category_name
+FROM products p
+JOIN product_categories pc ON p.product_id = pc.product_id
+JOIN categories c ON pc.category_id = c.category_id;
+
+SELECT c.category_name, COUNT(p.product_id) AS product_count
+FROM categories c
+LEFT JOIN product_categories pc ON c.category_id = pc.category_id
+LEFT JOIN products p ON pc.product_id = p.product_id
+GROUP BY c.category_name;
+
+-- Test UPDATE and DELETE statements
+UPDATE products SET price = price * 1.1 WHERE category_id IN (SELECT category_id from categories where category_name = 'Electronics');
+DELETE FROM products WHERE quantity = 0;
+
+-- Test stored procedure (MariaDB Specific)
+DELIMITER //
+CREATE PROCEDURE GetProductsByCategory(IN categoryName VARCHAR(255))
+BEGIN
+    SELECT p.product_name, p.price
+    FROM products p
+    JOIN product_categories pc ON p.product_id = pc.product_id
+    JOIN categories c ON pc.category_id = c.category_id
+    WHERE c.category_name = categoryName;
+END //
+DELIMITER ;
+
+CALL GetProductsByCategory('Electronics');
+
+-- Test views (MariaDB Specific)
+CREATE VIEW LowStockProducts AS
+SELECT product_name, quantity
+FROM products
+WHERE quantity < 5;
+
+SELECT * FROM LowStockProducts;
+
+-- Test triggers (MariaDB Specific)
+CREATE TABLE product_audit (
+    audit_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT,
+    product_name VARCHAR(255),
+    old_price DECIMAL(10, 2),
+    new_price DECIMAL(10, 2),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER ProductPriceUpdate
+AFTER UPDATE
+ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.price <> OLD.price THEN
+        INSERT INTO product_audit (product_id, product_name, old_price, new_price)
+        VALUES (OLD.product_id, OLD.product_name, OLD.price, NEW.price);
+    END IF;
+END //
+DELIMITER ;
+
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+
+SELECT * FROM product_audit;
+
+-- Test functions (MariaDB Specific)
+DELIMITER //
+CREATE FUNCTION CalculateDiscountedPrice(price DECIMAL(10, 2), discount DECIMAL(5, 2))
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE discounted_price DECIMAL(10, 2);
+    SET discounted_price = price * (1 - discount);
+    RETURN discounted_price;
+END //
+DELIMITER ;
+
+SELECT product_name, price, CalculateDiscountedPrice(price, 0.1) AS discounted_price FROM products;
+
+-- Test JSON functions
+UPDATE products SET description = JSON_SET(description, '$.features', JSON_ARRAY('Fast processor', 'Large screen', 'Long battery life')) WHERE product_name = 'Laptop';
+SELECT product_name, JSON_EXTRACT(description, '$.features') FROM products WHERE product_name = 'Laptop';
+
+SET sql_mode=@old_sql_mode;

@@ -1,0 +1,66 @@
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    price DECIMAL(10, 2),
+    category VARCHAR,
+    description VARCHAR
+);
+
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    email VARCHAR UNIQUE,
+    phone VARCHAR
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id INTEGER PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    unit_price DECIMAL(10, 2)
+);
+
+-- DuckDB-specific feature: JSON column
+CREATE TABLE product_details (
+    product_id INTEGER PRIMARY KEY REFERENCES products(id),
+    details JSON
+);
+
+-- DuckDB-specific feature: UUID column
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY,
+    username VARCHAR UNIQUE,
+    password VARCHAR
+);
+
+-- Insert some sample data
+INSERT INTO products (name, price, category, description) VALUES
+('Laptop', 1200.00, 'Electronics', 'High-performance laptop'),
+('Mouse', 25.00, 'Electronics', 'Wireless mouse'),
+('T-shirt', 20.00, 'Clothing', 'Cotton T-shirt');
+
+INSERT INTO customers (first_name, last_name, email, phone) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210');
+
+-- Demonstrate json functionality
+INSERT INTO product_details (product_id, details) VALUES (1, JSON('{"processor": "Intel i7", "memory": "16GB RAM"}'));
+
+-- Test queries
+SELECT name, price FROM products WHERE price > 50;
+SELECT category, AVG(price) FROM products GROUP BY category;
+SELECT c.first_name, o.order_date FROM customers c JOIN orders o ON c.customer_id = o.customer_id WHERE c.last_name = 'Doe';
+SELECT p.name, pd.details FROM products p JOIN product_details pd ON p.id = pd.product_id WHERE p.category = 'Electronics';
+SELECT json_extract_string(details, '$.processor') AS processor FROM product_details;
+SELECT approx_count_distinct(category) from products; --duckdb specific.
+SELECT value FROM UNNEST(['a', 'b', 'c']); -- unnest is good for mutations.
+SELECT string_split('hello,world', ','); --split test

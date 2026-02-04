@@ -1,0 +1,54 @@
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    value DECIMAL(10, 2) DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE INDEX idx_unique_name (name)
+);
+
+INSERT INTO t1 (name, value) VALUES ('Item1', 100.50);
+INSERT INTO t1 (name, value) VALUES ('Item2', 200.75);
+
+UPDATE t1 SET value = value * 2 WHERE name = 'Item1';
+
+DELETE FROM t1 WHERE name = 'Item2';
+
+CREATE TABLE t2 (
+    id INT PRIMARY KEY,
+    content TEXT,
+    FULLTEXT INDEX idx_content (content)
+) ENGINE = MyISAM;
+
+INSERT INTO t2 VALUES (1, 'This is a test for full-text search capabilities in MySQL.');
+INSERT INTO t2 VALUES (2, 'Another example with keywords to find.');
+
+ALTER TABLE t1 ADD COLUMN status ENUM('active', 'inactive') DEFAULT 'active';
+
+INSERT INTO t1 (name, value) VALUES ('Item3', 300.00);
+
+DELIMITER $$
+CREATE PROCEDURE proc1(IN input_id INT)
+BEGIN
+    IF (SELECT value FROM t1 WHERE id = input_id) > 250 THEN
+        UPDATE t1 SET status = 'inactive' WHERE id = input_id;
+    END IF;
+END$$
+DELIMITER ;
+
+CREATE VIEW v1 AS
+SELECT t1.id, t1.name, t2.content 
+FROM t1 
+JOIN t2 ON t1.id = t2.id;
+
+START TRANSACTION;
+INSERT INTO t1 (name, value) VALUES ('Item4', 400.00);
+ROLLBACK;
+
+SELECT t1.id, t1.name, t2.content 
+FROM t1 
+LEFT JOIN t2 ON t1.id = t2.id 
+WHERE t1.value > (SELECT AVG(value) FROM t1)
+UNION
+SELECT id, name, NULL AS content FROM t1 WHERE value < 0.01;
+
+ANALYZE TABLE t1;

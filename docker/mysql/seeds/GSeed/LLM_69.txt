@@ -1,0 +1,34 @@
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL,
+    quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO products (name, description, price, quantity) VALUES
+('Awesome T-Shirt', 'A comfortable and stylish t-shirt.', 19.99, 50),
+('Incredible Mug', 'A mug that makes your coffee taste better!', 9.99, 100),
+('Fantastic Hat', 'Protect yourself from the sun in style.', 24.99, 25);
+
+CREATE INDEX idx_products_name ON products (name);
+
+ALTER TABLE products ADD COLUMN discounted BOOLEAN DEFAULT FALSE;
+
+-- Test some MySQL specific features
+SELECT * FROM products WHERE name LIKE 'A%' LOCK IN SHARE MODE;
+
+-- Test JSON column functionality
+ALTER TABLE products ADD COLUMN details JSON;
+UPDATE products SET details = '{"color": "red", "size": "medium"}' WHERE id = 1;
+
+-- Add a stored procedure to test procedure calls
+DELIMITER //
+CREATE PROCEDURE GetProductsBelowPrice(IN max_price DECIMAL(10, 2))
+BEGIN
+    SELECT * FROM products WHERE price < max_price;
+END //
+DELIMITER ;
+
+CALL GetProductsBelowPrice(20.00);

@@ -1,0 +1,292 @@
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    category VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2),
+    status VARCHAR(20) CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER CHECK (quantity > 0),
+    price_per_unit DECIMAL(10, 2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO products (product_name, price, category) VALUES
+('Laptop', 1200.00, 'Electronics'),
+('Smartphone', 800.00, 'Electronics'),
+('T-shirt', 25.00, 'Clothing'),
+('Jeans', 60.00, 'Clothing'),
+('Coffee Maker', 75.00, 'Appliances');
+
+INSERT INTO customers (first_name, last_name, email, phone_number, address) VALUES
+('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave'),
+('Alice', 'Johnson', 'alice.johnson@example.com', '555-123-4567', '789 Pine Ln');
+
+INSERT INTO orders (customer_id, total_amount, status) VALUES
+(1, 1225.00, 'pending'),
+(2, 860.00, 'processing'),
+(3, 75.00, 'shipped');
+
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
+(1, 1, 1, 1200.00),
+(1, 3, 1, 25.00),
+(2, 2, 1, 800.00),
+(2, 4, 1, 60.00),
+(3, 5, 1, 75.00);
+
+-- Select statements
+SELECT * FROM products;
+SELECT * FROM customers;
+SELECT * FROM orders;
+SELECT * FROM order_items;
+
+-- Select with where clause
+SELECT * FROM products WHERE category = 'Electronics';
+SELECT * FROM customers WHERE last_name LIKE 'S%';
+SELECT * FROM orders WHERE order_date > '2024-01-01';
+
+-- Update statements
+UPDATE products SET price = 1300.00 WHERE product_name = 'Laptop';
+UPDATE customers SET address = 'New Address' WHERE customer_id = 1;
+UPDATE orders SET status = 'delivered' WHERE order_id = 3;
+
+-- Delete statements
+DELETE FROM order_items WHERE order_id = 3;
+DELETE FROM orders WHERE order_id = 3;
+DELETE FROM products WHERE product_name = 'Coffee Maker';
+
+-- Aggregate functions
+SELECT COUNT(*) FROM products;
+SELECT AVG(price) FROM products;
+SELECT SUM(total_amount) FROM orders;
+SELECT MAX(price_per_unit) FROM order_items;
+SELECT MIN(price_per_unit) FROM order_items;
+
+-- Group by and having
+SELECT category, COUNT(*) FROM products GROUP BY category;
+SELECT customer_id, SUM(total_amount) FROM orders GROUP BY customer_id HAVING SUM(total_amount) > 1000;
+
+-- Join statements
+SELECT o.order_id, c.first_name, c.last_name FROM orders o JOIN customers c ON o.customer_id = c.customer_id;
+SELECT oi.order_item_id, p.product_name FROM order_items oi JOIN products p ON oi.product_id = p.product_id;
+
+-- Subqueries
+SELECT product_name FROM products WHERE price > (SELECT AVG(price) FROM products);
+SELECT customer_id, total_amount FROM orders WHERE customer_id IN (SELECT customer_id FROM customers WHERE last_name LIKE 'S%');
+
+-- Window functions
+SELECT product_name, price, RANK() OVER (ORDER BY price DESC) FROM products;
+SELECT customer_id, total_amount, ROW_NUMBER() OVER (ORDER BY total_amount DESC) FROM orders;
+
+-- Common Table Expressions (CTEs)
+WITH HighValueOrders AS (
+    SELECT order_id, customer_id, total_amount
+    FROM orders
+    WHERE total_amount > 1000
+)
+SELECT c.first_name, c.last_name, hvo.total_amount
+FROM customers c
+JOIN HighValueOrders hvo ON c.customer_id = hvo.customer_id;
+
+-- Triggers
+CREATE OR REPLACE FUNCTION update_order_total()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE orders
+    SET total_amount = (SELECT SUM(quantity * price_per_unit) FROM order_items WHERE order_id = NEW.order_id)
+    WHERE order_id = NEW.order_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_items_insert
+AFTER INSERT ON order_items
+FOR EACH ROW
+EXECUTE FUNCTION update_order_total();
+
+CREATE OR REPLACE FUNCTION check_price_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.price < OLD.price THEN
+        RAISE EXCEPTION 'New price cannot be lower than the old price';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER product_price_update
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION check_price_update();
+
+-- Indexes
+CREATE INDEX idx_product_category ON products (category);
+CREATE INDEX idx_customer_last_name ON customers (last_name);
+CREATE INDEX idx_order_customer_id ON orders (customer_id);
+
+-- Views
+CREATE VIEW customer_orders AS
+SELECT c.first_name, c.last_name, o.order_id, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id;
+
+SELECT * FROM customer_orders;
+
+-- Materialized views
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT category, AVG(price) AS average_price, COUNT(*) AS product_count
+FROM products
+GROUP BY category;
+
+REFRESH MATERIALIZED VIEW product_summary;
+
+SELECT * FROM product_summary;
+
+-- Functions
+CREATE OR REPLACE FUNCTION get_customer_orders(customer_email VARCHAR)
+RETURNS TABLE (order_id INTEGER, order_date DATE, total_amount DECIMAL) AS $$
+BEGIN
+    RETURN QUERY SELECT o.order_id, o.order_date, o.total_amount
+    FROM orders o
+    JOIN customers c ON o.customer_id = c.customer_id
+    WHERE c.email = customer_email;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_customer_orders('john.doe@example.com');
+
+-- Check constraints
+ALTER TABLE customers ADD CONSTRAINT proper_email CHECK (email LIKE '%@%.%');
+
+-- Foreign keys
+ALTER TABLE orders ADD CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE;
+
+-- Grant and revoke
+CREATE USER testuser WITH PASSWORD 'password';
+GRANT SELECT ON products TO testuser;
+REVOKE SELECT ON products FROM testuser;
+
+-- Explain Analyze
+EXPLAIN ANALYZE SELECT * FROM products WHERE category = 'Electronics';
+
+-- Set and Reset
+SET enable_seqscan = off;
+EXPLAIN ANALYZE SELECT * FROM products;
+RESET enable_seqscan;
+
+-- Case statement
+SELECT product_name,
+       CASE
+           WHEN price > 1000 THEN 'Expensive'
+           WHEN price > 500 THEN 'Moderate'
+           ELSE 'Cheap'
+       END AS price_range
+FROM products;
+
+-- Unnest function (useful for array operations)
+CREATE TABLE product_tags (
+    product_id INTEGER REFERENCES products(product_id),
+    tags TEXT[]
+);
+INSERT INTO product_tags (product_id, tags) VALUES (1, ARRAY['powerful', 'fast', 'reliable']);
+
+SELECT p.product_name, t.tag
+FROM products p
+JOIN product_tags pt ON p.product_id = pt.product_id
+CROSS JOIN UNNEST(pt.tags) AS t(tag);
+
+-- Generate Series
+SELECT generate_series(1, 10, 2);
+
+-- Returning Clause for capturing changes
+INSERT INTO products (product_name, price, category) VALUES ('New Product', 50.00, 'Misc') RETURNING *;
+UPDATE products SET price = 55.00 WHERE product_name = 'New Product' RETURNING *;
+DELETE FROM products WHERE product_name = 'New Product' RETURNING *;
+
+-- Composite Types
+CREATE TYPE address AS (
+   street text,
+   city text,
+   state char(2),
+   zipcode text
+);
+
+CREATE TABLE employees (
+   emp_id SERIAL PRIMARY KEY,
+   name text,
+   residence address
+);
+
+INSERT INTO employees (name, residence) VALUES (
+  'John Smith',
+  ROW('123 Main St', 'Anytown', 'CA', '91234')::address
+);
+
+SELECT (residence).city FROM employees;
+
+-- Range Types
+CREATE TABLE reservation (room int, during tsrange);
+INSERT INTO reservation VALUES
+    (1108, '[2010-12-10 11:00, 2010-12-11 11:00]');
+
+SELECT * FROM reservation WHERE during @> '2010-12-11 10:00'::timestamp;
+
+-- UUID Datatype
+CREATE TABLE session_data (
+    session_id UUID PRIMARY KEY,
+    data TEXT
+);
+
+INSERT INTO session_data (session_id, data) VALUES (uuid_generate_v4(), 'Some session information');
+
+-- JSON/JSONB Datatypes
+CREATE TABLE logs (
+   log_id SERIAL PRIMARY KEY,
+   log_data JSONB
+);
+
+INSERT INTO logs (log_data) VALUES (
+   '{
+       "timestamp": "2024-01-01 12:00:00",
+       "level": "info",
+       "message": "User logged in",
+       "user_id": 123
+   }'::JSONB
+);
+
+SELECT log_data ->> 'message' FROM logs;
+SELECT log_data #>> '{timestamp}' FROM logs;
+
+-- ENUM Types
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('John', 'happy');

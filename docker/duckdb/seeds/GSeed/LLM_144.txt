@@ -1,0 +1,47 @@
+CREATE TABLE accounts (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    balance DECIMAL(10, 2)
+);
+
+INSERT INTO accounts (name, balance) VALUES ('Alice', 100.00), ('Bob', 50.00);
+
+CREATE VIEW high_balance_accounts AS
+SELECT id, name, balance FROM accounts WHERE balance > 75.00;
+
+CREATE SEQUENCE account_id_seq START 3;
+
+CREATE MACRO add_interest(account_id INTEGER, interest_rate DECIMAL) AS (
+  UPDATE accounts SET balance = balance * (1 + interest_rate) WHERE id = account_id
+);
+
+CALL add_interest(1, 0.05);
+
+CREATE TABLE transactions (
+    id INTEGER PRIMARY KEY,
+    account_id INTEGER,
+    amount DECIMAL(10, 2),
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+INSERT INTO transactions (account_id, amount) VALUES (1, -20.00), (2, 10.00);
+
+-- DuckDB specific: Try using APPROXIMATE COUNT DISTINCT
+SELECT APPROX_COUNT_DISTINCT(account_id) FROM transactions;
+
+-- Demonstrate string functions.
+SELECT STRING_SPLIT('hello,world', ',');
+
+-- Demonstrate date functions.
+SELECT DATE_DIFF('day', '2023-01-01', CURRENT_DATE());
+
+-- Demonstrate window functions
+SELECT id, name, balance, RANK() OVER (ORDER BY balance DESC) FROM accounts;
+
+-- Demonstrate table functions
+INSTALL httpfs;
+LOAD httpfs;
+-- this will fail if the test environment doesn't allow network connections.
+-- ideally, this test should only execute when networking is available.
+-- READ_CSV_AUTO('https://raw.githubusercontent.com/fuzzing-corpora/db-fuzz-seeds/main/seeds/sqlite/empty.csv');

@@ -1,0 +1,72 @@
+-- Create a table with various data types and constraints to test different scenarios
+CREATE TABLE test_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL DEFAULT 'test',
+    description TEXT,
+    price DECIMAL(10, 2) UNSIGNED NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    flags SET('flag1', 'flag2', 'flag3'),
+    spatial_point POINT,
+    json_data JSON
+);
+
+-- Insert sample data to test edge cases and functionalities
+INSERT INTO test_table (name, description, price, status, flags, spatial_point, json_data)
+VALUES ('Test Item 1', NULL, 99.99, 'active', 'flag1,flag2', ST_GeomFromText('POINT(1 1)'), '{"key": "value", "array": [1, 2, 3]}');
+
+-- Test JSON functions and operations
+INSERT INTO test_table (name, description, price, status, flags, spatial_point, json_data)
+VALUES ('Test Item 2', 'Another description', 0.01, 'inactive', NULL, ST_GeomFromText('POINT(2 2)'), '{"nested": {"object": true}}');
+
+-- Test edge cases with NULL and large values
+INSERT INTO test_table (name, description, price, status, flags, spatial_point, json_data)
+VALUES ('Test Item 3', 'Testing NULLs', NULL, 'active', NULL, ST_GeomFromText('POINT(3 3)'), NULL);
+
+-- Create a trigger to test automated actions
+DELIMITER $$
+CREATE TRIGGER after_update_trigger
+AFTER UPDATE ON test_table
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (action, timestamp)
+    VALUES ('update', NOW());
+END$$
+DELIMITER ;
+
+-- Create a stored procedure for testing complex logic
+DELIMITER $$
+CREATE PROCEDURE calculate_total_price()
+BEGIN
+    DECLARE total DECIMAL(10, 2);
+    SELECT SUM(price) INTO total FROM test_table;
+    SELECT total AS 'Total Price';
+END$$
+DELIMITER ;
+
+-- Create a view to test different data perspectives
+CREATE VIEW price_summary AS
+SELECT status, COUNT(*) as count, AVG(price) as average_price
+FROM test_table
+GROUP BY status;
+
+-- Test spatial indexing and operations
+CREATE SPATIAL INDEX idx_spatial_point ON test_table(spatial_point);
+SELECT ST_Distance(spatial_point, ST_GeomFromText('POINT(2 2)')) AS distance FROM test_table WHERE id = 1;
+
+-- Create an event for testing scheduled tasks
+DELIMITER $$
+CREATE EVENT daily_cleanup
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    DELETE FROM audit_log WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY);
+END$$
+DELIMITER ;
+
+-- Test JSON modifications and updates
+UPDATE test_table SET json_data = JSON_SET(json_data, '$.new_key', 'new_value') WHERE id = 2;
+
+-- Test triggers and stored procedures together
+CALL calculate_total_price();

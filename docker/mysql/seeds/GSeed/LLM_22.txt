@@ -1,0 +1,110 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+SET @SESSION.information_schema_stats_expiry = 0;
+
+-- Test different data types and constraints
+CREATE TABLE test_types (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE,
+    decimal_col DECIMAL(10, 2),
+    date_col DATE,
+    datetime_col DATETIME,
+    timestamp_col TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_col TIME,
+    year_col YEAR,
+    char_col CHAR(10),
+    varchar_col VARCHAR(255),
+    tinytext_col TINYTEXT,
+    text_col TEXT,
+    mediumtext_col MEDIUMTEXT,
+    longtext_col LONGTEXT,
+    tinyblob_col TINYBLOB,
+    blob_col BLOB,
+    mediumblob_col MEDIUMBLOB,
+    longblob_col LONGBLOB,
+    enum_col ENUM('value1', 'value2', 'value3'),
+    set_col SET('option1', 'option2', 'option3'),
+    binary_col BINARY(16),
+    varbinary_col VARBINARY(255),
+    json_col JSON,
+    geometry_col GEOMETRY NULL
+);
+
+-- Insert some diverse data
+INSERT INTO test_types (tiny_int, small_int, medium_int, normal_int, big_int, float_col, double_col, decimal_col, date_col, datetime_col, time_col, year_col, char_col, varchar_col, tinytext_col, text_col, mediumtext_col, longtext_col, tinyblob_col, blob_col, mediumblob_col, longblob_col, enum_col, set_col, binary_col, varbinary_col, json_col, geometry_col) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-26', '2023-10-26 10:30:00', '10:30:00', 2023, 'test', 'test varchar', 'tiny', 'text value', 'medium text', 'long text', 'tiny blob', 'blob data', 'medium blob data', 'long blob data', 'value1', 'option1,option2', UNHEX('000102030405060708090a0b0c0d0e0f'), 'varbinary data', '{"key": "value"}', ST_GeomFromText('POINT(1 1)')),
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -3.14, -2.71828, -12345.67, '2024-01-01', '2024-01-01 00:00:00', '00:00:00', 2024, 'test2', 'another varchar', 'tiny2', 'text value 2', 'medium text 2', 'long text 2', 'tiny blob 2', 'blob data 2', 'medium blob data 2', 'long blob data 2', 'value2', 'option2,option3', UNHEX('f0e1d2c3b4a5968778695a4b3c2d1e0f'), 'another varbinary data', '{"key2": "value2"}', NULL);
+
+-- Test JSON functions
+SELECT JSON_EXTRACT(json_col, '$.key') FROM test_types WHERE id = 1;
+SELECT JSON_SET(json_col, '$.new_key', 'new_value') FROM test_types WHERE id = 1;
+
+-- Test Geometry functions
+SELECT ST_AsText(geometry_col) FROM test_types WHERE id = 1;
+SELECT ST_Distance(ST_GeomFromText('POINT(0 0)'), geometry_col) FROM test_types WHERE id = 1;
+
+-- Test transactions
+START TRANSACTION;
+UPDATE test_types SET varchar_col = 'transaction test' WHERE id = 1;
+SELECT varchar_col FROM test_types WHERE id = 1;
+ROLLBACK;
+SELECT varchar_col FROM test_types WHERE id = 1;
+
+-- Test stored procedure (simple example)
+DELIMITER //
+CREATE PROCEDURE simple_proc (IN param1 INT)
+BEGIN
+    SELECT * FROM test_types WHERE id = param1;
+END //
+DELIMITER ;
+
+CALL simple_proc(1);
+
+-- Cleanup
+DROP PROCEDURE IF EXISTS simple_proc;
+
+-- Test temporary tables
+CREATE TEMPORARY TABLE temp_table (id INT);
+INSERT INTO temp_table VALUES (1);
+SELECT * FROM temp_table;
+
+-- Test generated columns
+ALTER TABLE test_types ADD COLUMN generated_col INT AS (normal_int * 2) VIRTUAL;
+INSERT INTO test_types (normal_int) VALUES (10);
+SELECT generated_col FROM test_types WHERE normal_int = 10;
+
+-- Test partitioning
+CREATE TABLE part_table (
+    id INT,
+    val VARCHAR(255),
+    logdate DATETIME NOT NULL
+)
+PARTITION BY RANGE ( YEAR(logdate) ) (
+    PARTITION p0 VALUES LESS THAN (2023),
+    PARTITION p1 VALUES LESS THAN (2024),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+INSERT INTO part_table (id, val, logdate) VALUES (1, 'test', '2022-01-01'), (2, 'test2', '2023-06-01'), (3, 'test3', '2024-01-01');
+
+SELECT * FROM part_table PARTITION (p0);
+
+-- Test fulltext index (requires MyISAM or InnoDB with specific settings)
+ALTER TABLE test_types ADD FULLTEXT INDEX text_index (text_col);
+SELECT * FROM test_types WHERE MATCH (text_col) AGAINST ('text value');
+
+-- Test spatial index (requires spatial support)
+ALTER TABLE test_types ADD SPATIAL INDEX geom_index (geometry_col);
+
+--Cleanup
+DROP TABLE IF EXISTS part_table;
+DROP TABLE IF EXISTS temp_table;
+DROP TABLE IF EXISTS test_types;
+
+SET sql_mode = @old_sql_mode;

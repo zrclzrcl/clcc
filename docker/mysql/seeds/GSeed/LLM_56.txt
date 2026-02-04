@@ -1,0 +1,41 @@
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone_number VARCHAR(20),
+    hire_date DATE,
+    job_id INT,
+    salary DECIMAL(10, 2),
+    commission_pct DECIMAL(4, 2),
+    manager_id INT,
+    department_id INT
+);
+
+INSERT INTO employees (first_name, last_name, email, hire_date, job_id, salary, department_id) VALUES
+('John', 'Doe', 'john.doe@example.com', '2022-01-15', 1, 60000.00, 10),
+('Jane', 'Smith', 'jane.smith@example.com', '2022-03-01', 2, 75000.00, 20),
+('Peter', 'Jones', 'peter.jones@example.com', '2022-05-10', 1, 62000.00, 10);
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department_id = 10;
+
+-- MySQL Specific: Generated Columns
+ALTER TABLE employees ADD COLUMN full_name VARCHAR(101) GENERATED ALWAYS AS (CONCAT(first_name, ' ', last_name)) VIRTUAL;
+
+-- MySQL Specific: Spatial Data Type (requires SRID)
+CREATE TABLE locations (
+    location_id INT PRIMARY KEY AUTO_INCREMENT,
+    address VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    zip_code VARCHAR(10),
+    location POINT SRID 0
+);
+INSERT INTO locations (address, city, state, zip_code, location) VALUES ('123 Main St', 'Anytown', 'CA', '91234', ST_GeomFromText('POINT(34.0522 -118.2437)'));
+-- MySQL Specific: JSON data type
+ALTER TABLE employees ADD COLUMN details JSON;
+UPDATE employees SET details = JSON_OBJECT('age', 30, 'interests', JSON_ARRAY('reading', 'hiking')) WHERE employee_id = 1;

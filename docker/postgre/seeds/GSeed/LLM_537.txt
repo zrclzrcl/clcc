@@ -1,0 +1,142 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    quantity INT DEFAULT 0
+);
+
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(20),
+    address TEXT
+);
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(customer_id),
+    order_date DATE DEFAULT CURRENT_DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(order_id),
+    product_id INT REFERENCES products(id),
+    quantity INT,
+    price DECIMAL(10, 2)
+);
+
+-- Insert data into products table
+INSERT INTO products (name, price, quantity) VALUES
+    ('Laptop', 1200.00, 10),
+    ('Mouse', 25.00, 50),
+    ('Keyboard', 75.00, 30),
+    ('Monitor', 300.00, 15),
+    ('Headphones', 100.00, 20);
+
+-- Insert data into customers table
+INSERT INTO customers (first_name, last_name, email, phone, address) VALUES
+    ('John', 'Doe', 'john.doe@example.com', '123-456-7890', '123 Main St'),
+    ('Jane', 'Smith', 'jane.smith@example.com', '987-654-3210', '456 Oak Ave'),
+    ('Alice', 'Johnson', 'alice.johnson@example.com', '555-123-4567', '789 Pine Ln');
+
+-- Insert data into orders table
+INSERT INTO orders (customer_id, total_amount) VALUES
+    (1, 1225.00),
+    (2, 375.00),
+    (3, 400.00);
+
+-- Insert data into order_items table
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+    (1, 1, 1, 1200.00),
+    (1, 2, 1, 25.00),
+    (2, 3, 5, 75.00),
+    (3, 4, 1, 300.00),
+    (3, 5, 1, 100.00);
+
+-- Basic SELECT queries
+SELECT * FROM products;
+SELECT name, price FROM products WHERE price > 100.00;
+SELECT first_name, last_name FROM customers WHERE last_name LIKE 'S%';
+
+-- JOIN queries
+SELECT o.order_id, c.first_name, c.last_name, o.order_date, o.total_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id;
+
+SELECT oi.order_item_id, p.name, oi.quantity, oi.price
+FROM order_items oi
+JOIN products p ON oi.product_id = p.id
+WHERE p.price > 50.00;
+
+-- Aggregate queries
+SELECT AVG(price) FROM products;
+SELECT COUNT(*) FROM customers;
+SELECT SUM(total_amount) FROM orders;
+SELECT MAX(price) FROM products;
+SELECT MIN(price) FROM products;
+SELECT customer_id, SUM(total_amount) AS total_spent FROM orders GROUP BY customer_id;
+
+-- Subquery
+SELECT name, price FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+-- UPDATE queries
+UPDATE products SET price = 1300.00 WHERE name = 'Laptop';
+UPDATE customers SET phone = '111-222-3333' WHERE first_name = 'John';
+
+-- DELETE queries
+DELETE FROM products WHERE quantity = 0;
+
+-- ALTER TABLE statements
+ALTER TABLE products ADD COLUMN description TEXT;
+ALTER TABLE customers ALTER COLUMN email SET NOT NULL;
+
+-- CREATE INDEX statement
+CREATE INDEX idx_customers_last_name ON customers (last_name);
+
+-- Using GENERATE_SERIES function
+SELECT * FROM GENERATE_SERIES(1, 10);
+
+-- Using window functions
+SELECT product_id, name, price, RANK() OVER (ORDER BY price DESC) as price_rank FROM products;
+
+-- Using common table expressions (CTEs)
+WITH HighPriceProducts AS (
+    SELECT name, price FROM products WHERE price > 500
+)
+SELECT name, price FROM HighPriceProducts ORDER BY price DESC;
+
+-- Check constraints
+ALTER TABLE products ADD CONSTRAINT positive_quantity CHECK (quantity >= 0);
+
+-- Foreign key constraints
+ALTER TABLE orders ADD CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE;
+
+-- Using NULLIF function
+SELECT NULLIF(10, 10);
+
+-- Using COALESCE function
+SELECT COALESCE(NULL, 'default_value');
+
+-- Using CASE statement
+SELECT
+    name,
+    CASE
+        WHEN price > 1000 THEN 'Expensive'
+        WHEN price > 100 THEN 'Moderate'
+        ELSE 'Cheap'
+    END AS price_category
+FROM products;
+
+-- Using array functions
+CREATE TABLE array_test (
+  id SERIAL PRIMARY KEY,
+  int_array INTEGER[]
+);
+
+INSERT INTO array_test (int_array) VALUES ('{1,2,3}');
+SELECT int_array[1] FROM array_test;
+SELECT array_length(int_array, 1) FROM array_test;

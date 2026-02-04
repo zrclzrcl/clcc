@@ -1,0 +1,130 @@
+SET SESSION DEFAULT_STORAGE_ENGINE = InnoDB;
+CREATE TABLE employees (
+    emp_no INT PRIMARY KEY,
+    birth_date DATE NOT NULL,
+    first_name VARCHAR(14) NOT NULL,
+    last_name VARCHAR(16) NOT NULL,
+    gender ENUM('M', 'F') NOT NULL,
+    hire_date DATE NOT NULL
+);
+
+CREATE TABLE departments (
+    dept_no CHAR(4) PRIMARY KEY,
+    dept_name VARCHAR(40) UNIQUE NOT NULL
+);
+
+CREATE TABLE dept_emp (
+    emp_no INT NOT NULL,
+    dept_no CHAR(4) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no),
+    FOREIGN KEY (dept_no) REFERENCES departments (dept_no),
+    PRIMARY KEY (emp_no, dept_no)
+);
+
+CREATE TABLE salaries (
+    emp_no INT NOT NULL,
+    salary INT NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no),
+    PRIMARY KEY (emp_no, from_date)
+);
+
+CREATE TABLE titles (
+    emp_no INT NOT NULL,
+    title VARCHAR(50) NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    FOREIGN KEY (emp_no) REFERENCES employees (emp_no),
+    PRIMARY KEY (emp_no, title, from_date)
+);
+
+INSERT INTO employees (emp_no, birth_date, first_name, last_name, gender, hire_date) VALUES
+(10001, '1953-09-02', 'Georgi', 'Facello', 'M', '1986-06-26'),
+(10002, '1964-06-02', 'Bezalel', 'Simmel', 'F', '1985-11-21'),
+(10003, '1959-12-03', 'Parto', 'Bamford', 'M', '1986-08-28');
+
+INSERT INTO departments (dept_no, dept_name) VALUES
+('d001', 'Marketing'),
+('d002', 'Finance'),
+('d003', 'Human Resources');
+
+INSERT INTO dept_emp (emp_no, dept_no, from_date, to_date) VALUES
+(10001, 'd001', '1986-06-26', '9999-01-01'),
+(10002, 'd002', '1985-11-21', '9999-01-01');
+
+INSERT INTO salaries (emp_no, salary, from_date, to_date) VALUES
+(10001, 60117, '1986-06-26', '1987-06-26'),
+(10002, 65828, '1996-08-03', '1997-08-03');
+
+INSERT INTO titles (emp_no, title, from_date, to_date) VALUES
+(10001, 'Senior Engineer', '1986-06-26', '9999-01-01'),
+(10002, 'Staff', '1996-08-03', '9999-01-01');
+
+-- Test aggregate function edge cases.
+SELECT AVG(salary) FROM salaries WHERE salary > 1000000;
+
+-- Test date range functions.
+SELECT DATEDIFF('2024-01-15', '2023-12-25');
+
+-- Test string manipulation.
+SELECT SUBSTRING('This is a test string', 6, 2);
+
+-- Test JSON functions (MySQL specific).
+SELECT JSON_OBJECT('key1', 1, 'key2', 'value2');
+
+-- Test Window Functions (MySQL 8+).
+SELECT emp_no, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) as row_num FROM salaries;
+
+-- Test stored procedures and functions
+DELIMITER //
+CREATE FUNCTION calculate_bonus(salary INT, bonus_rate DECIMAL(5,2))
+RETURNS INT
+DETERMINISTIC
+BEGIN
+  DECLARE bonus INT;
+  SET bonus = salary * bonus_rate;
+  RETURN bonus;
+END//
+DELIMITER ;
+
+SELECT calculate_bonus(50000, 0.10);
+
+-- Test triggers
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    emp_no INT,
+    old_salary INT,
+    new_salary INT,
+    change_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+DELIMITER //
+CREATE TRIGGER salary_update_trigger
+AFTER UPDATE ON salaries
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_log (emp_no, old_salary, new_salary)
+    VALUES (OLD.emp_no, OLD.salary, NEW.salary);
+END//
+DELIMITER ;
+
+UPDATE salaries SET salary = 70000 WHERE emp_no = 10001 AND from_date = '1986-06-26';
+
+-- Test views
+CREATE VIEW employee_salary_view AS
+SELECT e.emp_no, e.first_name, e.last_name, s.salary
+FROM employees e
+JOIN salaries s ON e.emp_no = s.emp_no;
+
+SELECT * FROM employee_salary_view;
+
+-- Test spatial data types and functions (if applicable and enabled).  Requires spatial extensions to be enabled and properly configured.  Omitted for basic compatibility. If spatial extensions are available, consider adding:
+-- CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY);
+-- INSERT INTO spatial_data VALUES (1, ST_GeomFromText('POINT(1 1)'));
+-- SELECT ST_Distance(ST_GeomFromText('POINT(0 0)'), geom) FROM spatial_data;
+
+-- Test optimizer hints (MySQL specific).
+SELECT /*+ INDEX(salaries emp_no) */ * FROM salaries WHERE emp_no = 10001;

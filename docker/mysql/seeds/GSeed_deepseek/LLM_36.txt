@@ -1,0 +1,49 @@
+SET optimizer_switch='index_condition_pushdown=on,mrr=on,mrr_cost_based=on';
+SET @save_storage_engine = @@default_storage_engine;
+SET default_storage_engine = InnoDB;
+
+CREATE TABLE t1 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    age TINYINT UNSIGNED DEFAULT 0 CHECK (age >= 0 AND age <= 127),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE t2 (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    data JSON,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active'
+) ENGINE=InnoDB;
+
+INSERT INTO t1 (name, age) VALUES
+('Alice', 30),
+('Bob', 45),
+('Charlie', NULL); -- Testing edge case with NULL
+
+INSERT INTO t2 (data, status) VALUES
+('{"key": "value"}', 'active'),
+('{"array": [1,2,3]}', 'inactive');
+
+ALTER TABLE t1 ADD INDEX idx_name_age (name, age);
+ALTER TABLE t1 ADD CONSTRAINT chk_age CHECK (age >= 0);
+
+CREATE PROCEDURE sp_test()
+BEGIN
+    DECLARE x INT DEFAULT 0;
+    WHILE x < 5 DO
+        INSERT INTO t1 (name, age) VALUES (CONCAT('User', x), x * 10);
+        SET x = x + 1;
+    END WHILE;
+END;
+
+CALL sp_test();
+
+CREATE TRIGGER trg_after_insert_t1 AFTER INSERT ON t1 FOR EACH ROW
+BEGIN
+    INSERT INTO t2 (data, status) VALUES (JSON_OBJECT('id', NEW.id, 'name', NEW.name), 'active');
+END;
+
+UPDATE t1 SET name = CONCAT(name, LPAD(id, 3, '0')) WHERE age > 25;
+ANALYZE TABLE t1, t2;
+
+SET read_rnd_buffer_size=64;

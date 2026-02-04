@@ -1,0 +1,104 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 50000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01'),
+('Eve Wilson', 90000.00, 'Engineering', '2022-09-05');
+
+CREATE INDEX idx_department ON employees (department);
+
+SELECT * FROM employees WHERE department = 'Sales';
+
+SELECT AVG(salary) FROM employees;
+
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+
+UPDATE employees SET salary = salary * 1.10 WHERE department = 'Marketing';
+
+DELETE FROM employees WHERE id = 3;
+
+ALTER TABLE employees ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employees SET bonus = salary * 0.05 WHERE salary > 70000;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+CREATE TABLE departments (
+    dept_id SERIAL PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES ('Sales'), ('Marketing'), ('Engineering'), ('HR');
+
+ALTER TABLE employees ADD COLUMN dept_id INT REFERENCES departments(dept_id);
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+SELECT e.name, d.dept_name FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+CREATE OR REPLACE FUNCTION increment_salary(emp_id INT, increment_amount DECIMAL)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE employees SET salary = salary + increment_amount WHERE id = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000.00);
+SELECT * FROM employees WHERE id = 1;
+
+DROP FUNCTION increment_salary(INT, DECIMAL);
+
+CREATE TABLE audit_log (
+    log_id SERIAL PRIMARY KEY,
+    table_name VARCHAR(255),
+    record_id INT,
+    operation VARCHAR(10),
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() at time zone 'utc')
+);
+
+CREATE OR REPLACE FUNCTION log_employee_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation) VALUES ('employees', OLD.id, 'DELETE');
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO audit_log (table_name, record_id, operation) VALUES ('employees', OLD.id, 'UPDATE');
+        RETURN NEW;
+    ELSIF (TG_OP = 'INSERT') THEN
+        INSERT INTO audit_log (table_name, record_id, operation) VALUES ('employees', NEW.id, 'INSERT');
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER employee_changes_trigger
+AFTER INSERT OR UPDATE OR DELETE ON employees
+FOR EACH ROW
+EXECUTE PROCEDURE log_employee_changes();
+
+INSERT INTO employees (name, salary, department, hire_date, dept_id) VALUES ('New Employee', 55000, 'Sales', '2024-01-01', (SELECT dept_id FROM departments WHERE dept_name = 'Sales'));
+UPDATE employees SET salary = 62000 WHERE name = 'Alice Smith';
+DELETE FROM employees WHERE name = 'Bob Johnson';
+
+SELECT * FROM audit_log;
+
+DROP TRIGGER employee_changes_trigger ON employees;
+DROP FUNCTION log_employee_changes();
+DROP TABLE audit_log;
+DROP TABLE employees;
+DROP TABLE departments;

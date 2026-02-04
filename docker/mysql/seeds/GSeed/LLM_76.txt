@@ -1,0 +1,46 @@
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    hire_date DATE NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
+    department_id INT,
+    INDEX (department_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY AUTO_INCREMENT,
+    department_name VARCHAR(50) NOT NULL,
+    location VARCHAR(50)
+) ENGINE=InnoDB;
+
+ALTER TABLE employees ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+INSERT INTO departments (department_name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (department_name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (department_name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Jane', 'Smith', '2021-05-20', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES ('Robert', 'Jones', '2023-03-10', 90000.00, 3);
+
+SELECT * FROM employees WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- MySQL Specific: Using JSON column type and functions
+ALTER TABLE employees ADD COLUMN contact_info JSON;
+UPDATE employees SET contact_info = JSON_OBJECT('email', CONCAT(LOWER(first_name), '.', LOWER(last_name), '@example.com'), 'phone', '555-123-4567') WHERE emp_id = 1;
+SELECT emp_id, contact_info->'$.email' AS email FROM employees;
+
+SHOW INDEX FROM employees;
+SHOW CREATE TABLE employees;
+SHOW CREATE TABLE departments;
+
+-- MySQL Specific: Using Partitioning
+ALTER TABLE employees PARTITION BY RANGE (YEAR(hire_date)) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN MAXVALUE
+);
+
+EXPLAIN SELECT * FROM employees WHERE YEAR(hire_date) = 2022;

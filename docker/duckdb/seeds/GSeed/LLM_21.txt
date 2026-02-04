@@ -1,0 +1,53 @@
+CREATE TABLE integers (
+  id INTEGER PRIMARY KEY,
+  value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES
+(1, 10),
+(2, 20),
+(3, 30);
+
+CREATE VIEW large_integers AS
+SELECT id, value FROM integers WHERE value > 15;
+
+CREATE MACRO double(x) AS (x * 2);
+
+SELECT double(value) FROM integers;
+
+CREATE TABLE strings (
+  id INTEGER PRIMARY KEY,
+  text VARCHAR
+);
+
+INSERT INTO strings (id, text) VALUES
+(1, 'hello'),
+(2, 'world');
+
+SELECT text FROM strings WHERE text LIKE 'h%';
+
+-- DuckDB-specific JSON functionality
+CREATE TABLE json_data (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+
+INSERT INTO json_data (id, data) VALUES
+(1, '{"name": "John", "age": 30}'),
+(2, '{"city": "New York"}');
+
+SELECT data['name'] FROM json_data WHERE id = 1;
+
+CREATE SEQUENCE my_sequence START 1 INCREMENT 1;
+
+SELECT nextval('my_sequence');
+
+-- Test unnest
+CREATE TABLE list_table AS SELECT list_value as val FROM (SELECT list([1, 2, 3]) AS list_value);
+SELECT unnest(val) FROM list_table;
+
+-- Test correlation
+CREATE TABLE a(a INTEGER); INSERT INTO a VALUES (1),(2),(3);
+CREATE TABLE b(b INTEGER); INSERT INTO b VALUES (1),(2);
+
+SELECT * FROM a WHERE EXISTS (SELECT * FROM b WHERE a=b);

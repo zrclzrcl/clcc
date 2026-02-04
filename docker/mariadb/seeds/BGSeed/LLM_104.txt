@@ -1,0 +1,44 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+CREATE TABLE t1 (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(50) NOT NULL,
+  age INT DEFAULT 0,
+  email VARCHAR(100) UNIQUE
+);
+
+INSERT INTO t1 (name, age, email) VALUES
+('Alice', 25, 'alice@example.com'),
+('Bob', 30, 'bob@example.com'),
+('Charlie', 22, 'charlie@example.com');
+
+CREATE TABLE t2 (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  customer_id INT,
+  order_date DATE,
+  total_amount DECIMAL(10, 2),
+  FOREIGN KEY (customer_id) REFERENCES t1(id)
+);
+
+INSERT INTO t2 (customer_id, order_date, total_amount) VALUES
+(1, '2023-01-15', 150.00),
+(2, '2023-02-20', 200.50),
+(3, '2023-03-10', 75.25);
+
+CREATE OR REPLACE VIEW v1 AS
+SELECT t1.name, t2.order_date, t2.total_amount
+FROM t1 JOIN t2 ON t1.id = t2.customer_id;
+
+-- MariaDB Specific: Testing JSON functionality
+ALTER TABLE t1 ADD COLUMN details JSON;
+UPDATE t1 SET details = JSON_OBJECT('address', '123 Main St', 'city', 'Anytown') WHERE id = 1;
+SELECT id, details->'$.address' AS address FROM t1 WHERE id = 1;
+
+-- MariaDB Specific: Testing dynamic columns
+CREATE TABLE t3 (id INT PRIMARY KEY AUTO_INCREMENT, dyncol MEDIUMBLOB);
+INSERT INTO t3 SET dyncol=COLUMN_CREATE('name', 'David', 'age', 40);
+SELECT COLUMN_GET(dyncol, 'name' AS CHAR) from t3;
+
+ANALYZE TABLE t1, t2, t3;
+
+SET sql_mode=@old_sql_mode;

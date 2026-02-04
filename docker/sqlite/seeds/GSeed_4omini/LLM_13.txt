@@ -1,0 +1,10 @@
+CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, email TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE orders(order_id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL NOT NULL, order_date DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(user_id) REFERENCES users(id));
+CREATE TABLE products(product_id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL CHECK(price > 0), stock INTEGER DEFAULT 0);
+INSERT INTO users(username, email) VALUES('test_user', 'test_user@example.com');
+INSERT INTO products(name, price, stock) VALUES('Sample Product', 19.99, 100);
+INSERT INTO orders(user_id, amount) VALUES(1, 19.99);
+ALTER TABLE products ADD COLUMN category TEXT;
+CREATE INDEX idx_username ON users(username);
+CREATE INDEX idx_order_date ON orders(order_date);
+CREATE VIEW active_users AS SELECT username FROM users WHERE id IN (SELECT DISTINCT user_id FROM orders);

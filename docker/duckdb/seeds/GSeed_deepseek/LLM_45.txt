@@ -1,0 +1,65 @@
+PRAGMA enable_type_check;
+CREATE TABLE test_types (
+    id INTEGER PRIMARY KEY,
+    bool_col BOOLEAN NOT NULL,
+    tinyint_col TINYINT CHECK (tinyint_col >= 0),
+    smallint_col SMALLINT UNIQUE,
+    int_col INT DEFAULT 10,
+    bigint_col BIGINT,
+    float_col FLOAT,
+    double_col DOUBLE PRECISION,
+    decimal_col DECIMAL(10,2) NOT NULL,
+    char_col CHAR(50),
+    varchar_col VARCHAR(100),
+    text_col TEXT,
+    blob_col BLOB,
+    date_col DATE DEFAULT CURRENT_DATE,
+    time_col TIME WITHOUT TIME ZONE,
+    timestamp_col TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE test_geo (
+    id INTEGER PRIMARY KEY,
+    geom GEOMETRY,
+    geog GEOGRAPHY
+);
+
+CREATE TABLE test_json (
+    id INTEGER PRIMARY KEY,
+    json_col JSONB,
+    map_col MAP VARCHAR(100) TO INT
+);
+
+-- Create indexes for testing query optimization
+CREATE INDEX idx_int_col ON test_types (int_col);
+CREATE INDEX idx_text_col ON test_types (text_col DESC);
+CREATE SPATIAL INDEX idx_geom ON test_geo USING RTREE (geom);
+
+-- Insert sample data
+INSERT INTO test_types 
+VALUES (
+    1, true, 255, -32768, 42, 9223372036854775807,
+    1.5e+1, 1.5e+2, 12345.67, 'test char', 'test varchar',
+    'This is a test text.', x'deadbeef', 
+    '2023-10-01', '12:34:56', '2023-10-01 12:34:56+00:00'
+);
+
+-- Create view for testing
+CREATE VIEW test_view AS
+SELECT 
+    id, int_col, text_col,
+    bool_col AS enabled
+FROM test_types;
+
+-- Common Table Expression (CTE) example
+WITH cte AS (
+    SELECT id, int_col + 10 AS incremented_value FROM test_types
+)
+SELECT * FROM cte WHERE incremented_value > 50;
+
+-- Window function example
+SELECT 
+    id,
+    text_col,
+    ROW_NUMBER() OVER(ORDER BY int_col DESC) AS row_num
+FROM test_types;

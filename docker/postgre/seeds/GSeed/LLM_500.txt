@@ -1,0 +1,122 @@
+-- Initial seed for PostgreSQL REL_18_RC1
+
+-- Create Extension
+CREATE EXTENSION IF NOT EXISTS citext;
+
+-- Create Domain
+CREATE DOMAIN posint AS integer CHECK (VALUE > 0);
+
+-- Create Type
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+-- Create Table with various data types
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email CITEXT UNIQUE,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    mood_state mood,
+    json_data JSONB,
+    positive_integer posint
+);
+
+-- Insert data into the table
+INSERT INTO employees (name, email, salary, hire_date, mood_state, json_data, positive_integer) VALUES
+('Alice Smith', 'alice.smith@example.com', 60000.00, '2022-01-15', 'happy', '{"department": "Sales", "level": "Senior"}', 1),
+('Bob Johnson', 'bob.johnson@example.com', 55000.50, '2022-03-20', 'ok', '{"department": "Marketing", "level": "Junior"}', 2),
+('Charlie Brown', 'charlie.brown@example.com', 70000.75, '2021-11-01', 'sad', '{"department": "IT", "level": "Manager"}', 3);
+
+-- Create another table
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+-- Insert data into the departments table
+INSERT INTO departments (name) VALUES ('Sales'), ('Marketing'), ('IT');
+
+-- Add a foreign key to the employees table
+ALTER TABLE employees ADD COLUMN department_id INTEGER REFERENCES departments(id);
+
+-- Update the employees table to set department_id
+UPDATE employees SET department_id = 1 WHERE name = 'Alice Smith';
+UPDATE employees SET department_id = 2 WHERE name = 'Bob Johnson';
+UPDATE employees SET department_id = 3 WHERE name = 'Charlie Brown';
+
+-- Select data with various clauses
+SELECT * FROM employees WHERE salary > 58000 ORDER BY name;
+SELECT department_id, AVG(salary) FROM employees GROUP BY department_id;
+
+-- Join tables
+SELECT e.name, d.name FROM employees e JOIN departments d ON e.department_id = d.id;
+
+-- Create index
+CREATE INDEX idx_employee_name ON employees (name);
+
+-- Create View
+CREATE VIEW employee_salaries AS
+SELECT name, salary FROM employees WHERE salary > 60000;
+
+-- Select from view
+SELECT * FROM employee_salaries;
+
+-- Update data
+UPDATE employees SET salary = 62000 WHERE name = 'Alice Smith';
+
+-- Delete data
+DELETE FROM employees WHERE name = 'Bob Johnson';
+
+-- Create a table with generated column
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    price DECIMAL(10, 2),
+    discount DECIMAL(3, 2),
+    final_price DECIMAL(10,2) GENERATED ALWAYS AS (price * (1 - discount)) STORED
+);
+
+-- Insert data into products table
+INSERT INTO products (name, price, discount) VALUES ('Product A', 100.00, 0.10);
+INSERT INTO products (name, price, discount) VALUES ('Product B', 50.00, 0.05);
+
+--Select * from products
+SELECT * FROM products;
+
+-- Create a partitioned table
+CREATE TABLE sales (
+    sale_date DATE NOT NULL,
+    region VARCHAR(50) NOT NULL,
+    amount DECIMAL(10, 2)
+) PARTITION BY RANGE (sale_date);
+
+CREATE TABLE sales_y2023m01 PARTITION OF sales FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+CREATE TABLE sales_y2023m02 PARTITION OF sales FOR VALUES FROM ('2023-02-01') TO ('2023-03-01');
+
+INSERT INTO sales (sale_date, region, amount) VALUES ('2023-01-15', 'North', 150.00);
+INSERT INTO sales (sale_date, region, amount) VALUES ('2023-02-20', 'South', 200.00);
+
+-- Select from partitioned table
+SELECT * FROM sales;
+
+-- Use tablesample system
+SELECT * FROM employees TABLESAMPLE SYSTEM (10);
+
+-- Create temporary table
+CREATE TEMP TABLE temp_employees AS SELECT * FROM employees WHERE salary > 0;
+
+-- Select from temporary table
+SELECT * FROM temp_employees;
+
+-- Clean up
+DROP VIEW employee_salaries;
+DROP TABLE products;
+DROP TABLE sales_y2023m01;
+DROP TABLE sales_y2023m02;
+DROP TABLE sales;
+DROP TABLE temp_employees;
+DROP TABLE employees;
+DROP TABLE departments;
+DROP TYPE mood;
+DROP DOMAIN posint;
+DROP EXTENSION citext;

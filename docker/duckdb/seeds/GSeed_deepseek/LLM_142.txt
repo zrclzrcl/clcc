@@ -1,0 +1,41 @@
+CREATE TABLE test_table (
+    id INTEGER NOT NULL,
+    name VARCHAR(255),
+    is_active BOOLEAN DEFAULT FALSE,
+    amount NUMERIC(10, 2) CHECK (amount >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO test_table VALUES 
+    (-2147483648, '', TRUE, 0.00, '2023-01-01'),
+    (999999999, 'test', FALSE, 999999999.99, CURRENT_TIMESTAMP),
+    (0, NULL, NULL, NULL, NULL);
+
+CREATE INDEX idx_name ON test_table(name);
+
+SELECT COUNT(*) FROM test_table WHERE id = 0;
+SELECT MIN(id), MAX(id) FROM test_table GROUP BY is_active HAVING COUNT(*) > 0;
+
+WITH cte AS (
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY is_active ORDER BY amount DESC) as row_num
+    FROM test_table
+)
+SELECT * FROM cte WHERE row_num <= 5;
+
+-- DuckDB-specific extension usage
+LOAD venn;
+SELECT VENN_DIAGRAM(is_active, 'true', 'false') FROM test_table;
+
+-- Test spatial operations if available
+CREATE TABLE IF NOT EXISTS spatial_test (
+    geom GEOMETRY,
+    id INTEGER PRIMARY KEY
+);
+INSERT INTO spatial_test VALUES (ST_Buffer(ST_Point(0, 0), 10), 1);
+
+-- Test advanced join operations
+SELECT t1.id, COALESCE(t2.name, 'N/A') 
+FROM test_table t1
+LEFT JOIN (
+    SELECT id, name FROM test_table WHERE amount > 100
+) t2 ON t1.id = t2.id;

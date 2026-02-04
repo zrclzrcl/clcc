@@ -1,0 +1,95 @@
+begin isolation level repeatable read;
+
+-- Setup
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE COLLATION IF NOT EXISTS german (locale = 'de_DE');
+
+-- Basic table creation and data insertion
+CREATE UNLOGGED TABLE test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) COLLATE german,
+    value INTEGER,
+    data JSONB
+);
+
+INSERT INTO test_table (name, value, data) VALUES
+('Alice', 10, '{"a": 1, "b": 2}'),
+('Bob', 20, '{"c": 3, "d": 4}'),
+('Charlie', 30, '{"a": 5, "e": 6}');
+
+-- Select queries with various clauses
+SELECT * FROM test_table WHERE value > 15 ORDER BY name;
+SELECT name, COUNT(*) FROM test_table GROUP BY name HAVING COUNT(*) > 0;
+SELECT t1.name, t2.value FROM test_table t1 JOIN test_table t2 ON t1.id = t2.id WHERE t1.value < t2.value;
+
+-- Update and Delete statements
+UPDATE test_table SET value = value + 5 WHERE name LIKE 'A%';
+DELETE FROM test_table WHERE value > 30;
+
+-- Index creation
+CREATE INDEX idx_name ON test_table (name);
+CREATE INDEX idx_value ON test_table (value);
+
+-- Using generate_series and window functions
+SELECT generate_series(1, 5);
+SELECT name, value, ROW_NUMBER() OVER (ORDER BY value) FROM test_table;
+
+-- JSONB operations
+SELECT data ->> 'a' FROM test_table WHERE data ? 'a';
+UPDATE test_table SET data = jsonb_set(data, '{f}', '7'::jsonb) WHERE name = 'Bob';
+
+-- Materialized view
+CREATE MATERIALIZED VIEW test_materialized_view AS SELECT name, value FROM test_table WHERE value > 10;
+REFRESH MATERIALIZED VIEW test_materialized_view;
+
+-- WITH ORDINALITY example
+SELECT * FROM string_to_array('one,two,three', ',') WITH ORDINALITY;
+
+-- Prepared statement
+PREPARE my_query AS SELECT * FROM test_table WHERE value > $1;
+EXECUTE my_query (15);
+
+-- Using a function (simple example)
+CREATE OR REPLACE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+-- Table with generated columns
+CREATE TABLE generated_table (
+    a INTEGER,
+    b INTEGER GENERATED ALWAYS AS (a * 2) STORED
+);
+
+INSERT INTO generated_table (a) VALUES (10);
+SELECT * FROM generated_table;
+
+-- Role and privilege management
+CREATE ROLE test_role;
+GRANT SELECT ON test_table TO test_role;
+REVOKE SELECT ON test_table FROM test_role;
+DROP ROLE test_role;
+
+-- Partitioned table example
+CREATE TABLE list_parted (
+    id INT,
+    city VARCHAR(90)
+) PARTITION BY LIST (city);
+
+CREATE TABLE list_parted_us PARTITION OF list_parted
+    FOR VALUES IN ('San Francisco', 'Chicago');
+
+INSERT INTO list_parted VALUES (1, 'San Francisco');
+SELECT * FROM list_parted;
+
+-- Advisory lock
+SELECT pg_advisory_lock(1234);
+SELECT pg_advisory_unlock(1234);
+
+-- vacuum analyze
+VACUUM ANALYZE test_table;
+
+rollback;

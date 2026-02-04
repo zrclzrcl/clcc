@@ -1,0 +1,54 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice', 50000.00, '2022-01-15', 'Sales'),
+('Bob', 60000.00, '2021-05-20', 'Marketing'),
+('Charlie', 70000.00, '2023-03-10', 'Engineering');
+
+CREATE TABLE departments (
+    dept_id INTEGER PRIMARY KEY,
+    dept_name VARCHAR UNIQUE
+);
+
+INSERT INTO departments (dept_name) VALUES
+('Sales'), ('Marketing'), ('Engineering'), ('Finance');
+
+ALTER TABLE employees ADD COLUMN dept_id INTEGER;
+
+UPDATE employees SET dept_id = (SELECT dept_id FROM departments WHERE dept_name = employees.department);
+
+ALTER TABLE employees DROP COLUMN department;
+
+CREATE VIEW high_earners AS
+SELECT name, salary FROM employees WHERE salary > 65000;
+
+-- Test DuckDB specific JSON functionality
+CREATE TABLE json_data (data JSON);
+INSERT INTO json_data VALUES ('{"name": "David", "age": 30, "city": "New York"}');
+
+SELECT json_extract_string(data, '$.name') FROM json_data;
+
+-- Test DuckDB's support for unnesting arrays
+CREATE TABLE array_data (
+    id INTEGER,
+    tags VARCHAR[]
+);
+
+INSERT INTO array_data VALUES
+(1, ARRAY['tag1', 'tag2', 'tag3']),
+(2, ARRAY['tag4', 'tag5']);
+
+SELECT id, tag FROM array_data, UNNEST(tags) AS tag;
+
+-- Test DuckDB's date functions
+SELECT CURRENT_DATE, DATE('2023-10-27') + INTERVAL '1' DAY;
+
+CREATE MACRO increment(val INTEGER) AS val + 1;
+
+SELECT increment(5);

@@ -1,0 +1,139 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    department VARCHAR(50),
+    hire_date DATE
+);
+
+INSERT INTO employee (name, salary, department, hire_date) VALUES
+('Alice Smith', 60000.00, 'Sales', '2022-01-15'),
+('Bob Johnson', 75000.00, 'Marketing', '2021-05-20'),
+('Charlie Brown', 55000.00, 'Sales', '2023-03-10'),
+('David Lee', 80000.00, 'Engineering', '2020-11-01');
+
+CREATE INDEX idx_employee_department ON employee (department);
+
+SELECT department, AVG(salary) AS avg_salary
+FROM employee
+GROUP BY department
+HAVING AVG(salary) > 65000
+ORDER BY avg_salary DESC;
+
+UPDATE employee
+SET salary = salary * 1.10
+WHERE department = 'Sales';
+
+DELETE FROM employee
+WHERE hire_date < '2021-01-01';
+
+SELECT * FROM employee WHERE name LIKE 'A%';
+
+SELECT GENERATE_SERIES(1, 10);
+
+SELECT id, name, salary FROM employee ORDER BY salary DESC LIMIT 3;
+
+CREATE VIEW high_earners AS
+SELECT id, name, salary, department
+FROM employee
+WHERE salary > 70000;
+
+SELECT * FROM high_earners;
+
+ALTER TABLE employee ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employee SET bonus = salary * 0.05 WHERE department = 'Engineering';
+
+SELECT name, salary, bonus, salary + bonus AS total_compensation FROM employee;
+
+SELECT COUNT(*) FROM employee;
+
+SELECT DISTINCT department FROM employee;
+
+SELECT CASE
+    WHEN salary > 75000 THEN 'High'
+    WHEN salary > 60000 THEN 'Medium'
+    ELSE 'Low'
+END AS salary_level, COUNT(*)
+FROM employee
+GROUP BY salary_level;
+
+CREATE TEMP TABLE temp_employee AS SELECT * FROM employee WHERE department = 'Marketing';
+
+SELECT * FROM temp_employee;
+
+DROP TABLE temp_employee;
+
+EXPLAIN SELECT * FROM employee WHERE department = 'Sales';
+
+SELECT version();
+
+SELECT current_database();
+
+SELECT current_user;
+
+SELECT EXTRACT(YEAR FROM hire_date) AS hire_year, COUNT(*)
+FROM employee
+GROUP BY hire_year
+ORDER BY hire_year;
+
+SELECT MAX(salary) AS max_salary, MIN(salary) AS min_salary FROM employee;
+
+SELECT name, hire_date FROM employee WHERE EXTRACT(MONTH FROM hire_date) = 5;
+
+SELECT name, age(hire_date) from employee;
+
+SELECT * FROM employee WHERE salary BETWEEN 50000 AND 70000;
+
+SELECT * FROM employee WHERE department IN ('Sales', 'Marketing');
+
+SELECT * FROM employee WHERE name IS NOT NULL;
+
+SELECT id, name, COALESCE(CAST(bonus AS VARCHAR), 'No Bonus') AS bonus FROM employee;
+
+SELECT name, salary FROM employee UNION SELECT 'Total', SUM(salary) FROM employee;
+
+SELECT name FROM employee INTERSECT SELECT name FROM employee WHERE salary > 60000;
+
+SELECT name FROM employee EXCEPT SELECT name FROM employee WHERE department = 'Sales';
+
+SELECT md5(name) from employee;
+
+SELECT employee.* FROM employee JOIN employee AS e2 ON employee.department = e2.department WHERE employee.id != e2.id;
+
+SELECT employee.name, department FROM employee LEFT JOIN high_earners ON employee.id = high_earners.id;
+
+WITH DepartmentAvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary
+    FROM employee
+    GROUP BY department
+)
+SELECT employee.name, employee.department, DepartmentAvgSalaries.avg_salary
+FROM employee
+JOIN DepartmentAvgSalaries ON employee.department = DepartmentAvgSalaries.department
+WHERE employee.salary > DepartmentAvgSalaries.avg_salary;
+
+CREATE OR REPLACE FUNCTION calculate_bonus(emp_id INT, bonus_percentage DECIMAL)
+RETURNS DECIMAL AS $$
+BEGIN
+    RETURN (SELECT salary FROM employee WHERE id = emp_id) * bonus_percentage;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT id, name, calculate_bonus(id, 0.10) AS calculated_bonus FROM employee;
+
+DROP FUNCTION calculate_bonus(INT, DECIMAL);
+
+CREATE MATERIALIZED VIEW materialized_high_earners AS SELECT * FROM employee WHERE salary > 75000;
+
+SELECT * FROM materialized_high_earners;
+
+REFRESH MATERIALIZED VIEW materialized_high_earners;
+
+DROP MATERIALIZED VIEW materialized_high_earners;
+
+CREATE TEXT SEARCH CONFIGURATION custom_english ( COPY = english );
+ALTER TEXT SEARCH CONFIGURATION custom_english ALTER MAPPING FOR hword, hword_part, word WITH english_stem;
+SELECT to_tsvector('custom_english', 'The quick brown fox jumps over the lazy dog');
+
+DROP TABLE employee;

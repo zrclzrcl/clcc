@@ -1,0 +1,116 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO';
+SET @old_character_set_client  = @@character_set_client;
+SET @old_collation_connection  = @@collation_connection;
+SET character_set_client  = utf8mb4;
+SET collation_connection  = utf8mb4_general_ci;
+
+-- Test different storage engines
+CREATE TABLE IF NOT EXISTS t1 (id INT PRIMARY KEY) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS t2 (id INT PRIMARY KEY) ENGINE=MyISAM;
+CREATE TABLE IF NOT EXISTS t3 (id INT PRIMARY KEY) ENGINE=MEMORY;
+CREATE TABLE IF NOT EXISTS t4 (id INT PRIMARY KEY) ENGINE=CSV;
+
+-- Test data types and constraints
+CREATE TABLE IF NOT EXISTS employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    age INT CHECK (age >= 18),
+    salary DECIMAL(10, 2) DEFAULT 0.00,
+    hire_date DATE,
+    department ENUM('Sales', 'Marketing', 'Engineering')
+);
+
+-- Insert diverse data
+INSERT INTO employees (name, age, salary, hire_date, department) VALUES
+('Alice', 30, 50000.00, '2022-01-15', 'Sales'),
+('Bob', 25, 60000.00, '2023-03-20', 'Marketing'),
+('Charlie', 40, 75000.00, '2021-11-01', 'Engineering'),
+('David', 28, 55000.00, '2022-06-10', 'Sales'),
+('Eve', 35, 80000.00, '2020-09-05', 'Engineering');
+
+-- Test indexes
+CREATE INDEX idx_name ON employees (name);
+CREATE INDEX idx_department ON employees (department);
+
+-- Test views
+CREATE OR REPLACE VIEW sales_employees AS
+SELECT id, name, age, salary FROM employees WHERE department = 'Sales';
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE get_employee_count(IN dept VARCHAR(255), OUT count INT)
+BEGIN
+    SELECT COUNT(*) INTO count FROM employees WHERE department = dept;
+END //
+DELIMITER ;
+
+CALL get_employee_count('Engineering', @employee_count);
+SELECT @employee_count;
+
+-- Test functions
+DELIMITER //
+CREATE FUNCTION calculate_bonus(salary DECIMAL(10, 2))
+RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE bonus DECIMAL(10, 2);
+    SET bonus = salary * 0.10;
+    RETURN bonus;
+END //
+DELIMITER ;
+
+SELECT calculate_bonus(60000.00);
+
+-- Test triggers
+CREATE TABLE employee_audit (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    change_date DATETIME,
+    old_salary DECIMAL(10, 2),
+    new_salary DECIMAL(10, 2)
+);
+
+DELIMITER //
+CREATE TRIGGER before_employee_update
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary <> OLD.salary THEN
+        INSERT INTO employee_audit (employee_id, change_date, old_salary, new_salary)
+        VALUES (OLD.id, NOW(), OLD.salary, NEW.salary);
+    END IF;
+END //
+DELIMITER ;
+
+UPDATE employees SET salary = 85000.00 WHERE name = 'Charlie';
+
+-- Test JSON functions (MySQL 5.7+)
+CREATE TABLE IF NOT EXISTS products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    details JSON
+);
+
+INSERT INTO products (name, details) VALUES
+('Laptop', '{"brand": "Dell", "price": 1200, "specs": {"cpu": "Intel i7", "memory": "16GB"}}'),
+('Monitor', '{"brand": "Samsung", "price": 300, "size": "27 inch"}');
+
+SELECT name, details->'$.brand' AS brand FROM products;
+
+-- Test window functions (MySQL 8.0+)
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM employees;
+
+-- Test common table expressions (CTEs)
+WITH high_earners AS (
+    SELECT name, salary FROM employees WHERE salary > 60000
+)
+SELECT name FROM high_earners;
+
+-- Clean up settings
+SET sql_mode = @old_sql_mode;
+SET character_set_client  = @old_character_set_client;
+SET collation_connection  = @old_collation_connection;

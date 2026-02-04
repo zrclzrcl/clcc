@@ -1,0 +1,79 @@
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR,
+    salary DECIMAL(10, 2),
+    department VARCHAR,
+    hire_date DATE
+);
+
+INSERT INTO employees (name, salary, department, hire_date) VALUES
+('Alice', 60000.00, 'Sales', '2022-01-15'),
+('Bob', 75000.00, 'Engineering', '2021-05-20'),
+('Charlie', 55000.00, 'Sales', '2023-03-10'),
+('David', 90000.00, 'Engineering', '2020-11-01'),
+('Eve', 65000.00, 'Marketing', '2022-09-05');
+
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR UNIQUE
+);
+
+INSERT INTO departments (name) VALUES
+('Sales'),
+('Engineering'),
+('Marketing'),
+('Finance');
+
+-- Test joins and aggregations
+SELECT d.name, AVG(e.salary)
+FROM employees e
+JOIN departments d ON e.department = d.name
+GROUP BY d.name
+ORDER BY AVG(e.salary) DESC;
+
+-- Test window functions (DuckDB Specific)
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) as salary_rank
+FROM employees;
+
+-- Test string functions
+SELECT name, UPPER(name), LENGTH(name) FROM employees;
+
+-- Test date functions
+SELECT hire_date, DATE_TRUNC('month', hire_date) FROM employees;
+
+-- Test CASE statements
+SELECT
+    name,
+    salary,
+    CASE
+        WHEN salary > 70000 THEN 'High'
+        WHEN salary > 60000 THEN 'Medium'
+        ELSE 'Low'
+    END as salary_level
+FROM employees;
+
+-- Test NULL values
+INSERT INTO employees (name, department) VALUES ('NullTest', 'Finance');
+SELECT name, salary FROM employees WHERE salary IS NULL;
+
+-- Test DuckDB-specific features like APPROX_COUNT_DISTINCT and LIST
+SELECT department, APPROX_COUNT_DISTINCT(salary) FROM employees GROUP BY department;
+SELECT LIST(name) FROM employees;
+
+--Test JSON Functionality
+CREATE TABLE json_test (
+    id INTEGER PRIMARY KEY,
+    data JSON
+);
+INSERT INTO json_test (data) VALUES
+('{"name": "John", "age": 30}'),
+('{"name": "Jane", "age": 25, "city": "New York"}');
+
+SELECT data -> 'name' FROM json_test;
+
+--Test UNNEST
+SELECT UNNEST([1, 2, 3]);

@@ -1,0 +1,94 @@
+CREATE TABLESPACE mytablespace LOCATION '/tmp/mytablespace';
+CREATE USER testuser PASSWORD 'password';
+CREATE DATABASE testdb TABLESPACE mytablespace;
+GRANT ALL PRIVILEGES ON DATABASE testdb TO testuser;
+\c testdb testuser
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10, 2) CHECK (price > 0),
+    quantity INTEGER DEFAULT 0
+);
+
+CREATE INDEX idx_product_name ON products (product_name);
+
+INSERT INTO products (product_name, price, quantity) VALUES
+    ('Laptop', 1200.00, 10),
+    ('Mouse', 25.00, 50),
+    ('Keyboard', 75.00, 30),
+    ('Monitor', 300.00, 20);
+
+CREATE VIEW discounted_products AS
+SELECT product_name, price * 0.9 AS discounted_price
+FROM products
+WHERE price > 100;
+
+SELECT * FROM discounted_products;
+
+UPDATE products SET price = price * 1.1 WHERE product_name = 'Laptop';
+
+DELETE FROM products WHERE quantity = 0;
+
+SELECT product_name, price FROM products ORDER BY price DESC LIMIT 2;
+
+CREATE FUNCTION total_value() RETURNS DECIMAL(12,2) AS $$
+    SELECT SUM(price * quantity) FROM products;
+$$ LANGUAGE SQL;
+
+SELECT total_value();
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE order_items (
+    order_item_id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(order_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER NOT NULL
+);
+
+INSERT INTO orders (customer_id) VALUES (123);
+INSERT INTO order_items (order_id, product_id, quantity) VALUES (1, 1, 2);
+
+SELECT p.product_name, SUM(oi.quantity) AS total_sold
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_name
+ORDER BY total_sold DESC;
+
+CREATE OR REPLACE PROCEDURE increase_quantity(product_name VARCHAR(255), amount INTEGER)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE products SET quantity = quantity + amount WHERE products.product_name = increase_quantity.product_name;
+    COMMIT;
+END;
+$$;
+
+CALL increase_quantity('Mouse', 10);
+
+EXPLAIN SELECT * FROM products WHERE price > 50;
+
+CREATE MATERIALIZED VIEW product_summary AS
+SELECT product_name, AVG(price) AS avg_price
+FROM products
+GROUP BY product_name;
+
+REFRESH MATERIALIZED VIEW product_summary;
+SELECT * FROM product_summary;
+
+DROP MATERIALIZED VIEW product_summary;
+DROP PROCEDURE increase_quantity;
+DROP TABLE order_items;
+DROP TABLE orders;
+DROP FUNCTION total_value;
+DROP VIEW discounted_products;
+DROP TABLE products;
+\c postgres
+DROP DATABASE testdb;
+DROP USER testuser;
+DROP TABLESPACE mytablespace;

@@ -1,0 +1,169 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department_id INTEGER
+);
+
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+INSERT INTO department (name) VALUES ('Sales');
+INSERT INTO department (name) VALUES ('Marketing');
+INSERT INTO department (name) VALUES ('Engineering');
+
+INSERT INTO employee (name, salary, hire_date, department_id) VALUES ('Alice', 60000.00, '2022-01-15', 1);
+INSERT INTO employee (name, salary, hire_date, department_id) VALUES ('Bob', 75000.00, '2021-05-20', 2);
+INSERT INTO employee (name, salary, hire_date, department_id) VALUES ('Charlie', 90000.00, '2020-11-01', 3);
+INSERT INTO employee (name, salary, hire_date, department_id) VALUES ('David', 65000.00, '2023-03-10', 1);
+INSERT INTO employee (name, salary, hire_date, department_id) VALUES ('Eve', 80000.00, '2022-09-01', 2);
+
+SELECT * FROM employee WHERE salary > 70000.00;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department_id = 3;
+
+DELETE FROM employee WHERE id = 4;
+
+SELECT e.name, d.name AS department FROM employee e JOIN department d ON e.department_id = d.id;
+
+SELECT AVG(salary) FROM employee;
+
+SELECT COUNT(*) FROM employee;
+
+SELECT MAX(salary) FROM employee;
+
+SELECT MIN(salary) FROM employee;
+
+SELECT SUM(salary) FROM employee;
+
+SELECT department_id, AVG(salary) FROM employee GROUP BY department_id;
+
+SELECT department_id, COUNT(*) FROM employee GROUP BY department_id HAVING COUNT(*) > 1;
+
+CREATE INDEX idx_employee_name ON employee (name);
+
+DROP INDEX idx_employee_name;
+
+ALTER TABLE employee ADD COLUMN bonus DECIMAL(10, 2) DEFAULT 0.00;
+
+UPDATE employee SET bonus = 5000.00 WHERE salary > 80000.00;
+
+SELECT name, salary, bonus, salary + bonus AS total_compensation FROM employee;
+
+SELECT name, salary FROM employee ORDER BY salary DESC;
+
+SELECT name, salary FROM employee ORDER BY salary ASC LIMIT 2;
+
+SELECT name, salary FROM employee WHERE name LIKE 'A%';
+
+SELECT name, salary FROM employee WHERE name ILIKE 'a%';
+
+SELECT name, salary FROM employee WHERE hire_date BETWEEN '2022-01-01' AND '2022-12-31';
+
+SELECT name, salary FROM employee WHERE department_id IN (1, 2);
+
+SELECT name, salary FROM employee WHERE department_id NOT IN (1, 2);
+
+SELECT name, salary FROM employee WHERE EXISTS (SELECT 1 FROM department WHERE id = employee.department_id);
+
+SELECT name, salary FROM employee WHERE NOT EXISTS (SELECT 1 FROM department WHERE id = employee.department_id);
+
+SELECT COALESCE(name, 'Unknown') FROM employee WHERE id = 999;
+
+SELECT NULLIF(10, 10);
+
+SELECT GREATEST(1, 2, 3, 4);
+
+SELECT LEAST(1, 2, 3, 4);
+
+SELECT SUBSTRING(name FROM 1 FOR 3) FROM employee;
+
+SELECT UPPER(name) FROM employee;
+
+SELECT LOWER(name) FROM employee;
+
+SELECT LENGTH(name) FROM employee;
+
+SELECT TRIM(name) FROM employee;
+
+SELECT POSITION('a' IN name) FROM employee;
+
+SELECT REPEAT(name, 2) FROM employee;
+
+SELECT REPLACE(name, 'a', 'b') FROM employee;
+
+SELECT REVERSE(name) FROM employee;
+
+SELECT md5(name) FROM employee;
+
+SELECT sha256(name) FROM employee;
+
+SELECT generate_series(1, 10);
+
+SELECT pg_sleep(0.01);
+
+SELECT current_date;
+
+SELECT current_time;
+
+SELECT now();
+
+SELECT age(hire_date) FROM employee;
+
+SELECT date_trunc('month', hire_date) FROM employee;
+
+SELECT EXTRACT(YEAR FROM hire_date) FROM employee;
+
+CREATE VIEW employee_salary AS SELECT name, salary FROM employee;
+
+SELECT * FROM employee_salary;
+
+DROP VIEW employee_salary;
+
+CREATE TEMP TABLE temp_employee AS SELECT * FROM employee;
+
+SELECT * FROM temp_employee;
+
+DROP TABLE temp_employee;
+
+PREPARE my_query AS SELECT name, salary FROM employee WHERE salary > $1;
+EXECUTE my_query(70000.00);
+DEALLOCATE my_query;
+
+SELECT version();
+
+EXPLAIN SELECT * FROM employee WHERE salary > 70000.00;
+
+ANALYZE employee;
+
+VACUUM employee;
+
+LISTEN my_channel;
+NOTIFY my_channel, 'hello';
+UNLISTEN my_channel;
+
+CREATE FUNCTION increment(i INTEGER) RETURNS INTEGER AS $$
+        BEGIN
+                RETURN i + 1;
+        END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment(5);
+
+DROP FUNCTION increment(INTEGER);
+
+CREATE DOMAIN us_postal_code AS TEXT
+CHECK ( VALUE ~ '^\d{5}(-\d{4})?$' );
+
+CREATE TABLE addresses (
+  address_id SERIAL PRIMARY KEY,
+  street VARCHAR(100) NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  postal_code us_postal_code NOT NULL
+);
+
+DROP TABLE addresses;
+DROP DOMAIN us_postal_code;

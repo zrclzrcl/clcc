@@ -1,0 +1,126 @@
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2)
+);
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255),
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id),
+    order_date TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc'),
+    total_amount DECIMAL(12, 2)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER REFERENCES orders(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER,
+    price DECIMAL(10, 2)
+);
+
+INSERT INTO products (name, description, price) VALUES
+    ('Laptop', 'High-performance laptop', 1200.00),
+    ('Mouse', 'Wireless mouse', 25.00),
+    ('Keyboard', 'Ergonomic keyboard', 75.00),
+    ('Monitor', '27-inch 4K monitor', 450.00);
+
+INSERT INTO customers (first_name, last_name, email) VALUES
+    ('John', 'Doe', 'john.doe@example.com'),
+    ('Jane', 'Smith', 'jane.smith@example.com');
+
+INSERT INTO orders (customer_id, total_amount) VALUES
+    (1, 1225.00),
+    (2, 525.00);
+
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+    (1, 1, 1, 1200.00),
+    (1, 2, 1, 25.00),
+    (2, 4, 1, 450.00),
+    (2, 2, 3, 25.00);
+
+SELECT * FROM products WHERE price > 100 ORDER BY price DESC;
+
+SELECT c.first_name, c.last_name, o.order_date, o.total_amount
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.first_name = 'John';
+
+UPDATE products SET price = price * 1.1 WHERE id = 1;
+
+DELETE FROM order_items WHERE product_id = 2;
+
+SELECT COUNT(*) FROM orders;
+
+SELECT AVG(price) FROM products;
+
+SELECT MAX(price) FROM products;
+
+SELECT SUM(quantity * price) AS total_revenue FROM order_items;
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+EXPLAIN SELECT * FROM orders WHERE customer_id = 1;
+
+-- Demonstrate SERIAL type usage
+SELECT pg_get_serial_sequence('products', 'id');
+
+-- Demonstrate common table expression (CTE)
+WITH product_summary AS (
+    SELECT name, price FROM products WHERE price > 50
+)
+SELECT * FROM product_summary ORDER BY price;
+
+-- Demonstrate window function
+SELECT
+    name,
+    price,
+    RANK() OVER (ORDER BY price DESC) AS price_rank
+FROM products;
+
+-- Demonstrate JSON functionality
+SELECT json_build_object('name', name, 'price', price) AS product_json FROM products;
+
+-- Demonstrate array functionality
+SELECT ARRAY[1, 2, 3];
+
+-- Demonstrate range functionality
+SELECT int4range(10, 20);
+
+-- Demonstrate hstore functionality (requires extension)
+CREATE EXTENSION IF NOT EXISTS hstore;
+CREATE TABLE hstore_test (id SERIAL PRIMARY KEY, data hstore);
+INSERT INTO hstore_test (data) VALUES ('"key1"=>"value1", "key2"=>"value2"');
+SELECT data -> 'key1' FROM hstore_test;
+
+-- Test case insensitive matching
+SELECT * FROM customers WHERE lower(first_name) = lower('John');
+
+-- Test exclusion constraint functionality
+CREATE TABLE reservations (
+    room_id integer,
+    during tsrange,
+    EXCLUDE USING gist (room_id WITH =, during WITH &&)
+);
+
+-- Test advisory locks
+SELECT pg_advisory_lock(1);
+SELECT pg_advisory_unlock(1);
+
+-- Test case statement
+SELECT
+    name,
+    CASE
+        WHEN price > 1000 THEN 'Expensive'
+        WHEN price > 100 THEN 'Moderate'
+        ELSE 'Cheap'
+    END AS price_category
+FROM products;

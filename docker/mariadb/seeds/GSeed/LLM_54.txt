@@ -1,0 +1,129 @@
+SET @old_sql_mode=@@sql_mode;
+SET sql_mode = 'STRICT_ALL_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+CREATE DATABASE IF NOT EXISTS fuzz_db;
+USE fuzz_db;
+
+-- Test different data types and constraints
+CREATE TABLE IF NOT EXISTS data_types_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    tiny_int TINYINT,
+    small_int SMALLINT,
+    medium_int MEDIUMINT,
+    normal_int INT,
+    big_int BIGINT,
+    float_val FLOAT,
+    double_val DOUBLE,
+    decimal_val DECIMAL(10, 2),
+    date_val DATE,
+    datetime_val DATETIME,
+    timestamp_val TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    time_val TIME,
+    year_val YEAR,
+    char_val CHAR(10),
+    varchar_val VARCHAR(255),
+    binary_val BINARY(10),
+    varbinary_val VARBINARY(255),
+    tinyblob_val TINYBLOB,
+    blob_val BLOB,
+    mediumblob_val MEDIUMBLOB,
+    longblob_val LONGBLOB,
+    tinytext_val TINYTEXT,
+    text_val TEXT,
+    mediumtext_val MEDIUMTEXT,
+    longtext_val LONGTEXT,
+    enum_val ENUM('value1', 'value2', 'value3'),
+    set_val SET('option1', 'option2', 'option3'),
+    geometry_val GEOMETRY
+);
+
+-- Insert some initial data
+INSERT INTO data_types_test (tiny_int, small_int, medium_int, normal_int, big_int, float_val, double_val, decimal_val, date_val, datetime_val, time_val, year_val, char_val, varchar_val) VALUES
+(127, 32767, 8388607, 2147483647, 9223372036854775807, 3.14, 2.71828, 12345.67, '2023-10-26', '2023-10-26 10:30:00', '10:30:00', 2023, 'test', 'test varchar'),
+(-128, -32768, -8388608, -2147483648, -9223372036854775808, -3.14, -2.71828, -12345.67, '2022-10-26', '2022-10-26 10:30:00', '00:30:00', 2022, 'test2', 'another varchar');
+
+-- Test indexing and searching
+CREATE TABLE IF NOT EXISTS index_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    age INT,
+    INDEX name_index (name),
+    FULLTEXT INDEX name_fulltext_index (name)
+);
+
+INSERT INTO index_test (name, email, age) VALUES
+('John Doe', 'john.doe@example.com', 30),
+('Jane Smith', 'jane.smith@example.com', 25),
+('Peter Jones', 'peter.jones@example.com', 40);
+
+-- Test fulltext search
+SELECT * FROM index_test WHERE MATCH(name) AGAINST('John');
+
+-- Test constraints
+CREATE TABLE IF NOT EXISTS constraint_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    value INT NOT NULL CHECK (value > 0),
+    FOREIGN KEY (age) REFERENCES index_test(age) ON DELETE CASCADE
+);
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS simple_procedure (IN input_value INT)
+BEGIN
+    SELECT * FROM data_types_test WHERE id = input_value;
+END //
+DELIMITER ;
+
+CALL simple_procedure(1);
+
+-- Test views
+CREATE OR REPLACE VIEW my_view AS
+SELECT id, name, age FROM index_test WHERE age > 25;
+
+SELECT * FROM my_view;
+
+-- Test user-defined functions (UDFs) (Requires server admin privileges in some environments)
+-- You would need to compile a UDF and load it into the MariaDB server.  This is just a placeholder for the concept.
+-- CREATE FUNCTION my_udf(input VARCHAR(255)) RETURNS VARCHAR(255) SONAME 'my_udf.so';
+-- SELECT my_udf('test');
+
+-- Test JSON functionality (MariaDB 10.2+)
+CREATE TABLE IF NOT EXISTS json_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    data JSON
+);
+
+INSERT INTO json_test (data) VALUES
+('{"name": "John", "age": 30, "city": "New York"}');
+
+SELECT data->'$.name' FROM json_test;
+
+-- Test Window Functions (MariaDB 10.2+)
+CREATE TABLE IF NOT EXISTS sales (
+    product VARCHAR(255),
+    sale_date DATE,
+    amount INT
+);
+
+INSERT INTO sales (product, sale_date, amount) VALUES
+('A', '2023-01-01', 100),
+('A', '2023-01-02', 150),
+('B', '2023-01-01', 200),
+('B', '2023-01-02', 250);
+
+SELECT product, sale_date, amount, SUM(amount) OVER (PARTITION BY product ORDER BY sale_date) AS running_total FROM sales;
+
+-- Test Dynamic Columns (MariaDB 5.3+)
+CREATE TABLE IF NOT EXISTS dynamic_columns_test (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    my_data MEDIUMBLOB
+);
+
+INSERT INTO dynamic_columns_test (my_data) VALUES (COLUMN_CREATE('name', 'John', 'age', 30));
+SELECT COLUMN_GET(my_data, 'name' AS CHAR) FROM dynamic_columns_test;
+
+-- Test Optimizer Hints
+SELECT /*+ BNL(index_test) */ * FROM index_test WHERE age > 20;
+
+-- Clean up modes
+SET sql_mode = @old_sql_mode;

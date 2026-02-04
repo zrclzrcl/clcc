@@ -1,0 +1,138 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INTEGER
+);
+
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department_id FOREIGN KEY (department_id) REFERENCES departments (id);
+
+INSERT INTO departments (name) VALUES ('Sales');
+INSERT INTO departments (name) VALUES ('Marketing');
+INSERT INTO departments (name) VALUES ('Engineering');
+
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('Jane', 'Smith', 'jane.smith@example.com', '2022-11-01', 75000.00, 2);
+INSERT INTO employees (first_name, last_name, email, hire_date, salary, department_id)
+VALUES ('Peter', 'Jones', 'peter.jones@example.com', '2023-03-10', 80000.00, 3);
+
+SELECT * FROM employees WHERE salary > 70000;
+SELECT first_name, last_name FROM employees ORDER BY last_name;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE id = 1;
+
+CREATE INDEX idx_last_name ON employees (last_name);
+
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+
+CREATE TABLE person (
+    name text,
+    current_mood mood
+);
+
+INSERT INTO person (name, current_mood) VALUES ('Moe', 'happy');
+INSERT INTO person (name, current_mood) VALUES ('Larry', 'sad');
+INSERT INTO person (name, current_mood) VALUES ('Curly', 'ok');
+
+SELECT * FROM person WHERE current_mood = 'happy';
+
+CREATE TABLE products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100),
+    data JSONB
+);
+
+INSERT INTO products (name, data) VALUES ('Widget', '{"price": 29.99, "description": "A useful widget"}');
+INSERT INTO products (name, data) VALUES ('Gadget', '{"price": 49.99, "description": "An amazing gadget"}');
+
+SELECT name, data -> 'price' FROM products;
+
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    log_time TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    message TEXT
+);
+
+INSERT INTO logs (message) VALUES ('System started');
+INSERT INTO logs (message) VALUES ('User logged in');
+
+SELECT * FROM logs WHERE log_time > now() - interval '1 day';
+
+CREATE TABLE array_test (
+    id SERIAL PRIMARY KEY,
+    tags TEXT[]
+);
+
+INSERT INTO array_test (tags) VALUES (ARRAY['tag1', 'tag2', 'tag3']);
+INSERT INTO array_test (tags) VALUES (ARRAY['tag4', 'tag5']);
+
+SELECT * FROM array_test WHERE 'tag2' = ANY(tags);
+
+CREATE TABLE parent_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE child_table (
+    parent_id INTEGER REFERENCES parent_table(id),
+    value VARCHAR(50)
+) INHERITS (parent_table);
+
+INSERT INTO parent_table (name) VALUES ('Parent 1');
+INSERT INTO child_table (name, value) VALUES ('Child 1', 'Value 1');
+
+SELECT * FROM parent_table;
+SELECT * FROM child_table;
+
+-- Example of WITH clause (CTE)
+WITH high_earners AS (
+    SELECT id, first_name, last_name, salary
+    FROM employees
+    WHERE salary > 70000
+)
+SELECT first_name, last_name FROM high_earners;
+
+CREATE TABLE identity_test (
+    id INTEGER GENERATED ALWAYS AS IDENTITY,
+    name VARCHAR(50)
+);
+
+INSERT INTO identity_test (name) VALUES ('Test 1');
+INSERT INTO identity_test (name) VALUES ('Test 2');
+
+SELECT * FROM identity_test;
+
+CREATE TABLE range_test (
+  tsrange TSRANGE,
+  int4range INT4RANGE,
+  numrange NUMRANGE
+);
+
+INSERT INTO range_test (tsrange, int4range, numrange) VALUES (
+  '[2010-01-01 14:30, 2010-01-01 15:30)', '[10,20)', '(1.23,)'
+);
+
+SELECT * FROM range_test;
+
+CREATE TABLE time_data (
+    interval_col INTERVAL,
+    time_col TIME,
+    timetz_col TIMETZ
+);
+
+INSERT INTO time_data (interval_col, time_col, timetz_col) VALUES
+('5 days', '14:30', '14:30+02');
+
+SELECT * FROM time_data;

@@ -1,0 +1,108 @@
+CREATE EXTENSION IF NOT EXISTS intarray;
+
+-- Create an unlogged table for temporary data.
+CREATE UNLOGGED TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT,
+    num INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    tags INTEGER[],
+    json_data JSONB
+);
+
+-- Create a regular table.
+CREATE TABLE fuzz_data_table (
+    id SERIAL PRIMARY KEY,
+    value VARCHAR(255)
+);
+
+-- Insert initial data into fuzz_data_table
+INSERT INTO fuzz_data_table (value) VALUES ('initial value 1'), ('initial value 2');
+
+-- Insert data into the unlogged table.
+INSERT INTO fuzz_test_table (data, num, tags, json_data) VALUES
+('Test data 1', 10, ARRAY[1, 2, 3], '{"key1": "value1", "key2": 42}'),
+('Test data 2', 20, ARRAY[4, 5, 6], '{"key3": "value3", "key4": true}');
+
+-- More inserts with varying data types.
+INSERT INTO fuzz_test_table (data, num, tags, json_data)
+SELECT 'Generated data ' || i, i * 2, ARRAY[i, i + 1], json_build_object('index', i, 'value', md5(i::text))
+FROM generate_series(1, 10) AS i;
+
+-- Update data in the unlogged table.
+UPDATE fuzz_test_table SET data = 'Updated data', num = 50 WHERE id = 1;
+
+-- Delete some data.
+DELETE FROM fuzz_test_table WHERE num > 30;
+
+-- Select data with various conditions and functions.
+SELECT id, data, num FROM fuzz_test_table WHERE num > 15 AND data LIKE '%data%';
+SELECT COUNT(*) FROM fuzz_test_table WHERE created_at > NOW() - INTERVAL '1 day';
+SELECT json_data -> 'key1' FROM fuzz_test_table WHERE id = 1;
+
+-- Create a GIN index on the tags column.
+CREATE INDEX fuzz_test_table_tags_idx ON fuzz_test_table USING GIN (tags);
+
+-- Create a GIN index on jsonb_path_ops
+CREATE INDEX fuzz_test_table_json_idx ON fuzz_test_table USING GIN (json_data jsonb_path_ops);
+
+-- Queries using the GIN index.
+SELECT * FROM fuzz_test_table WHERE tags @> ARRAY[2];
+SELECT * FROM fuzz_test_table WHERE json_data @> '{"key2": 42}';
+
+-- Alter the table (add a column).
+ALTER TABLE fuzz_test_table ADD COLUMN new_column BOOLEAN DEFAULT FALSE;
+
+-- Update the new column
+UPDATE fuzz_test_table SET new_column = TRUE WHERE id % 2 = 0;
+
+-- Select with the new column
+SELECT id, new_column FROM fuzz_test_table WHERE new_column = TRUE;
+
+-- WITH clause (Common Table Expression).
+WITH TagCounts AS (
+    SELECT UNNEST(tags) AS tag, COUNT(*) AS count
+    FROM fuzz_test_table
+    GROUP BY tag
+)
+SELECT tag, count FROM TagCounts ORDER BY count DESC;
+
+-- Use pg_sleep to potentially trigger timing-related issues.  Be cautious with long sleeps.
+SELECT pg_sleep(0.01);
+
+-- Insert using ON CONFLICT
+INSERT INTO fuzz_data_table (value) VALUES ('duplicate value') ON CONFLICT (value) DO NOTHING;
+
+-- TRUNCATE table
+TRUNCATE TABLE fuzz_test_table;
+
+-- Insert after truncate
+INSERT INTO fuzz_test_table (data, num) VALUES ('Data after truncate', 100);
+
+-- DROP TABLE
+DROP TABLE fuzz_test_table;
+
+-- Create table again after dropping to test create table flows after drop table
+CREATE TABLE fuzz_test_table (
+    id SERIAL PRIMARY KEY,
+    data TEXT
+);
+
+-- Insert into the recreated table
+INSERT INTO fuzz_test_table (data) VALUES ('Recreated data');
+
+-- Test a join
+CREATE TABLE table_a (id INT PRIMARY KEY, value TEXT);
+CREATE TABLE table_b (id INT PRIMARY KEY, a_id INT REFERENCES table_a(id), another_value TEXT);
+
+INSERT INTO table_a (id, value) VALUES (1, 'value1'), (2, 'value2');
+INSERT INTO table_b (id, a_id, another_value) VALUES (1, 1, 'another1'), (2, 2, 'another2');
+
+SELECT a.value, b.another_value FROM table_a a JOIN table_b b ON a.id = b.a_id;
+
+-- Clean up data_table
+TRUNCATE TABLE fuzz_data_table;
+INSERT INTO fuzz_data_table (value) SELECT md5(random()::text) FROM generate_series(1,100);
+
+-- Alter table to add a constraint
+ALTER TABLE fuzz_data_table ADD CONSTRAINT value_unique UNIQUE (value);

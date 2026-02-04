@@ -1,0 +1,46 @@
+CREATE TABLE integers (i INTEGER);
+INSERT INTO integers VALUES (1), (2), (3), (4), (5);
+
+CREATE TABLE strings (s VARCHAR);
+INSERT INTO strings VALUES ('a'), ('b'), ('c'), ('d'), ('e');
+
+CREATE TABLE mixed (i INTEGER, s VARCHAR, d DOUBLE);
+INSERT INTO mixed VALUES (1, 'a', 1.1), (2, 'b', 2.2), (3, 'c', 3.3);
+
+-- DuckDB specific: Using UNNEST to expand arrays
+SELECT * FROM UNNEST([1, 2, 3], ['a', 'b', 'c']);
+
+-- DuckDB specific: Using LIST and STRUCT
+SELECT LIST(1, 2, 3), STRUCT(a := 1, b := 'hello');
+
+-- Testing aggregations
+SELECT SUM(i), AVG(i), COUNT(*), MIN(s), MAX(s) FROM mixed;
+
+-- Testing window functions
+SELECT i, s, ROW_NUMBER() OVER (ORDER BY i) FROM mixed;
+
+-- Testing string functions
+SELECT LENGTH(s), UPPER(s), LOWER(s), SUBSTRING(s, 1, 1) FROM strings;
+
+-- Testing date functions (DuckDB has good date support)
+SELECT CURRENT_DATE, CURRENT_TIMESTAMP, DATE('2024-01-01'), STRFTIME('%Y-%m-%d', CURRENT_DATE);
+
+-- Testing conditionals
+SELECT CASE WHEN i > 2 THEN 'big' ELSE 'small' END FROM integers;
+
+-- Testing joins (including cross joins which can be good for fuzzing)
+SELECT * FROM integers CROSS JOIN strings;
+
+-- Creating a view
+CREATE VIEW my_view AS SELECT i, s FROM mixed WHERE i > 1;
+SELECT * FROM my_view;
+
+-- Create table with nested type
+CREATE TABLE nested_table (
+    id INTEGER,
+    data STRUCT(x INTEGER, y VARCHAR)
+);
+
+INSERT INTO nested_table VALUES (1, STRUCT(x := 10, y := 'test'));
+
+SELECT data.x FROM nested_table;

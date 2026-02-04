@@ -1,0 +1,51 @@
+-- Create the users table with necessary columns
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255),
+    email VARCHAR(255),
+    registration_date DATE
+);
+
+-- Create the orders table with a foreign key reference to users
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    amount DECIMAL,
+    order_date DATE
+);
+
+-- Insert sample data into the users table
+INSERT INTO users(name, email, registration_date)
+VALUES 
+('Alice', 'alice@example.com', '2023-01-15'),
+('Bob', NULL, '2023-02-20');
+
+-- Insert sample orders for the users
+INSERT INTO orders(user_id, amount, order_date)
+VALUES 
+(1, 100.00, '2023-01-16'),
+(1, -50.00, '2023-01-17'),
+(2, 200.50, '2023-02-21');
+
+-- Comprehensive SELECT query with CTE and window functions
+WITH order_rank AS (
+    SELECT 
+        user_id,
+        order_date,
+        amount,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY order_date) as rank
+    FROM orders
+)
+SELECT 
+    u.id AS user_id,
+    u.name,
+    o.order_id,
+    o.amount,
+    o.order_date,
+    orank.rank,
+    SUM(o.amount) OVER (PARTITION BY u.id) as total_spent
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+JOIN order_rank orank ON o.order_id = orank.order_id
+WHERE u.registration_date >= '2023-01-01'
+ORDER BY u.name, orank.rank;

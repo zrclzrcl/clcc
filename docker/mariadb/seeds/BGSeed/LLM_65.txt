@@ -1,0 +1,61 @@
+SET NAMES utf8;
+CREATE TABLE `employees` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `salary` decimal(10,2) DEFAULT NULL,
+  `hire_date` date DEFAULT NULL,
+  `department` enum('Sales', 'Marketing', 'Engineering') DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `employees` (`name`, `salary`, `hire_date`, `department`) VALUES
+('Alice Smith', 60000.00, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie Brown', 90000.00, '2020-03-10', 'Engineering'),
+('David Lee', 65000.00, '2022-08-01', 'Sales'),
+('Eve Williams', 80000.00, '2021-11-05', 'Marketing');
+
+CREATE TABLE `departments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `location` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `departments` (`name`, `location`) VALUES
+('Sales', 'New York'),
+('Marketing', 'Los Angeles'),
+('Engineering', 'San Francisco');
+
+-- MariaDB Specific: Window Function with IGNORE NULLS
+SELECT
+    name,
+    salary,
+    FIRST_VALUE(name) OVER (PARTITION BY department ORDER BY salary DESC IGNORE NULLS) AS highest_paid_in_dept
+FROM
+    employees;
+
+-- MariaDB Specific: SEQUENCE example (if SEQUENCE storage engine is enabled).  Handles potential storage engine disabled.
+CREATE TABLE IF NOT EXISTS seq_table (id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=SEQUENCE;
+INSERT INTO seq_table () VALUES (),(),();
+SELECT * FROM seq_table;
+
+-- Testing JSON functionality
+ALTER TABLE `employees` ADD COLUMN `preferences` JSON;
+UPDATE `employees` SET `preferences` = JSON_OBJECT('theme', 'dark', 'notifications', TRUE) WHERE `id` = 1;
+SELECT `name`, `preferences` ->> '$.theme' AS theme FROM `employees` WHERE `id` = 1;
+
+-- Using ANALYZE TABLE for query optimization hints
+ANALYZE TABLE `employees`;
+
+-- Stored Procedure example
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment (IN dept_name VARCHAR(50))
+BEGIN
+    SELECT * FROM `employees` WHERE `department` = dept_name;
+END //
+DELIMITER ;
+CALL GetEmployeesByDepartment('Sales');
+
+-- Test optimizer hints
+SELECT /*+ BNL(employees, departments) */ * FROM employees JOIN departments ON employees.department = departments.name WHERE employees.salary > 70000;

@@ -1,0 +1,27 @@
+CREATE TABLE integers (
+    id INTEGER PRIMARY KEY,
+    value INTEGER
+);
+
+INSERT INTO integers (id, value) VALUES (1, 10), (2, 20), (3, NULL);
+
+CREATE VIEW value_view AS SELECT value FROM integers WHERE value IS NOT NULL;
+
+CREATE MACRO increment(x) AS x + 1;
+
+SELECT increment(value) FROM value_view;
+
+CREATE TABLE strings (
+    id INTEGER PRIMARY KEY,
+    text VARCHAR
+);
+
+INSERT INTO strings (id, text) VALUES (1, 'hello'), (2, 'world'), (3, NULL);
+
+-- DuckDB specific JSON functionality
+SELECT json_group_array(text) FROM strings WHERE text IS NOT NULL;
+
+ALTER TABLE integers ADD COLUMN description VARCHAR DEFAULT 'default description';
+
+CREATE SEQUENCE my_sequence START 1 INCREMENT BY 1;
+SELECT next value for my_sequence;

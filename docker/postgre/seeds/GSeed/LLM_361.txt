@@ -1,0 +1,101 @@
+SET client_min_messages TO 'warning';
+
+-- Cleanup from any previous runs
+DROP TABLE IF EXISTS films CASCADE;
+DROP SERVER IF EXISTS film_server CASCADE;
+DROP FOREIGN DATA WRAPPER IF EXISTS file_fdw CASCADE;
+DROP SCHEMA IF EXISTS foreign_films CASCADE;
+DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER film_server;
+
+-- Create a schema
+CREATE SCHEMA foreign_films;
+
+-- Create a foreign data wrapper
+CREATE EXTENSION IF NOT EXISTS file_fdw;
+CREATE FOREIGN DATA WRAPPER file_fdw
+  HANDLER file_fdw_handler
+  VALIDATOR file_fdw_validator;
+
+-- Create a server
+CREATE SERVER film_server
+  FOREIGN DATA WRAPPER file_fdw
+  OPTIONS (filename '/tmp/films.txt', format 'csv');
+
+-- Create a user mapping
+CREATE USER MAPPING FOR CURRENT_USER
+  SERVER film_server
+  OPTIONS (user 'bob', password 'secret');
+
+-- Create a foreign table
+CREATE FOREIGN TABLE films (
+    code        char(5) NOT NULL,
+    title       varchar(40) NOT NULL,
+    did         integer NOT NULL,
+    date_prod   date,
+    kind        varchar(10),
+    len         interval hour to minute
+)
+SERVER film_server
+OPTIONS (filename '/tmp/films.txt', format 'csv', header 'true', delimiter ',');
+
+-- Insert some data (this will not work directly, as file_fdw is read-only by default, but good to have)
+INSERT INTO films (code, title, did, date_prod, kind, len) VALUES
+('UA502', 'Trick or Treat', 100, '1982-10-31', 'Slasher', '91:00');
+
+-- Select data
+SELECT * FROM films;
+
+-- Update a row (this will fail as well, but included for fuzzing)
+UPDATE films SET title = 'New Title' WHERE code = 'UA502';
+
+-- Delete a row (same as above)
+DELETE FROM films WHERE code = 'UA502';
+
+-- Create an index on the foreign table (some DBMS support this)
+CREATE INDEX film_title_idx ON films (title);
+
+-- Add a constraint
+ALTER FOREIGN TABLE films ADD CONSTRAINT code_check CHECK (length(code) = 5);
+
+-- Alter the server options
+ALTER SERVER film_server OPTIONS (SET filename '/tmp/new_films.txt');
+
+-- Alter user mapping options
+ALTER USER MAPPING FOR CURRENT_USER SERVER film_server OPTIONS (SET user 'alice');
+
+-- More complex queries
+SELECT title FROM films WHERE did > 50 AND date_prod < '2000-01-01';
+
+SELECT AVG(EXTRACT(EPOCH FROM len)) FROM films;
+
+-- Grant and Revoke Privileges
+GRANT SELECT ON films TO PUBLIC;
+REVOKE SELECT ON films FROM PUBLIC;
+
+-- Try some aggregate functions and group by
+SELECT kind, COUNT(*) FROM films GROUP BY kind;
+
+-- Test joins with local tables
+CREATE TABLE directors (did INTEGER PRIMARY KEY, name TEXT);
+INSERT INTO directors VALUES (100, 'Director Name');
+SELECT f.title, d.name FROM films f JOIN directors d ON f.did = d.did;
+
+-- Partitioning
+CREATE TABLE films_part (LIKE films);
+ALTER TABLE films_part ADD COLUMN part_date DATE;
+
+CREATE TABLE films_part_202301 PARTITION OF films_part FOR VALUES FROM ('2023-01-01') TO ('2023-02-01');
+CREATE FOREIGN TABLE films_part_202302 PARTITION OF films_part FOR VALUES FROM ('2023-02-01') TO ('2023-03-01') SERVER film_server;
+SELECT * FROM films_part;
+
+-- Drop everything created
+DROP TABLE IF EXISTS films_part;
+DROP TABLE IF EXISTS films CASCADE;
+DROP SERVER IF EXISTS film_server CASCADE;
+DROP FOREIGN DATA WRAPPER IF EXISTS file_fdw CASCADE;
+DROP SCHEMA IF EXISTS foreign_films CASCADE;
+DROP TABLE IF EXISTS directors;
+DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER film_server;
+DROP EXTENSION IF EXISTS file_fdw;
+
+RESET client_min_messages;

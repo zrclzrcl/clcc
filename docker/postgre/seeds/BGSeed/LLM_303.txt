@@ -1,0 +1,110 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Create a basic table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create an unlogged table
+CREATE UNLOGGED TABLE temp_data (
+    data TEXT
+);
+
+-- Insert some data into the users table
+INSERT INTO users (username, email, password_hash) VALUES
+('testuser1', 'test1@example.com', crypt('password123', gen_salt('bf'))),
+('testuser2', 'test2@example.com', crypt('securepass', gen_salt('bf')));
+
+-- Create a table with JSONB column
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    details JSONB
+);
+
+-- Insert data into products table with JSONB values
+INSERT INTO products (name, description, details) VALUES
+('Laptop', 'High-performance laptop', '{"brand": "Dell", "model": "XPS 15", "ram": "16GB"}'),
+('Monitor', '27-inch 4K monitor', '{"resolution": "3840x2160", "panel": "IPS"}');
+
+-- Select data from users table
+SELECT id, username, email FROM users WHERE username = 'testuser1';
+
+-- Update email address
+UPDATE users SET email = 'newemail@example.com' WHERE username = 'testuser1';
+
+-- Delete a user
+DELETE FROM users WHERE username = 'testuser2';
+
+-- Select with LIKE operator
+SELECT * FROM products WHERE name LIKE '%Laptop%';
+
+-- Create a view
+CREATE VIEW user_emails AS SELECT username, email FROM users;
+
+-- Select from the view
+SELECT * FROM user_emails;
+
+-- Create a function
+CREATE OR REPLACE FUNCTION get_user_count() RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM users);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Call the function
+SELECT get_user_count();
+
+-- Create a table with an array column
+CREATE TABLE tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    related_products INTEGER[]
+);
+
+-- Insert data into the tags table
+INSERT INTO tags (name, related_products) VALUES
+('electronics', ARRAY[1, 2]);
+
+-- Select from tags table using array contains operator
+SELECT * FROM tags WHERE related_products @> ARRAY[1];
+
+-- Create a table with range type column
+CREATE TABLE availability (
+    id SERIAL PRIMARY KEY,
+    item VARCHAR(50) NOT NULL,
+    available_range TSRANGE
+);
+
+INSERT INTO availability (item, available_range) VALUES ('item1', '[2024-01-01,2024-01-31]');
+
+SELECT * FROM availability WHERE available_range && '[2024-01-15,2024-02-15]'::tsrange;
+
+-- Using WITH clause
+WITH user_counts AS (
+    SELECT COUNT(*) AS total_users FROM users
+)
+SELECT total_users FROM user_counts;
+
+-- Create an index
+CREATE INDEX idx_username ON users (username);
+
+-- Alter table: add a column
+ALTER TABLE products ADD COLUMN created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Drop the index
+DROP INDEX idx_username;
+
+-- Create table with generated always as identity column
+CREATE TABLE orders (
+  order_id BIGINT GENERATED ALWAYS AS IDENTITY,
+  item_name TEXT
+);
+
+INSERT INTO orders (item_name) VALUES ('widget1');
+SELECT * FROM orders;

@@ -1,0 +1,35 @@
+-- Create a table with various data types to test different data handling
+CREATE TABLE t1(a INT, b TEXT, c FLOAT, d BLOB);
+
+-- Insert sample data into the table
+INSERT INTO t1 VALUES(123, 'test', 45.67, X'010203');
+INSERT INTO t1 VALUES(-987, 'hello world', -123.45, NULL);
+
+-- Create a second table for join operations
+CREATE TABLE t2(x INT PRIMARY KEY, y TEXT UNIQUE NOT NULL);
+
+-- Insert sample data into the second table
+INSERT INTO t2 VALUES(1, 'row1');
+INSERT INTO t2 VALUES(2, 'row2');
+
+-- Test basic SELECT with joins and aggregate functions
+SELECT t1.a, t2.y, COUNT(*) OVER() as total_count 
+FROM t1 
+JOIN t2 ON t1.a = t2.x;
+
+-- Test window functions and filtering
+SELECT a, b, ROW_NUMBER() OVER(ORDER BY a) AS row_num 
+FROM t1 
+WHERE d IS NULL;
+
+-- Test grouping and having clause
+SELECT x, COUNT(*) as cnt FROM t2 GROUP BY x HAVING cnt > 0;
+
+-- Test edge cases with date/time functions
+SELECT MINUTE('2023-10-05 14:30:00'), HOUR('2023-10-05 14:30:00');
+
+-- Create a virtual table for testing range queries
+CREATE VIRTUAL TABLE vt USING generate_series(1, 10);
+
+-- Test virtual table with window functions
+SELECT value, SUM(value) OVER(ORDER BY value ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum FROM vt;

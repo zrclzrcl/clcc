@@ -1,0 +1,9 @@
+CREATE TABLE t1(a INT, b TEXT, c DATE);
+INSERT INTO t1 VALUES(1, 'apple', '2023-01-01');
+INSERT INTO t1 SELECT * FROM (SELECT 2 as a, 'banana' as b, '2023-01-02' as c) AS temp;
+CREATE TABLE t2 AS SELECT a, b||c AS combined FROM t1 WHERE a > 0;
+INSERT INTO t1 SELECT a+10, b, c FROM t2;
+SELECT DISTINCT a, b, c FROM t1 ORDER BY a DESC LIMIT 3;
+WITH cte AS (SELECT * FROM t1 WHERE b LIKE 'a%') SELECT COUNT(*) FROM cte;
+SELECT approx_count_distinct(a) FROM t1;
+SELECT ROW_NUMBER() OVER (ORDER BY a) as rn, b FROM t1;

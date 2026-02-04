@@ -1,0 +1,38 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO strings VALUES ('hello'), ('world'), ('');
+
+-- Test array functionality (DuckDB specific)
+CREATE TABLE array_test (
+  a INTEGER[]
+);
+
+INSERT INTO array_test VALUES ([1, 2, 3]), ([4, NULL, 6]);
+
+-- Test JSON functionality (DuckDB specific)
+CREATE TABLE json_test (
+  j JSON
+);
+
+INSERT INTO json_test VALUES ('{"key1": "value1", "key2": 123}');
+
+-- Test Date/Time functions
+CREATE TABLE datetime_test (
+  dt TIMESTAMP
+);
+
+INSERT INTO datetime_test VALUES ('2023-10-27 10:00:00');
+
+SELECT * FROM integers WHERE i > 1;
+SELECT s FROM strings WHERE s LIKE 'h%';
+SELECT a[1] FROM array_test; -- Access first element of array
+SELECT j -> 'key1' FROM json_test; -- Access JSON field
+SELECT date(dt) FROM datetime_test;

@@ -1,0 +1,19 @@
+CREATE TABLE Users(UserID INTEGER PRIMARY KEY, Username TEXT UNIQUE, Email TEXT);
+CREATE TABLE Products(ProductID INTEGER PRIMARY KEY, ProductName TEXT, Price REAL);
+CREATE TABLE Orders(OrderID INTEGER PRIMARY KEY, UserID INTEGER, ProductID INTEGER, Quantity INTEGER, FOREIGN KEY(UserID) REFERENCES Users(UserID), FOREIGN KEY(ProductID) REFERENCES Products(ProductID));
+INSERT INTO Users (Username, Email) VALUES ('Alice', 'alice@example.com');
+INSERT INTO Users (Username, Email) VALUES ('Bob', 'bob@example.com');
+INSERT INTO Products (ProductName, Price) VALUES ('Gadget', 19.99);
+INSERT INTO Products (ProductName, Price) VALUES ('Widget', 29.99);
+INSERT INTO Orders (UserID, ProductID, Quantity) VALUES (1, 1, 1);
+INSERT INTO Orders (UserID, ProductID, Quantity) VALUES (2, 2, 2);
+SELECT Users.Username, SUM(Products.Price * Orders.Quantity) AS TotalSpent
+FROM Users 
+JOIN Orders ON Users.UserID = Orders.UserID 
+JOIN Products ON Orders.ProductID = Products.ProductID
+GROUP BY Users.Username 
+HAVING TotalSpent > 10.00
+ORDER BY TotalSpent DESC;
+SELECT * FROM Users WHERE Email LIKE '%@example.com' AND UserID IN (SELECT UserID FROM Orders);
+CREATE INDEX idx_product_name ON Products(ProductName);
+DELETE FROM Orders WHERE Quantity <= 0;

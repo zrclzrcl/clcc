@@ -1,0 +1,125 @@
+CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_tablespace';
+
+CREATE ROLE regress_test_role1 SUPERUSER LOGIN PASSWORD 'password';
+CREATE ROLE regress_test_role2 NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOLOGIN NOREPLICATION;
+
+CREATE DATABASE test_database OWNER regress_test_role1 TABLESPACE test_tablespace;
+
+\c test_database regress_test_role1
+
+CREATE SCHEMA test_schema AUTHORIZATION regress_test_role1;
+
+CREATE TABLE test_schema.test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    value INTEGER,
+    description TEXT
+);
+
+CREATE INDEX test_table_name_idx ON test_schema.test_table (name);
+
+CREATE VIEW test_schema.test_view AS
+SELECT id, name, value FROM test_schema.test_table WHERE value > 10;
+
+CREATE FUNCTION test_schema.increment(i INTEGER) RETURNS INTEGER AS $$
+    BEGIN
+        RETURN i + 1;
+    END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER test_trigger
+BEFORE INSERT ON test_schema.test_table
+FOR EACH ROW
+EXECUTE PROCEDURE test_schema.increment(NEW.value);
+
+INSERT INTO test_schema.test_table (name, value, description) VALUES
+('Test 1', 15, 'This is a test record.'),
+('Test 2', 5, 'Another test record.'),
+('Test 3', 20, 'Yet another test record.');
+
+SELECT * FROM test_schema.test_table WHERE value > 10 ORDER BY name;
+
+UPDATE test_schema.test_table SET value = value * 2 WHERE name LIKE 'Test%';
+
+DELETE FROM test_schema.test_table WHERE value < 10;
+
+EXPLAIN SELECT * FROM test_schema.test_table WHERE name = 'Test 1';
+
+CREATE TYPE test_schema.test_enum AS ENUM ('value1', 'value2', 'value3');
+
+ALTER TABLE test_schema.test_table ADD COLUMN enum_value test_schema.test_enum;
+
+INSERT INTO test_schema.test_table (name, value, description, enum_value) VALUES ('TestEnum', 30, 'Enum Test', 'value1');
+
+SELECT enum_value FROM test_schema.test_table WHERE name = 'TestEnum';
+
+CREATE MATERIALIZED VIEW test_schema.test_materialized_view AS
+SELECT name, AVG(value) AS avg_value
+FROM test_schema.test_table
+GROUP BY name;
+
+REFRESH MATERIALIZED VIEW test_schema.test_materialized_view;
+
+SELECT * FROM test_schema.test_materialized_view;
+
+CREATE OR REPLACE FUNCTION test_schema.complex_function(IN p_name VARCHAR(255), IN p_value INTEGER, OUT p_description TEXT) AS $$
+BEGIN
+    p_description := 'Name: ' || p_name || ', Value: ' || p_value;
+    RETURN;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT test_schema.complex_function('Complex Test', 42);
+
+CREATE DOMAIN test_schema.positive_integer AS INTEGER CHECK (VALUE > 0);
+
+ALTER TABLE test_schema.test_table ALTER COLUMN value TYPE test_schema.positive_integer;
+
+INSERT INTO test_schema.test_table (name, value, description) VALUES ('Positive Test', 1, 'Positive check.');
+
+-- Following insert must cause exception
+-- INSERT INTO test_schema.test_table (name, value, description) VALUES ('Negative Test', -1, 'Negative check.');
+
+CREATE AGGREGATE test_schema.average(NUMERIC) (
+    SFUNC = numeric_add,
+    STYPE = NUMERIC,
+    FINALFUNC = numeric_avg
+);
+
+SELECT test_schema.average(value) FROM test_schema.test_table;
+
+CREATE TEXT SEARCH CONFIGURATION test_config ( COPY = english );
+ALTER TEXT SEARCH CONFIGURATION test_config ALTER MAPPING FOR hword, hword_part, word WITH simple;
+
+SELECT to_tsvector('test_config', 'A simple example');
+
+-- Test window function
+SELECT name, value, AVG(value) OVER (ORDER BY id) FROM test_schema.test_table;
+
+-- Test foreign key
+CREATE TABLE test_schema.test_table2 (
+  id SERIAL PRIMARY KEY,
+  test_table_id INTEGER REFERENCES test_schema.test_table(id)
+);
+
+INSERT INTO test_schema.test_table2 (test_table_id) VALUES (1);
+
+-- Clean up
+
+DROP TABLE test_schema.test_table2;
+DROP MATERIALIZED VIEW test_schema.test_materialized_view;
+DROP AGGREGATE test_schema.average(NUMERIC);
+DROP DOMAIN test_schema.positive_integer;
+DROP FUNCTION test_schema.complex_function(VARCHAR(255), INTEGER);
+DROP TYPE test_schema.test_enum;
+DROP VIEW test_schema.test_view;
+DROP FUNCTION test_schema.increment(INTEGER);
+DROP TABLE test_schema.test_table;
+DROP SCHEMA test_schema;
+
+\c postgres postgres
+
+DROP DATABASE test_database;
+DROP ROLE regress_test_role1;
+DROP ROLE regress_test_role2;
+DROP TABLESPACE test_tablespace;

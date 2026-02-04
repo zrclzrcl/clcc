@@ -1,0 +1,97 @@
+CREATE TABLE employees (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    hire_date DATE,
+    salary DECIMAL(10, 2),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    department_id SERIAL PRIMARY KEY,
+    department_name VARCHAR(50),
+    location VARCHAR(50)
+);
+
+ALTER TABLE employees ADD CONSTRAINT fk_department
+    FOREIGN KEY (department_id) REFERENCES departments(department_id);
+
+INSERT INTO departments (department_name, location) VALUES ('Sales', 'New York');
+INSERT INTO departments (department_name, location) VALUES ('Marketing', 'London');
+INSERT INTO departments (department_name, location) VALUES ('Engineering', 'San Francisco');
+
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('John', 'Doe', '2022-01-15', 60000.00, 1);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('Jane', 'Smith', '2022-02-20', 65000.00, 2);
+INSERT INTO employees (first_name, last_name, hire_date, salary, department_id) VALUES
+('Robert', 'Jones', '2022-03-10', 70000.00, 3);
+
+SELECT * FROM employees WHERE salary > 62000;
+
+UPDATE employees SET salary = salary * 1.1 WHERE department_id = 1;
+
+DELETE FROM employees WHERE employee_id = 3;
+
+SELECT e.first_name, d.department_name FROM employees e JOIN departments d ON e.department_id = d.department_id;
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100),
+    product_details JSONB
+);
+
+INSERT INTO products (product_name, product_details) VALUES ('Laptop', '{"brand": "Dell", "model": "XPS 15", "price": 1200}');
+INSERT INTO products (product_name, product_details) VALUES ('Mouse', '{"brand": "Logitech", "model": "MX Master 3", "price": 99}');
+
+SELECT product_name, product_details ->> 'price' AS price FROM products WHERE product_details ->> 'brand' = 'Dell';
+
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE,
+    total_amount DECIMAL(10, 2)
+);
+
+CREATE INDEX idx_customer_id ON orders (customer_id);
+
+CREATE VIEW high_salary_employees AS
+SELECT first_name, last_name FROM employees WHERE salary > 70000;
+
+SELECT * FROM high_salary_employees;
+
+-- Example of GENERATED ALWAYS AS identity column (PostgreSQL 10+)
+CREATE TABLE items (
+    item_id SERIAL PRIMARY KEY,
+    description TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE GENERATED ALWAYS AS (now()) STORED
+);
+
+INSERT INTO items (description) VALUES ('Test Item');
+SELECT * FROM items;
+
+-- Example using WITH RECURSIVE
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT employee_id, first_name, last_name, 0 AS level
+    FROM employees
+    WHERE employee_id = 1 -- Starting employee
+
+    UNION ALL
+
+    SELECT e.employee_id, e.first_name, e.last_name, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.department_id = eh.employee_id -- Incorrect join condition, but tests recursive query parsing
+)
+SELECT * FROM employee_hierarchy;
+
+-- Example using window function
+SELECT
+    employee_id,
+    first_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Example using unnest
+SELECT * FROM unnest(ARRAY['a','b','c']);

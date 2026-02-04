@@ -1,0 +1,91 @@
+SET @old_sql_mode=@@sql_mode, sql_mode='STRICT_ALL_TABLES';
+SET @old_unique_checks=@@unique_checks, unique_checks=0;
+SET @old_foreign_key_checks=@@foreign_key_checks, foreign_key_checks=0;
+SET @old_auto_increment_increment=@@auto_increment_increment, auto_increment_increment=1;
+SET @old_character_set_client  = @@character_set_client;
+SET @old_character_set_connection = @@character_set_connection;
+SET @old_collation_connection = @@collation_connection;
+SET character_set_client = utf8mb4;
+SET character_set_connection = utf8mb4;
+SET collation_connection = utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `users` (`username`, `password`, `email`) VALUES
+('testuser1', '$2a$10$abcdefghijklmnopqrstuvwxYZ1234567890', 'test1@example.com'),
+('testuser2', '$2a$10$zyxwvutsrqponmlkjihgfedcba9876543210', 'test2@example.com'),
+('testuser3', '$2a$10$0987654321ZYXWVUTSRQPONMLKJIHGFEDCBA', 'test3@example.com');
+
+CREATE TABLE IF NOT EXISTS `products` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text,
+  `price` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `discount` ENUM('none', 'sale', 'clearance') DEFAULT 'none',
+  PRIMARY KEY (`id`),
+  FULLTEXT KEY `name` (`name`, `description`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `products` (`name`, `description`, `price`) VALUES
+('Product A', 'This is product A', 19.99),
+('Product B', 'This is product B', 29.99),
+('Product C', 'This is product C', 39.99);
+
+ALTER TABLE `products` ADD COLUMN `quantity` INT UNSIGNED DEFAULT 0 AFTER `price`;
+UPDATE `products` SET quantity = 10 WHERE id = 1;
+UPDATE `products` SET quantity = 5 WHERE id = 2;
+UPDATE `products` SET quantity = 20 WHERE id = 3;
+
+-- MariaDB specific feature: SEQUENCE
+CREATE SEQUENCE IF NOT EXISTS order_sequence START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS `orders` (
+    `id` BIGINT UNSIGNED NOT NULL DEFAULT NEXT VALUE FOR order_sequence,
+    `user_id` INT NOT NULL,
+    `order_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `total_amount` DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `orders` (`user_id`, `total_amount`) VALUES
+(1, 59.97),
+(2, 29.99);
+
+-- Test Window functions (MariaDB 10.2+)
+SELECT
+    p.name,
+    p.price,
+    RANK() OVER (ORDER BY p.price DESC) AS price_rank
+FROM
+    products p;
+
+-- Test Dynamic Columns (MariaDB feature)
+CREATE TABLE dc_test (id INT PRIMARY KEY, data BLOB);
+INSERT INTO dc_test VALUES (1, COLUMN_CREATE('name', 'John', 'age', 30));
+SELECT id, COLUMN_GET(data, 'name' AS CHAR) AS name, COLUMN_GET(data, 'age' AS SIGNED) AS age FROM dc_test;
+
+-- Test JSON functions (MariaDB 10.2+)
+CREATE TABLE json_test (id INT PRIMARY KEY, data JSON);
+INSERT INTO json_test VALUES (1, '{"name": "Jane", "age": 25, "city": "New York"}');
+SELECT id, JSON_EXTRACT(data, '$.name') FROM json_test;
+
+SET sql_mode = COALESCE(@old_sql_mode, '');
+SET unique_checks = @old_unique_checks;
+SET foreign_key_checks = @old_foreign_key_checks;
+SET auto_increment_increment = @old_auto_increment_increment;
+SET character_set_client = @old_character_set_client;
+SET character_set_connection = @old_character_set_connection;
+SET collation_connection = @old_collation_connection;

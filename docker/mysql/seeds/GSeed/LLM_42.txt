@@ -1,0 +1,90 @@
+SET NAMES utf8mb4;
+SET CHARACTER_SET_DATABASE = utf8mb4;
+
+-- Create a database with a potentially problematic name
+CREATE DATABASE IF NOT EXISTS `test_fuzz`;
+USE `test_fuzz`;
+
+-- Create a table with various data types and constraints
+CREATE TABLE IF NOT EXISTS `users` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `username` VARCHAR(50) NOT NULL UNIQUE,
+    `email` VARCHAR(100) UNIQUE,
+    `password` CHAR(60) NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `status` ENUM('active', 'inactive', 'pending', 'blocked') DEFAULT 'pending',
+    `profile_picture` MEDIUMBLOB NULL,
+    `points` BIGINT DEFAULT 0,
+    `last_login` DATETIME NULL
+);
+
+-- Insert some initial data with different character sets
+INSERT INTO `users` (`username`, `email`, `password`) VALUES
+('user1', 'user1@example.com', '$2y$10$abcdefghijklmnopqrstuvwx012345'),
+('用户2', 'user2@example.com', '$2y$10$bcdefghijklmnopqrstuvwxyzab012345'),
+('😀user3', 'user3@example.com', '$2y$10$cdefghijklmnopqrstuvwxyzabc012345');
+
+-- Test different types of indexes
+CREATE INDEX `idx_email` ON `users` (`email`);
+CREATE FULLTEXT INDEX `idx_username` ON `users` (`username`);
+
+-- Test JSON functionality
+ALTER TABLE `users` ADD COLUMN `preferences` JSON NULL;
+UPDATE `users` SET `preferences` = '{"theme": "dark", "notifications": {"email": true, "sms": false}}' WHERE `id` = 1;
+
+-- Test spatial data types (if supported by MySQL version)
+-- ALTER TABLE `users` ADD COLUMN `location` POINT NULL;
+-- UPDATE `users` SET `location` = ST_GeomFromText('POINT(10 10)') WHERE `id` = 1;
+
+-- Add a column with a generated column (MySQL 5.7.6+)
+ALTER TABLE `users` ADD COLUMN `display_name` VARCHAR(100) GENERATED ALWAYS AS (CONCAT(`username`, ' (', `id`, ')')) VIRTUAL;
+
+-- Test stored procedures
+DELIMITER //
+CREATE PROCEDURE `update_user_points`(IN `user_id` INT, IN `point_increment` INT)
+BEGIN
+    UPDATE `users` SET `points` = `points` + `point_increment` WHERE `id` = `user_id`;
+END //
+DELIMITER ;
+
+CALL `update_user_points`(1, 100);
+
+-- Test views
+CREATE VIEW `active_users` AS SELECT `id`, `username`, `email` FROM `users` WHERE `status` = 'active';
+
+-- Test triggers (before insert)
+DELIMITER //
+CREATE TRIGGER `before_user_insert` BEFORE INSERT ON `users`
+FOR EACH ROW
+BEGIN
+    SET NEW.created_at = NOW();
+    IF NEW.username IS NULL OR NEW.username = '' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username cannot be empty';
+    END IF;
+END //
+DELIMITER ;
+
+-- Test a more complex update
+UPDATE `users` SET `password` = MD5(CONCAT(`username`, 'secret')) WHERE `id` = 2;
+
+-- Test delete
+DELETE FROM `users` WHERE `status` = 'blocked';
+
+-- Test truncate
+-- TRUNCATE TABLE `users`; -- Be careful with truncate, as it resets auto_increment
+
+-- Test partitioning (example range partitioning)
+-- ALTER TABLE `users` PARTITION BY RANGE (id) (
+--     PARTITION p0 VALUES LESS THAN (10),
+--     PARTITION p1 VALUES LESS THAN (100),
+--     PARTITION p2 VALUES LESS THAN MAXVALUE
+-- );
+
+-- Test inserting large values into blob/text
+-- INSERT INTO users (username, profile_picture) VALUES ('Large Blob User', REPEAT('A', 65535));
+
+-- Test with GIS functions, needs spatial extensions
+-- CREATE TABLE spatial_data (id INT PRIMARY KEY, geom GEOMETRY);
+-- INSERT INTO spatial_data (id, geom) VALUES (1, ST_GeomFromText('POINT(1 1)'));
+-- SELECT ST_Distance(ST_GeomFromText('POINT(1 1)'), ST_GeomFromText('POINT(2 2)'));

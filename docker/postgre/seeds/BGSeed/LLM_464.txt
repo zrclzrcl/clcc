@@ -1,0 +1,152 @@
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    salary NUMERIC,
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employees (name, salary, hire_date, department) VALUES
+('Alice Smith', 60000, '2022-01-15', 'Sales'),
+('Bob Johnson', 75000, '2021-05-20', 'Marketing'),
+('Charlie Brown', 50000, '2023-03-10', 'Sales'),
+('David Lee', 90000, '2020-11-01', 'Engineering'),
+('Eve Williams', 80000, '2022-09-01', 'Marketing');
+
+CREATE INDEX idx_employees_department ON employees (department);
+
+SELECT department, AVG(salary) AS avg_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 65000
+ORDER BY avg_salary DESC;
+
+UPDATE employees
+SET salary = salary * 1.10
+WHERE department = 'Sales';
+
+DELETE FROM employees
+WHERE hire_date < '2021-01-01';
+
+SELECT * FROM employees
+WHERE salary BETWEEN 70000 AND 85000
+AND hire_date > '2022-01-01';
+
+SELECT name, salary,
+       CASE
+           WHEN salary > 80000 THEN 'High'
+           WHEN salary > 60000 THEN 'Medium'
+           ELSE 'Low'
+       END AS salary_level
+FROM employees;
+
+CREATE VIEW high_earners AS
+SELECT name, salary
+FROM employees
+WHERE salary > 75000;
+
+SELECT * FROM high_earners;
+
+DROP VIEW high_earners;
+
+CREATE TEMPORARY TABLE temp_employees AS
+SELECT * FROM employees WHERE department = 'Marketing';
+
+SELECT * FROM temp_employees;
+
+DROP TABLE temp_employees;
+
+SELECT generate_series(1, 10);
+
+SELECT current_date, current_time, current_timestamp;
+
+SELECT version();
+
+-- Window Functions
+SELECT
+    name,
+    salary,
+    department,
+    RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS salary_rank
+FROM
+    employees;
+
+-- Common Table Expression (CTE)
+WITH DepartmentAverages AS (
+    SELECT
+        department,
+        AVG(salary) AS avg_salary
+    FROM
+        employees
+    GROUP BY
+        department
+)
+SELECT
+    e.name,
+    e.salary,
+    da.avg_salary
+FROM
+    employees e
+JOIN
+    DepartmentAverages da ON e.department = da.department
+WHERE
+    e.salary > da.avg_salary;
+
+-- Materialized View (Requires superuser privileges and is more involved)
+-- CREATE MATERIALIZED VIEW materialized_high_earners AS
+-- SELECT name, salary FROM employees WHERE salary > 70000;
+-- REFRESH MATERIALIZED VIEW materialized_high_earners;
+-- SELECT * FROM materialized_high_earners;
+-- DROP MATERIALIZED VIEW materialized_high_earners;
+
+CREATE OR REPLACE FUNCTION increment_salary(emp_id INT, increment_amount NUMERIC)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE employees SET salary = salary + increment_amount WHERE id = emp_id;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT increment_salary(1, 5000);
+
+DROP FUNCTION increment_salary(INT, NUMERIC);
+
+-- Aggregate functions with FILTER clause (PostgreSQL 9.4+)
+SELECT
+    department,
+    AVG(salary) FILTER (WHERE hire_date > '2022-01-01') AS avg_salary_recent_hires
+FROM
+    employees
+GROUP BY
+    department;
+
+-- JSON support (example)
+SELECT json_build_object('name', name, 'salary', salary) AS employee_json
+FROM employees;
+
+-- Range types
+CREATE TABLE time_off (employee_id INT, off_range daterange);
+INSERT INTO time_off VALUES (1, daterange('2024-01-01', '2024-01-10'));
+SELECT * FROM time_off WHERE off_range && daterange('2024-01-05', '2024-01-15');
+DROP TABLE time_off;
+
+-- Trigger example
+CREATE OR REPLACE FUNCTION log_salary_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Salary changed from % to %', OLD.salary, NEW.salary;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER salary_change_trigger
+AFTER UPDATE OF salary ON employees
+FOR EACH ROW
+EXECUTE FUNCTION log_salary_change();
+
+UPDATE employees SET salary = 65000 WHERE id = 1;
+
+DROP TRIGGER salary_change_trigger ON employees;
+DROP FUNCTION log_salary_change();
+
+DROP INDEX idx_employees_department;
+DROP TABLE employees;

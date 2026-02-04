@@ -1,0 +1,62 @@
+CREATE TABLE integers (
+    i INTEGER
+);
+
+INSERT INTO integers VALUES (1), (2), (3), (NULL);
+
+CREATE TABLE strings (
+    s VARCHAR
+);
+
+INSERT INTO strings VALUES ('abc'), ('def'), ('ghi'), (NULL);
+
+-- Test various aggregate functions
+SELECT sum(i), avg(i), min(i), max(i), count(i), count(*) FROM integers;
+SELECT sum(i) FILTER (WHERE i > 1) FROM integers;
+
+-- Test string functions
+SELECT upper(s), lower(s), length(s), substring(s, 2, 2) FROM strings;
+SELECT s FROM strings WHERE s LIKE 'a%';
+SELECT s FROM strings ORDER BY s COLLATE NOCASE;
+
+-- Test date/time functions (DuckDB specific)
+SELECT date('2024-01-01'), date('now');
+SELECT strftime('%Y-%m-%d %H:%M:%S', 'now');
+
+-- Test window functions
+SELECT i, rank() OVER (ORDER BY i) FROM integers;
+SELECT i, row_number() OVER (ORDER BY i) FROM integers;
+SELECT i, lag(i, 1, 0) OVER (ORDER BY i) FROM integers;
+
+-- Test joins
+CREATE TABLE more_integers (
+    j INTEGER
+);
+
+INSERT INTO more_integers VALUES (2), (3), (4);
+
+SELECT * FROM integers INNER JOIN more_integers ON i = j;
+SELECT * FROM integers LEFT JOIN more_integers ON i = j;
+
+-- Test UNION
+SELECT i FROM integers UNION ALL SELECT j FROM more_integers;
+
+-- Test CASE statements
+SELECT i, CASE WHEN i > 2 THEN 'large' ELSE 'small' END FROM integers;
+
+-- Test DuckDB specific JSON functions
+CREATE TABLE json_table (j JSON);
+INSERT INTO json_table VALUES ('{"a": 1, "b": "hello"}');
+SELECT json_extract_string(j, '$.b') from json_table;
+
+-- Test DuckDB specific UUID functions
+SELECT uuid();
+
+-- Test DuckDB specific UNNEST
+SELECT * FROM UNNEST([1,2,3]);
+
+-- Cleanup
+DROP TABLE integers;
+DROP TABLE strings;
+DROP TABLE more_integers;
+DROP TABLE json_table;

@@ -1,0 +1,40 @@
+-- Initial seed for PostgreSQL test case
+
+-- Create table for storing boxes
+CREATE TABLE box (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    width DECIMAL NOT NULL,
+    height DECIMAL NOT NULL,
+    depth DECIMAL NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for storing points
+CREATE TABLE point (
+    id SERIAL PRIMARY KEY,
+    x DECIMAL NOT NULL,
+    y DECIMAL NOT NULL,
+    z DECIMAL NOT NULL
+);
+
+-- Create table for box-point relationships
+CREATE TABLE box_point (
+    box_id INT REFERENCES box(id),
+    point_id INT REFERENCES point(id),
+    PRIMARY KEY (box_id, point_id)
+);
+
+-- Create index for faster box-point lookups
+CREATE INDEX box_point_idx ON box_point (box_id, point_id);
+
+-- Create table for storing box indexes
+CREATE TABLE box_index (
+    id SERIAL PRIMARY KEY,
+    box_id INT REFERENCES box(id),
+    index_name VARCHAR(100) NOT NULL,
+    index_value DECIMAL NOT NULL
+);
+
+-- Create spatial index for efficient queries
+CREATE INDEX box_spatial_idx ON box USING GIST (box(width, height, depth));

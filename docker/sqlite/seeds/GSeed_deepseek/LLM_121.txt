@@ -1,0 +1,82 @@
+-- Create a table with various data types to test different scenarios
+  CREATE TABLE people (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER CHECK (age >= 0),
+    email TEXT UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  -- Indexes for testing query optimization and edge cases
+  CREATE INDEX idx_people_name ON people(name);
+  CREATE INDEX idx_people_age ON people(age);
+  CREATE INDEX idx_people_email_lower ON people(lower(email));
+  
+  -- Insert initial data to populate the table
+  INSERT INTO people (id, name, age, email) VALUES 
+    (1, 'Alice', 30, 'alice@example.com'),
+    (2, 'Bob', 25, 'bob@example.com'),
+    (3, 'Charlie', 40, 'charlie@example.com');
+  
+  -- Triggers for testing different events and actions
+  CREATE TRIGGER trig_after_insert 
+  AFTER INSERT ON people 
+  BEGIN
+    INSERT INTO audit VALUES (NEW.id, 'insert', datetime('now'));
+  END;
+  
+  CREATE TRIGGER trig_before_update 
+  BEFORE UPDATE ON people 
+  FOR EACH ROW 
+  WHEN old.age != new.age
+  BEGIN
+    INSERT INTO audit VALUES (old.id, 'update_age', datetime('now'));
+  END;
+  
+  CREATE TRIGGER trig_after_delete 
+  AFTER DELETE ON people 
+  BEGIN
+    INSERT INTO audit VALUES (old.id, 'delete', datetime('now'));
+  END;
+  
+  -- Temporary table and trigger for testing session-specific behavior
+  CREATE TEMPORARY TABLE temp_people (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER
+  );
+  
+  CREATE TRIGGER tmp_trig_insert 
+  INSTEAD OF INSERT ON temp_people 
+  BEGIN
+    INSERT INTO people (id, name, age) VALUES (new.id, new.name, new.age);
+  END;
+  
+  -- Common Table Expression for testing complex queries
+  WITH cte AS (
+    SELECT id, name, age,
+           CASE WHEN age > 30 THEN 'Adult' ELSE 'Young' END as category
+    FROM people
+  )
+  INSERT INTO results VALUES (category, count(*))
+  GROUP BY category;
+  
+  -- View for testing virtual tables and complex joins
+  CREATE VIEW v_people_stats AS
+  SELECT p.name, p.age, COUNT(*) as total_orders,
+         ROUND(AVG(o.amount), 2) as average_order_amount
+  FROM people p
+  LEFT JOIN orders o ON p.id = o.customer_id
+  GROUP BY p.id;
+  
+  -- Transaction for testing commit/rollback scenarios
+  BEGIN TRANSACTION;
+    INSERT INTO people (id, name, age, email) VALUES 
+      (4, 'David', 28, 'david@example.com'),
+      (5, 'Eve', 35, 'eve@example.com');
+    
+    -- Simulate a condition that may fail
+    UPDATE people SET age = -1 WHERE id = 4;
+    
+    ROLLBACK;
+  COMMIT;

@@ -1,0 +1,36 @@
+CREATE TABLE t1(
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    score REAL CHECK(score >= 0),
+    data BLOB,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status INTEGER NOT NULL CHECK(status IN (0, 1))
+);
+
+-- Testing edge cases with different data types and constraints
+INSERT INTO t1(name, score, data, status)
+VALUES('test1', 99.99, X'ABCD1234', 1),
+       ('test2', NULL, NULL, 0),
+       ('test3', 100.5, X'1234ABCD', 1);
+
+-- Testing rowid and without rowid behavior
+CREATE TABLE t2(a PRIMARY KEY) WITHOUT ROWID;
+INSERT INTO t2 VALUES(1), (2), (3);
+
+-- Testing SQLite-specific features like strict mode
+PRAGMA strict = ON;
+
+-- Testing edge cases with NULL values and type conversions
+SELECT t1.id AS 'rowid', name, score || ' points' AS formatted_score,
+       data IS NOT NULL AS has_data, last_updated > '2023-01-01' AS recent_update,
+       status == 1 AS active
+FROM t1
+WHERE name LIKE 'test%'
+ORDER BY id DESC;
+
+-- Testing join and aggregation edge cases
+SELECT t1.name, COUNT(t2.a) AS count_t2
+FROM t1
+LEFT JOIN t2 ON t1.id = t2.a / 1
+GROUP BY t1.name
+HAVING COUNT(t2.a) > 0;

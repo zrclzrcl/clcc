@@ -1,0 +1,97 @@
+CREATE TABLE employee (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    salary DECIMAL(10, 2),
+    hire_date DATE,
+    department VARCHAR(50)
+);
+
+INSERT INTO employee (name, salary, hire_date, department) VALUES
+('Alice', 60000.00, '2022-01-15', 'Sales'),
+('Bob', 75000.00, '2021-05-20', 'Marketing'),
+('Charlie', 90000.00, '2020-11-01', 'Engineering');
+
+CREATE INDEX idx_employee_salary ON employee (salary);
+
+SELECT * FROM employee WHERE salary > 70000.00;
+
+UPDATE employee SET salary = salary * 1.1 WHERE department = 'Sales';
+
+DELETE FROM employee WHERE id = 1;
+
+SELECT COUNT(*) FROM employee;
+
+SELECT AVG(salary) FROM employee;
+
+SELECT department, SUM(salary) FROM employee GROUP BY department;
+
+SELECT name, hire_date FROM employee ORDER BY hire_date DESC LIMIT 2;
+
+ALTER TABLE employee ADD COLUMN bonus DECIMAL(10, 2);
+
+UPDATE employee SET bonus = salary * 0.05;
+
+SELECT name, salary, bonus, salary + bonus AS total_compensation FROM employee;
+
+CREATE VIEW employee_summary AS
+SELECT department, AVG(salary) AS avg_salary FROM employee GROUP BY department;
+
+SELECT * FROM employee_summary;
+
+DROP VIEW employee_summary;
+
+ALTER TABLE employee ALTER COLUMN name SET DATA TYPE VARCHAR(100);
+
+SELECT version();
+
+-- Using generate_series for some bulk operations
+INSERT INTO employee (name, salary, hire_date, department)
+SELECT 'Bulk Employee ' || i, 50000 + i * 1000, now() - (i || ' days')::interval, 'HR'
+FROM generate_series(1, 10) AS i;
+
+SELECT * FROM employee WHERE name LIKE 'Bulk Employee%';
+
+-- Triggers (minimal example, more complex trigger logic can be added)
+CREATE FUNCTION prevent_negative_salary() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.salary < 0 THEN
+        RAISE EXCEPTION 'Salary cannot be negative';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_salary_before_insert
+BEFORE INSERT OR UPDATE ON employee
+FOR EACH ROW
+EXECUTE FUNCTION prevent_negative_salary();
+
+-- Test the trigger
+-- INSERT INTO employee (name, salary, hire_date, department) VALUES ('Negative', -100, '2023-01-01', 'Finance'); -- This will raise an error
+
+-- More aggregate functions and window functions
+SELECT department, AVG(salary) OVER (PARTITION BY department) AS avg_dept_salary, name, salary FROM employee;
+
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY salary) FROM employee;
+
+-- Example of using WITH clause (common table expression)
+WITH DeptAvgSalaries AS (
+    SELECT department, AVG(salary) AS avg_salary FROM employee GROUP BY department
+)
+SELECT e.name, e.department, e.salary, d.avg_salary
+FROM employee e
+JOIN DeptAvgSalaries d ON e.department = d.department
+WHERE e.salary > d.avg_salary;
+
+-- Materialized View
+CREATE MATERIALIZED VIEW employee_materialized AS
+SELECT department, AVG(salary) AS avg_salary FROM employee GROUP BY department;
+
+REFRESH MATERIALIZED VIEW employee_materialized;
+
+SELECT * FROM employee_materialized;
+
+DROP MATERIALIZED VIEW employee_materialized;
+
+-- Cleaning up the table
+DROP TABLE employee;
