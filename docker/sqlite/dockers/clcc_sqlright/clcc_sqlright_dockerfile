@@ -155,6 +155,7 @@ WORKDIR /home/sqlite/fuzzing/fuzz_root
 RUN rm -rf ./inputs
 COPY ./docker/set_seed /home/sqlite/fuzzing/fuzz_root/inputs
 COPY ./src/clcc_generator/count_feedbackpoint_sqlright.py /home/sqlite/fuzzing/fuzz_root/count_feedbackpoint.py
+COPY ./src/clcc_generator/count_feedbackpoint_sqlright.py /home/clcc/count_feedbackpoint.py
 RUN cp /home/sqlite/src/afl-fuzz ./
 RUN mkdir -p /home/sqlite/fuzzing/fuzz_root/outputs
 RUN conda init
